@@ -502,21 +502,23 @@
 
     <!-- Firebase SDK -->
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-        import { getFirestore, doc, onSnapshot, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+        import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getFirestore, doc, collection, onSnapshot, getDocs }
+                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
+        /* ─ Firebase init (نفس config الملفات الثانية) ─ */
         const firebaseConfig = {
-  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
-  authDomain: "al-gnarl.firebaseapp.com",
-  projectId: "al-gnarl",
-  storageBucket: "al-gnarl.firebasestorage.app",
-  messagingSenderId: "288765966471",
-  appId: "1:288765966471:web:63358febfb82843c2fa022"
-};
-
+            apiKey:            "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+            authDomain:        "al-gnarl.firebaseapp.com",
+            projectId:         "al-gnarl",
+            storageBucket:     "al-gnarl.firebasestorage.app",
+            messagingSenderId: "288765966471",
+            appId:             "1:288765966471:web:63358febfb82843c2fa022"
+        };
         const app = initializeApp(firebaseConfig);
         const db  = getFirestore(app);
 
+        /* ─ Status bar ─ */
         function setFirebaseStatus(state, msg) {
             const bar = document.getElementById('firebaseStatusBar');
             const dot = document.getElementById('firebaseDot');
@@ -527,191 +529,216 @@
             txt.textContent = msg;
         }
 
-        let sessions = [];
-        let teachers = [];
+        /* ─ State (نفس أسماء الـ collections في كل ملف) ─ */
+        // students/data   → { students: [...] }
+        // teachers/data   → { teachers: [...] }
+        // schedule/data   → { sessions: [...], classes: [...] }
+        // attendance_data/default_user/attendanceSessions  (sub-collection)
+        // finance/month-YYYY-MM → { students: { [id]: { paid, history } } }
+        // finance/meta    → { prices: { [id]: number } }
 
-        async function migrateLocalStorageToFirestore() {
-            const localSessions = localStorage.getItem('attendanceSessions');
-            if (localSessions) {
-                try {
-                    const parsed = JSON.parse(localSessions);
-                    await setDoc(doc(db, 'dashboard', 'attendanceSessions'), { data: parsed });
-                    localStorage.removeItem('attendanceSessions');
-                } catch(e) { console.warn('migration sessions failed', e); }
-            }
-            const localTeachers = localStorage.getItem('teachers');
-            if (localTeachers) {
-                try {
-                    const parsed = JSON.parse(localTeachers);
-                    await setDoc(doc(db, 'dashboard', 'teachers'), { data: parsed });
-                    localStorage.removeItem('teachers');
-                } catch(e) { console.warn('migration teachers failed', e); }
-            }
+        let allStudents      = [];   // من students/data
+        let allTeachers      = [];   // من teachers/data
+        let scheduleSessions = [];   // من schedule/data
+        let attSessions      = {};   // من attendanceSessions sub-collection  { [id]: sessionDoc }
+        let financeMonthData = {};   // من finance/month-YYYY-MM
+        let financeMeta      = {};   // من finance/meta
+        const DEFAULT_PRICE  = 500;
+
+        /* نحسب مفتاح الشهر الحالي زي finance.html */
+        function currentMonthKey() {
+            const n = new Date();
+            return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
         }
 
-        function listenToSessions() {
-            return onSnapshot(
-                doc(db, 'dashboard', 'attendanceSessions'),
-                (snap) => {
-                    sessions = snap.exists() ? (snap.data().data || []) : getDefaultSessions();
-                    setFirebaseStatus('connected', '🔥 Firebase متصل — البيانات محدّثة');
-                    updateDashboard();
-                },
-                (err) => {
-                    console.error(err);
-                    setFirebaseStatus('error', '❌ خطأ في الاتصال بـ Firebase');
-                    const local = localStorage.getItem('attendanceSessions');
-                    sessions = local ? JSON.parse(local) : getDefaultSessions();
-                    updateDashboard();
+        /* ─ حساب إحصاءات الحضور من schedule + attendanceSessions ─ */
+        function buildAttendanceStats() {
+            let totalPresent = 0, totalAbsent = 0, completedCount = 0;
+
+            scheduleSessions.forEach(sess => {
+                const attDoc = attSessions[String(sess.id)];
+                if (attDoc && attDoc.completed) {
+                    completedCount++;
+                    (attDoc.students || []).forEach(st => {
+                        if (st.status === 'present') totalPresent++;
+                        if (st.status === 'absent')  totalAbsent++;
+                    });
                 }
-            );
-        }
-
-        function listenToTeachers() {
-            return onSnapshot(
-                doc(db, 'dashboard', 'teachers'),
-                (snap) => {
-                    teachers = snap.exists() ? (snap.data().data || []) : getDefaultTeachers();
-                    updateDashboard();
-                },
-                (err) => {
-                    console.error(err);
-                    const local = localStorage.getItem('teachers');
-                    teachers = local ? JSON.parse(local) : getDefaultTeachers();
-                    updateDashboard();
-                }
-            );
-        }
-
-        function getDefaultSessions() {
-            return [
-                { id:1, subject:'رياضيات', class:'الأول الابتدائي', teacher:'أ. محمد أحمد', day:'السبت', time:'2:00 - 3:30 ظهراً', room:'A1',
-                  students:[{id:1,name:'أحمد محمد',status:'present'},{id:2,name:'محمد علي',status:'present'},{id:3,name:'سارة حسن',status:'absent'},{id:4,name:'فاطمة أحمد',status:'present'},{id:5,name:'عمر خالد',status:'present'}], completed:true },
-                { id:2, subject:'لغة عربية', class:'الثاني الابتدائي', teacher:'أ. فاطمة علي', day:'الأحد', time:'3:45 - 5:15 مساءً', room:'A2',
-                  students:[{id:6,name:'نور الدين',status:'present'},{id:7,name:'ياسمين حسن',status:'present'},{id:8,name:'كريم أحمد',status:'present'}], completed:true },
-                { id:3, subject:'علوم', class:'الثالث الإعدادي', teacher:'أ. خالد محمود', day:'الاثنين', time:'5:30 - 7:00 مساءً', room:'B1',
-                  students:[{id:9,name:'علي محمود',status:null},{id:10,name:'منى إبراهيم',status:null},{id:11,name:'حسن أحمد',status:null},{id:12,name:'ليلى محمد',status:null}], completed:false }
-            ];
-        }
-
-        function getDefaultTeachers() {
-            return [
-                { id:1, name:'أ. محمد أحمد',  phone:'01012345678', email:'mohamed@example.com', salary:5000, subjects:['math','science'], active:true },
-                { id:2, name:'أ. فاطمة علي',  phone:'01098765432', email:'fatma@example.com',   salary:4500, subjects:['arabic'],         active:true },
-                { id:3, name:'أ. خالد محمود', phone:'01055556666', email:'khaled@example.com',  salary:5500, subjects:['science'],        active:true }
-            ];
-        }
-
-        /* ─ Dashboard Logic ─ */
-        function calculateStats() {
-            const stats = {
-                totalStudents: 0, totalSessions: sessions.length,
-                completedSessions: 0, totalPresent: 0, totalAbsent: 0,
-                pendingSessions: 0, uniqueStudents: new Set(),
-                totalTeachers: teachers.length,
-                activeTeachers: teachers.filter(t => t.active).length
-            };
-            sessions.forEach(s => {
-                stats.totalStudents += s.students.length;
-                if (s.completed) stats.completedSessions++; else stats.pendingSessions++;
-                s.students.forEach(st => {
-                    stats.uniqueStudents.add(st.name);
-                    if (st.status === 'present') stats.totalPresent++;
-                    if (st.status === 'absent')  stats.totalAbsent++;
-                });
             });
-            const total = stats.totalPresent + stats.totalAbsent;
-            const avgAttendance = total > 0 ? Math.round((stats.totalPresent / total) * 100) : 0;
-            return { ...stats, avgAttendance, uniqueStudents: stats.uniqueStudents.size };
+
+            const totalScheduled = scheduleSessions.length;
+            const totalMarked    = totalPresent + totalAbsent;
+            const avgAttendance  = totalMarked > 0
+                ? Math.round((totalPresent / totalMarked) * 100) : 0;
+
+            return { totalScheduled, completedCount,
+                     pendingCount: totalScheduled - completedCount,
+                     totalPresent, totalAbsent, avgAttendance };
         }
 
+        /* ─ حساب إحصاءات المالية ─ */
+        function getPaymentStatus(student) {
+            const md    = financeMonthData[student.id] || {};
+            const price = (financeMeta.prices && financeMeta.prices[student.id]) ?? DEFAULT_PRICE;
+            const paid  = md.paid || 0;
+            if (paid >= price && price > 0) return 'paid';
+            if (paid > 0) return 'pending';
+            return 'overdue';
+        }
+
+        function buildFinanceStats() {
+            const paidCount    = allStudents.filter(s => getPaymentStatus(s) === 'paid').length;
+            const pendingCount = allStudents.filter(s => getPaymentStatus(s) === 'pending').length;
+            const overdueCount = allStudents.filter(s => getPaymentStatus(s) === 'overdue').length;
+            const totalRevenue = allStudents.reduce((sum, s) => {
+                return sum + (financeMonthData[s.id]?.paid || 0);
+            }, 0);
+            return { paidCount, pendingCount, overdueCount, totalRevenue };
+        }
+
+        /* ─ تحديث الداشبورد ─ */
         function updateDashboard() {
-            const stats = calculateStats();
-            document.getElementById('totalStudents').textContent    = stats.totalStudents;
-            document.getElementById('studentsChange').textContent   = `في ${stats.totalSessions} حصص`;
-            document.getElementById('activeTeachers').textContent   = stats.activeTeachers;
-            document.getElementById('teachersChange').textContent   = `من ${stats.totalTeachers} مدرس`;
-            document.getElementById('totalSessions').textContent    = stats.totalSessions;
-            document.getElementById('totalSessionsChange').textContent = `${stats.pendingSessions} قيد الانتظار`;
-            document.getElementById('avgAttendance').textContent    = stats.avgAttendance + '%';
-            document.getElementById('attendanceChange').textContent = `${stats.totalPresent} حاضر من ${stats.totalPresent + stats.totalAbsent}`;
-            document.getElementById('totalPresent').textContent     = stats.totalPresent;
-            document.getElementById('totalAbsent').textContent      = stats.totalAbsent;
-            document.getElementById('pendingSessions').textContent  = stats.pendingSessions;
-            document.getElementById('uniqueStudents').textContent   = stats.uniqueStudents;
-            renderAttendanceBySession();
-            renderSessionsProgress(stats);
+            const att     = buildAttendanceStats();
+            const fin     = buildFinanceStats();
+            const active  = allTeachers.filter(t => t.active);
+
+            /* بطاقات الإحصاء الرئيسية */
+            document.getElementById('totalStudents').textContent       = allStudents.length;
+            document.getElementById('studentsChange').textContent      = `في ${allStudents.length} طالب مسجل`;
+            document.getElementById('activeTeachers').textContent      = active.length;
+            document.getElementById('teachersChange').textContent      = `من ${allTeachers.length} مدرس`;
+            document.getElementById('totalSessions').textContent       = att.totalScheduled;
+            document.getElementById('totalSessionsChange').textContent = `${att.pendingCount} قيد الانتظار`;
+            document.getElementById('avgAttendance').textContent       = att.avgAttendance + '%';
+            document.getElementById('attendanceChange').textContent    =
+                `${att.totalPresent} حاضر من ${att.totalPresent + att.totalAbsent}`;
+
+            /* Quick stats */
+            document.getElementById('totalPresent').textContent    = att.totalPresent;
+            document.getElementById('totalAbsent').textContent     = att.totalAbsent;
+            document.getElementById('pendingSessions').textContent = att.pendingCount;
+            document.getElementById('uniqueStudents').textContent  = allStudents.length;
+
+            renderAttendanceBySession(att);
+            renderSessionsProgress(att);
             renderSessionsSummary();
             renderRecentActivities();
             renderTeachersSection();
+            renderFinanceSection(fin);
         }
 
+        /* ─ نسبة الحضور حسب كل حصة ─ */
         function renderAttendanceBySession() {
-            const c = document.getElementById('attendanceBySession');
-            const completed = sessions.filter(s => s.completed);
-            if (!completed.length) { c.innerHTML = '<div class="empty">لا توجد حصص مسجلة بعد</div>'; return; }
+            const c         = document.getElementById('attendanceBySession');
+            const completed = scheduleSessions.filter(s => attSessions[String(s.id)]?.completed);
+            if (!completed.length) {
+                c.innerHTML = '<div class="empty">لا توجد حصص مسجلة بعد</div>'; return;
+            }
             c.innerHTML = '';
-            completed.forEach(s => {
-                const present = s.students.filter(st => st.status === 'present').length;
-                const pct = s.students.length > 0 ? Math.round((present / s.students.length) * 100) : 0;
-                const cls = pct >= 90 ? 'fill-green' : pct >= 70 ? 'fill-gold' : 'fill-amber';
+            completed.forEach(sess => {
+                const attDoc  = attSessions[String(sess.id)];
+                const studs   = attDoc.students || [];
+                const present = studs.filter(st => st.status === 'present').length;
+                const pct     = studs.length > 0 ? Math.round((present / studs.length) * 100) : 0;
+                const cls     = pct >= 90 ? 'fill-green' : pct >= 70 ? 'fill-gold' : 'fill-amber';
                 c.innerHTML += `
                     <div class="prog-item">
-                        <div class="prog-header"><span>${s.subject} - ${s.class}</span><span>${pct}%</span></div>
-                        <div class="prog-track"><div class="prog-fill ${cls}" style="width:${pct}%"></div></div>
+                        <div class="prog-header">
+                            <span>${sess.subject} - ${sess.class}</span>
+                            <span>${pct}%</span>
+                        </div>
+                        <div class="prog-track">
+                            <div class="prog-fill ${cls}" style="width:${pct}%"></div>
+                        </div>
                     </div>`;
             });
         }
 
-        function renderSessionsProgress(stats) {
-            const c = document.getElementById('sessionsProgress');
-            const pct = stats.totalSessions > 0 ? Math.round((stats.completedSessions / stats.totalSessions) * 100) : 0;
+        /* ─ تقدم تسجيل الحصص ─ */
+        function renderSessionsProgress(att) {
+            const c   = document.getElementById('sessionsProgress');
+            const pct = att.totalScheduled > 0
+                ? Math.round((att.completedCount / att.totalScheduled) * 100) : 0;
             c.innerHTML = `
                 <div class="prog-item">
-                    <div class="prog-header"><span>الحصص المكتملة</span><span>${stats.completedSessions} / ${stats.totalSessions}</span></div>
-                    <div class="prog-track"><div class="prog-fill fill-green" style="width:${pct}%"></div></div>
+                    <div class="prog-header">
+                        <span>الحصص المكتملة</span>
+                        <span>${att.completedCount} / ${att.totalScheduled}</span>
+                    </div>
+                    <div class="prog-track">
+                        <div class="prog-fill fill-green" style="width:${pct}%"></div>
+                    </div>
                 </div>
                 <div class="sessions-mini">
-                    <div class="mini-stat"><div class="val val-green">${stats.completedSessions}</div><div class="lbl">مكتملة</div></div>
-                    <div class="mini-stat"><div class="val val-amber">${stats.pendingSessions}</div><div class="lbl">قيد الانتظار</div></div>
-                    <div class="mini-stat"><div class="val val-gold">${pct}%</div><div class="lbl">نسبة الإنجاز</div></div>
+                    <div class="mini-stat">
+                        <div class="val val-green">${att.completedCount}</div>
+                        <div class="lbl">مكتملة</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="val val-amber">${att.pendingCount}</div>
+                        <div class="lbl">قيد الانتظار</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="val val-gold">${pct}%</div>
+                        <div class="lbl">نسبة الإنجاز</div>
+                    </div>
                 </div>`;
         }
 
+        /* ─ ملخص الحصص (من schedule/data) ─ */
         function renderSessionsSummary() {
             const c = document.getElementById('sessionsSummaryList');
-            if (!sessions.length) { c.innerHTML = '<div class="empty">لا توجد حصص</div>'; return; }
+            if (!scheduleSessions.length) {
+                c.innerHTML = '<div class="empty">لا توجد حصص في الجدول</div>'; return;
+            }
             c.innerHTML = '';
-            sessions.forEach(s => {
-                const present = s.students.filter(st => st.status === 'present').length;
-                const absent  = s.students.filter(st => st.status === 'absent').length;
+            scheduleSessions.forEach(sess => {
+                const attDoc   = attSessions[String(sess.id)];
+                const done     = attDoc?.completed || false;
+                const studs    = attDoc?.students || [];
+                const present  = studs.filter(st => st.status === 'present').length;
+                const absent   = studs.filter(st => st.status === 'absent').length;
+                const dayNames = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];
+                const dayLabel = dayNames[sess.day] || '';
+                const timeStr  = sess.startTime && sess.endTime
+                    ? `${sess.startTime} - ${sess.endTime}` : '';
                 c.innerHTML += `
-                    <div class="session-item ${s.completed ? 'completed' : 'pending'}">
+                    <div class="session-item ${done ? 'completed' : 'pending'}">
                         <div class="session-details">
-                            <h3>${s.subject} - ${s.class}</h3>
-                            <p>👨‍🏫 ${s.teacher} &nbsp;•&nbsp; 📅 ${s.day} ${s.time} &nbsp;•&nbsp; 🏫 قاعة ${s.room}</p>
-                            ${s.completed
-                                ? `<p>✅ ${present} حاضر &nbsp;•&nbsp; ❌ ${absent} غائب &nbsp;•&nbsp; 👥 ${s.students.length} طالب</p>`
-                                : `<p>👥 ${s.students.length} طالب</p>`}
+                            <h3>${sess.subject} - ${sess.class}</h3>
+                            <p>👨‍🏫 ${sess.teacher || '—'} &nbsp;•&nbsp; 📅 ${dayLabel} ${timeStr} &nbsp;•&nbsp; 🏫 ${sess.room || ''}</p>
+                            ${done
+                                ? `<p>✅ ${present} حاضر &nbsp;•&nbsp; ❌ ${absent} غائب &nbsp;•&nbsp; 👥 ${studs.length} طالب</p>`
+                                : `<p>⏳ لم يُسجَّل الحضور بعد</p>`}
                         </div>
-                        <span class="session-badge ${s.completed ? 'done' : 'waiting'}">
-                            ${s.completed ? '✓ مكتملة' : '⏳ قيد الانتظار'}
+                        <span class="session-badge ${done ? 'done' : 'waiting'}">
+                            ${done ? '✓ مكتملة' : '⏳ قيد الانتظار'}
                         </span>
                     </div>`;
             });
         }
 
+        /* ─ آخر الأنشطة (من attendanceSessions المكتملة) ─ */
         function renderRecentActivities() {
-            const c = document.getElementById('recentActivitiesList');
+            const c    = document.getElementById('recentActivitiesList');
             const acts = [];
-            sessions.forEach(s => {
-                const present = s.students.filter(st => st.status === 'present').length;
-                const absent  = s.students.filter(st => st.status === 'absent').length;
-                acts.push(s.completed
-                    ? { type:'success', title:'تسجيل حضور حصة', desc:`تم تسجيل حضور حصة ${s.subject} - ${s.class}: ${present} حاضر، ${absent} غائب`, time:'اليوم' }
-                    : { type:'warning', title:'حصة قيد الانتظار', desc:`حصة ${s.subject} - ${s.class} تحتاج تسجيل حضور`, time:'قيد الانتظار' }
+
+            scheduleSessions.forEach(sess => {
+                const attDoc = attSessions[String(sess.id)];
+                const done   = attDoc?.completed || false;
+                const studs  = attDoc?.students || [];
+                const present = studs.filter(st => st.status === 'present').length;
+                const absent  = studs.filter(st => st.status === 'absent').length;
+                acts.push(done
+                    ? { type:'success', title:'تسجيل حضور حصة',
+                        desc:`${sess.subject} - ${sess.class}: ${present} حاضر، ${absent} غائب`,
+                        time: attDoc.saveDate || 'اليوم' }
+                    : { type:'warning', title:'حصة قيد الانتظار',
+                        desc:`${sess.subject} - ${sess.class} تحتاج تسجيل حضور`,
+                        time:'قيد الانتظار' }
                 );
             });
+
             if (!acts.length) { c.innerHTML = '<div class="empty">لا توجد أنشطة</div>'; return; }
             c.innerHTML = '';
             acts.slice(0, 5).forEach(a => {
@@ -724,30 +751,131 @@
             });
         }
 
+        /* ─ المدرسين النشطين (من teachers/data) ─ */
         function renderTeachersSection() {
             const c = document.getElementById('teachersSection');
-            const subjectNames = { math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية', science:'علوم', social:'دراسات اجتماعية', religion:'تربية دينية', computer:'حاسب آلي' };
-            const active = teachers.filter(t => t.active);
-            if (!active.length) { c.innerHTML = '<div class="empty">لا يوجد مدرسين نشطين</div>'; return; }
+            const subjectNames = {
+                math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية',
+                science:'علوم', social:'دراسات اجتماعية', religion:'تربية دينية', computer:'حاسب آلي'
+            };
+            const active = allTeachers.filter(t => t.active);
+            if (!active.length) {
+                c.innerHTML = '<div class="empty">لا يوجد مدرسين نشطين</div>'; return;
+            }
             c.innerHTML = '';
             active.forEach(t => {
-                const subs = t.subjects.map(s => subjectNames[s] || s).join(' • ');
+                const subs = (t.subjects || []).map(s => subjectNames[s] || s).join(' • ');
                 c.innerHTML += `
                     <div class="activity-item success">
                         <strong>${t.name}</strong>
-                        <p>📚 ${subs}</p>
-                        <p>📱 ${t.phone}${t.email ? ` &nbsp;•&nbsp; 📧 ${t.email}` : ''}</p>
-                        <p>💰 الراتب: ${t.salary} جنيه</p>
+                        <p>📚 ${subs || '—'}</p>
+                        <p>📱 ${t.phone || '—'}${t.email ? ` &nbsp;•&nbsp; 📧 ${t.email}` : ''}</p>
+                        <p>💰 الراتب: ${t.salary || 0} جنيه</p>
                     </div>`;
             });
         }
 
+        /* ─ قسم المالية (مخفي من HTML لكن نضيفه كـ activity) ─ */
+        function renderFinanceSection(fin) {
+            // نحدّث آخر الأنشطة بمعلومات مالية إضافية
+            const c = document.getElementById('recentActivitiesList');
+            if (!allStudents.length) return;
+            c.innerHTML += `
+                <div class="activity-item" style="border-right-color:var(--gold);">
+                    <strong>💰 ملخص الاشتراكات — ${currentMonthKey()}</strong>
+                    <p>✅ دفع: ${fin.paidCount} &nbsp;•&nbsp; 🕐 جزئي: ${fin.pendingCount} &nbsp;•&nbsp; ❌ لم يدفع: ${fin.overdueCount}</p>
+                    <div class="activity-time">إجمالي إيرادات الشهر: ${fin.totalRevenue.toLocaleString()} ج</div>
+                </div>`;
+        }
+
+        /* ════════════════════════════════════════
+           Listeners — نفس طريقة كل ملف
+           ════════════════════════════════════════ */
+
+        let connected = 0;
+        function markConnected() {
+            connected++;
+            // نبدأ نعرض البيانات بعد ما يتحمّل students + teachers + schedule
+            if (connected >= 3) {
+                setFirebaseStatus('connected', '🔥 Firebase متصل — البيانات محدّثة لحظياً');
+            }
+            updateDashboard();
+        }
+
+        /* 1) Students — نفس students.html */
+        onSnapshot(
+            doc(db, 'students', 'data'),
+            snap => {
+                allStudents = snap.exists() ? (snap.data().students || []) : [];
+                markConnected();
+            },
+            err => {
+                console.error('students listener:', err);
+                setFirebaseStatus('error', '❌ خطأ في تحميل الطلاب');
+            }
+        );
+
+        /* 2) Teachers — نفس teachers.html */
+        onSnapshot(
+            doc(db, 'teachers', 'data'),
+            snap => {
+                allTeachers = snap.exists() ? (snap.data().teachers || []) : [];
+                markConnected();
+            },
+            err => {
+                console.error('teachers listener:', err);
+                setFirebaseStatus('error', '❌ خطأ في تحميل المدرسين');
+            }
+        );
+
+        /* 3) Schedule — نفس schedule_management.html */
+        onSnapshot(
+            doc(db, 'schedule', 'data'),
+            snap => {
+                scheduleSessions = snap.exists() ? (snap.data().sessions || []) : [];
+                markConnected();
+                /* بعد ما يجي الجدول، نحمّل attendance sub-collection */
+                loadAttendanceSessions();
+            },
+            err => {
+                console.error('schedule listener:', err);
+                setFirebaseStatus('error', '❌ خطأ في تحميل الجدول');
+            }
+        );
+
+        /* 4) Attendance sessions — نفس attendance.html
+           attendance_data/default_user/attendanceSessions (sub-collection) */
+        function loadAttendanceSessions() {
+            const attCol = collection(db, 'attendance_data', 'default_user', 'attendanceSessions');
+            onSnapshot(
+                attCol,
+                snap => {
+                    attSessions = {};
+                    snap.forEach(d => { attSessions[d.id] = d.data(); });
+                    updateDashboard();
+                },
+                err => console.error('attendance sessions listener:', err)
+            );
+        }
+
+        /* 5) Finance — نفس finance.html
+           finance/meta + finance/month-YYYY-MM */
+        onSnapshot(
+            doc(db, 'finance', 'meta'),
+            snap => { financeMeta = snap.exists() ? snap.data() : {}; updateDashboard(); },
+            err => console.error('finance meta listener:', err)
+        );
+        onSnapshot(
+            doc(db, 'finance', 'month-' + currentMonthKey()),
+            snap => {
+                financeMonthData = snap.exists() ? (snap.data().students || {}) : {};
+                updateDashboard();
+            },
+            err => console.error('finance month listener:', err)
+        );
+
         /* ─ Init ─ */
         setFirebaseStatus('connecting', '🔌 جاري الاتصال بـ Firebase...');
-        migrateLocalStorageToFirestore().then(() => {
-            listenToSessions();
-            listenToTeachers();
-        });
     </script>
 </body>
 </html>
