@@ -556,7 +556,7 @@
                 <select id="subjectFilter" onchange="filterStudents()">
                     <option value="">جميع المواد</option>
                     <option value="math">رياضيات</option>
-                    <option value="science">علوم</option>
+                    <option value="studies2">دراسات</option>
                     <option value="arabic">عربي</option>
                     <option value="english">إنجليزي</option>
                     <option value="history">تاريخ</option>
@@ -630,7 +630,7 @@
                         <label>المواد * (يمكن اختيار أكثر من مادة)</label>
                         <div id="subjectsCheckboxes">
                             <label><input type="checkbox" name="subjects" value="math"><span>📐 رياضيات</span></label>
-                            <label><input type="checkbox" name="subjects" value="science"><span>🔬 علوم</span></label>
+                            <label><input type="checkbox" name="subjects" value="studies2"><span>🌍 دراسات</span></label>
                             <label><input type="checkbox" name="subjects" value="arabic"><span>📝 عربي</span></label>
                             <label><input type="checkbox" name="subjects" value="english"><span>🔤 إنجليزي</span></label>
                             <label><input type="checkbox" name="subjects" value="history"><span>📜 تاريخ</span></label>
@@ -769,7 +769,7 @@
 
         // ── Helpers ──
         function getSubjectName(subject) {
-            const subjects = { 'math':'رياضيات','science':'علوم','arabic':'عربي','english':'إنجليزي','history':'تاريخ','geography':'جغرافيا','studies':'دراسات' };
+            const subjects = { 'math':'رياضيات','science':'علوم','studies2':'دراسات','arabic':'عربي','english':'إنجليزي','history':'تاريخ','geography':'جغرافيا','studies':'دراسات' };
             return subjects[subject] || subject;
         }
         function getSubjectsDisplay(subjectsArray) {
