@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الدرجات والامتحانات</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+  authDomain: "al-gnarl.firebaseapp.com",
+  projectId: "al-gnarl",
+  storageBucket: "al-gnarl.firebasestorage.app",
+  messagingSenderId: "288765966471",
+  appId: "1:288765966471:web:63358febfb82843c2fa022"
+};
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        function userCol(c) {
+            return db.collection('attendance_data').doc('default_user').collection(c);
+        }
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Tajawal:wght@700;900&display=swap" rel="stylesheet">
+
+    <style>
+        /* ══ VARIABLES ══════════════════════════════════ */
+        :root {
+            --purple-deep:   #080808;
+            --purple-mid:    #110a00;
+            --purple-bright: #c0182a;
+            --purple-glow:   #d4a017;
+            --purple-light:  #f5c842;
+            --blue-accent:   #e8c96a;
+            --white:         #ffffff;
+            --glass-bg:      rgba(255,255,255,0.04);
+            --glass-border:  rgba(212,160,23,0.2);
+            --card-bg:       rgba(20,10,0,0.65);
+            --muted:         rgba(255,255,255,0.45);
+            --text:          rgba(255,255,255,0.85);
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--purple-deep);
+            min-height: 100vh;
+            color: var(--text);
+        }
+
+        /* ── Background ─────────────────────────────── */
+        .bg-layer { position:fixed; inset:0; z-index:0; pointer-events:none; }
+        .bg-gradient {
+            position:absolute; inset:0;
+            background:
+                radial-gradient(ellipse 75% 55% at 50% -5%,  rgba(212,160,23,.38) 0%, transparent 62%),
+                radial-gradient(ellipse 55% 45% at 85% 85%,  rgba(192,24,42,.28)  0%, transparent 55%),
+                radial-gradient(ellipse 45% 38% at 20% 70%,  rgba(212,160,23,.16) 0%, transparent 50%),
+                radial-gradient(ellipse 30% 28% at 75% 10%,  rgba(192,24,42,.12)  0%, transparent 48%),
+                linear-gradient(160deg, #0d0900 0%, #110a00 40%, #080808 70%, #0d0203 100%);
+        }
+        .grid-lines {
+            position:absolute; inset:0;
+            background-image:
+                linear-gradient(rgba(212,160,23,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212,160,23,.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .dot-grid {
+            position:absolute; inset:0;
+            background-image: radial-gradient(rgba(212,160,23,.13) 1px, transparent 1px);
+            background-size: 30px 30px;
+            mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent);
+        }
+        .orb { position:absolute; border-radius:50%; filter:blur(80px); animation:floatOrb 8s ease-in-out infinite; }
+        .orb-1 { width:420px; height:420px; background:rgba(212,160,23,.22); top:-110px; left:50%; transform:translateX(-50%); }
+        .orb-2 { width:300px; height:300px; background:rgba(192,24,42,.2);   bottom:10%; right:-50px; animation-delay:-3s; }
+        .orb-3 { width:250px; height:250px; background:rgba(212,160,23,.12); bottom:20%; left:-30px; animation-delay:-5s; }
+        @keyframes floatOrb {
+            0%,100% { transform:translateY(0) translateX(0); }
+            33%     { transform:translateY(-20px) translateX(10px); }
+            66%     { transform:translateY(10px)  translateX(-10px); }
+        }
+
+        /* Particles */
+        .particles { position:fixed; inset:0; z-index:1; pointer-events:none; }
+        .particle  { position:absolute; width:3px; height:3px; border-radius:50%; background:var(--purple-light); animation:floatParticle linear infinite; opacity:0; }
+        @keyframes floatParticle {
+            0%   { transform:translateY(100vh) translateX(0); opacity:0; }
+            10%  { opacity:.5; }
+            90%  { opacity:.3; }
+            100% { transform:translateY(-10vh) translateX(30px); opacity:0; }
+        }
+
+        /* ══ TOPBAR ═════════════════════════════════════ */
+        .topbar {
+            position: sticky; top:0; z-index:200;
+            background: rgba(8,4,0,.88);
+            border-bottom: 1px solid rgba(212,160,23,.25);
+            backdrop-filter: blur(20px);
+            height: 66px;
+            display: flex; align-items: center;
+            justify-content: space-between;
+            padding: 0 26px;
+            box-shadow: 0 4px 24px rgba(0,0,0,.5);
+        }
+        .tb-brand { display:flex; align-items:center; gap:13px; }
+        .tb-icon {
+            width:44px; height:44px; border-radius:12px;
+            background: linear-gradient(135deg, #c0182a, #d4a017);
+            display:flex; align-items:center; justify-content:center;
+            font-size:22px; flex-shrink:0;
+            box-shadow: 0 4px 14px rgba(192,24,42,.5);
+        }
+        .tb-title { color:var(--white); font-size:19px; font-weight:900; font-family:'Tajawal',sans-serif; }
+        .tb-sub   { color:var(--muted); font-size:11px; }
+        .tb-actions { display:flex; gap:9px; align-items:center; }
+
+        /* ══ BUTTONS ════════════════════════════════════ */
+        .btn {
+            display:inline-flex; align-items:center; gap:6px;
+            padding:9px 18px; border:none; border-radius:9px;
+            font-family:'Cairo',sans-serif; font-size:13px; font-weight:700;
+            cursor:pointer; transition:all .22s; text-decoration:none;
+        }
+        .btn-navy {
+            background: linear-gradient(135deg, #c0182a, #d4a017);
+            color: white; box-shadow: 0 3px 14px rgba(192,24,42,.5);
+        }
+        .btn-navy:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(212,160,23,.7); }
+
+        .btn-gold {
+            background: linear-gradient(135deg,#f59e0b,#d97706);
+            color: #fff; box-shadow:0 3px 12px rgba(245,158,11,.4);
+        }
+        .btn-gold:hover  { transform:translateY(-2px); box-shadow:0 6px 18px rgba(245,158,11,.6); }
+
+        .btn-green {
+            background: linear-gradient(135deg,#10b981,#059669);
+            color: white; box-shadow:0 3px 12px rgba(16,185,129,.4);
+        }
+        .btn-green:hover { transform:translateY(-2px); }
+
+        .btn-red {
+            background: linear-gradient(135deg,#ef4444,#dc2626);
+            color: white; box-shadow:0 3px 12px rgba(239,68,68,.35);
+        }
+        .btn-red:hover   { transform:translateY(-2px); }
+
+        .btn-ghost {
+            background: rgba(255,255,255,.07);
+            border: 1px solid rgba(255,255,255,.12);
+            color: rgba(255,255,255,.75);
+        }
+        .btn-ghost:hover { background:rgba(255,255,255,.13); transform:translateY(-2px); }
+
+        .btn-outline {
+            background: rgba(255,255,255,.08);
+            border: 1.5px solid rgba(212,160,23,.4);
+            color: var(--purple-light);
+        }
+        .btn-outline:hover { background:rgba(212,160,23,.15); }
+
+        .btn-sm { padding:7px 14px; font-size:13px; }
+        .btn-xs { padding:5px 11px; font-size:12px; border-radius:7px; }
+
+        /* ══ LAYOUT ═════════════════════════════════════ */
+        .wrap { max-width:1480px; margin:0 auto; padding:24px 22px; position:relative; z-index:10; }
+
+        /* ══ STATUS BAR ═════════════════════════════════ */
+        .status-bar {
+            display:flex; align-items:center; gap:10px;
+            padding:10px 16px; border-radius:12px;
+            font-size:13px; font-weight:700;
+            margin-bottom:22px; transition:all .3s;
+            backdrop-filter: blur(10px);
+        }
+        .status-bar.connecting { background:rgba(245,158,11,.1);  color:#fbbf24; border:1px solid rgba(245,158,11,.3); }
+        .status-bar.connected  { background:rgba(16,185,129,.1);  color:#34d399; border:1px solid rgba(16,185,129,.3); }
+        .status-bar.error      { background:rgba(239,68,68,.1);   color:#f87171; border:1px solid rgba(239,68,68,.3); }
+        .status-bar.saving     { background:rgba(59,130,246,.1);  color:#60a5fa; border:1px solid rgba(59,130,246,.3); }
+        .s-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .s-dot.connecting { background:#fbbf24; animation:sblink .6s infinite; }
+        .s-dot.connected  { background:#34d399; animation:sblink 2s infinite; }
+        .s-dot.error      { background:#f87171; }
+        .s-dot.saving     { background:#60a5fa; animation:sblink .4s infinite; }
+        @keyframes sblink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+        /* ══ STATS ROW ══════════════════════════════════ */
+        .stats-row {
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+            gap:14px; margin-bottom:24px;
+        }
+        .sc {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            border-radius:14px; padding:18px 16px;
+            border-top:3px solid var(--purple-glow);
+            box-shadow:0 4px 20px rgba(0,0,0,.3);
+            transition:transform .2s;
+        }
+        .sc:hover { transform:translateY(-3px); }
+        .sc.g { border-top-color:#34d399; }
+        .sc.b { border-top-color:#60a5fa; }
+        .sc.r { border-top-color:#f87171; }
+        .sc.t { border-top-color:#2dd4bf; }
+        .sc-n {
+            font-size:30px; font-weight:900; font-family:'Tajawal',sans-serif;
+            background: linear-gradient(135deg, #f5c842, #d4a017);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        }
+        .sc.g .sc-n { background:linear-gradient(135deg,#34d399,#10b981); -webkit-background-clip:text; background-clip:text; }
+        .sc.b .sc-n { background:linear-gradient(135deg,#60a5fa,#3b82f6); -webkit-background-clip:text; background-clip:text; }
+        .sc.r .sc-n { background:linear-gradient(135deg,#f87171,#ef4444); -webkit-background-clip:text; background-clip:text; }
+        .sc.t .sc-n { background:linear-gradient(135deg,#2dd4bf,#0d9488); -webkit-background-clip:text; background-clip:text; }
+        .sc-l { font-size:12px; color:var(--muted); margin-top:4px; }
+
+        /* ══ SECTION ════════════════════════════════════ */
+        .section { display:none; }
+        .section.active { display:block; }
+
+        /* ══ BREADCRUMB ═════════════════════════════════ */
+        .bc { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); margin-bottom:18px; }
+        .bc a { color:var(--purple-light); font-weight:700; cursor:pointer; }
+        .bc a:hover { text-decoration:underline; }
+        .bc span { color:var(--muted); }
+
+        /* ══ SECTION HEADER ═════════════════════════════ */
+        .sec-hd {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(14px);
+            border-radius:16px; padding:18px 22px; margin-bottom:20px;
+            display:flex; align-items:center; justify-content:space-between;
+            flex-wrap:wrap; gap:12px;
+            box-shadow:0 4px 20px rgba(0,0,0,.3);
+        }
+        .sec-title {
+            font-size:20px; font-weight:900; font-family:'Tajawal',sans-serif;
+            background: linear-gradient(135deg, var(--white), #f5c842);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        }
+        .sec-sub { font-size:12px; color:var(--muted); margin-top:3px; }
+
+        /* ══ SEARCH BAR ═════════════════════════════════ */
+        .search-row { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
+        .si {
+            flex:1; min-width:200px; padding:10px 14px;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(212,160,23,.2);
+            border-radius:10px; font-family:'Cairo',sans-serif; font-size:13px; color:var(--white);
+            outline:none; transition:border-color .2s, box-shadow .2s;
+        }
+        .si::placeholder { color:var(--muted); }
+        .si:focus { border-color:var(--purple-glow); box-shadow:0 0 0 3px rgba(212,160,23,.2); }
+
+        /* ══ SESSIONS GRID ══════════════════════════════ */
+        .sessions-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(285px,1fr)); gap:17px; }
+        .sess-card {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            border-radius:16px; padding:20px 18px;
+            box-shadow:0 4px 20px rgba(0,0,0,.3);
+            border-right:4px solid #c0182a;
+            cursor:pointer; transition:all .24s; position:relative; overflow:hidden;
+        }
+        .sess-card::after {
+            content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+            background:linear-gradient(90deg, #d4a017, #f5c842);
+            transform:scaleX(0); transform-origin:right; transition:transform .3s;
+        }
+        .sess-card:hover { transform:translateY(-5px); box-shadow:0 12px 32px rgba(212,160,23,.2); border-color:rgba(212,160,23,.4); }
+        .sess-card:hover::after { transform:scaleX(1); }
+        .sess-subject { font-size:17px; font-weight:900; color:var(--white); font-family:'Tajawal',sans-serif; margin-bottom:9px; }
+        .sess-row { font-size:13px; color:var(--muted); margin-bottom:3px; display:flex; align-items:center; gap:5px; }
+
+        .tag {
+            display:inline-flex; align-items:center; gap:4px;
+            padding:3px 12px; border-radius:20px; font-size:11px; font-weight:700; margin-top:9px;
+        }
+        .tag.ok     { background:rgba(16,185,129,.15); color:#34d399; border:1px solid rgba(16,185,129,.3); }
+        .tag.warn   { background:rgba(245,158,11,.12); color:#fbbf24; border:1px solid rgba(245,158,11,.3); }
+        .tag.danger { background:rgba(239,68,68,.12);  color:#f87171; border:1px solid rgba(239,68,68,.3); }
+
+        /* ══ EXAMS LIST ═════════════════════════════════ */
+        .exams-list { display:flex; flex-direction:column; gap:13px; margin-bottom:22px; }
+        .exam-row {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            border-radius:14px; padding:16px 20px;
+            box-shadow:0 4px 16px rgba(0,0,0,.25);
+            display:flex; align-items:center; gap:14px;
+            cursor:pointer; transition:all .22s;
+            border-right:3px solid #d4a017;
+        }
+        .exam-row:hover { transform:translateX(-4px); box-shadow:0 6px 24px rgba(212,160,23,.2); border-color:rgba(212,160,23,.4); }
+        .exam-ico {
+            width:48px; height:48px; border-radius:12px; flex-shrink:0;
+            background: linear-gradient(135deg, #c0182a, #d4a017);
+            display:flex; align-items:center; justify-content:center; font-size:20px;
+            box-shadow:0 4px 12px rgba(192,24,42,.4);
+        }
+        .exam-name { font-size:16px; font-weight:800; color:var(--white); }
+        .exam-meta { font-size:12px; color:var(--muted); margin-top:3px; }
+        .exam-prog { margin-right:auto; text-align:center; min-width:70px; }
+        .exam-prog-n { font-size:18px; font-weight:900; font-family:'Tajawal',sans-serif; }
+        .exam-prog-l { font-size:11px; color:var(--muted); }
+
+        /* ══ GRADE TABLE ════════════════════════════════ */
+        .tbl-wrap {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(14px);
+            border-radius:16px; overflow:hidden;
+            box-shadow:0 6px 28px rgba(0,0,0,.35);
+        }
+        .tbl-top {
+            padding:16px 20px;
+            background: rgba(192,24,42,.1);
+            border-bottom:1px solid rgba(212,160,23,.15);
+            display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+        }
+        .tbl-top-title { font-size:16px; font-weight:800; color:var(--white); }
+
+        table { width:100%; border-collapse:collapse; }
+        thead tr { background:linear-gradient(135deg, rgba(192,24,42,.4), rgba(212,160,23,.25)); }
+        thead th { padding:12px 14px; text-align:right; color:#f5c842; font-size:13px; font-weight:700; }
+        tbody tr { border-bottom:1px solid rgba(212,160,23,.08); transition:background .14s; }
+        tbody tr:hover { background:rgba(212,160,23,.07); }
+        tbody tr:last-child { border-bottom:none; }
+        tbody td { padding:11px 14px; font-size:14px; color:var(--text); }
+
+        .st-avatar {
+            width:34px; height:34px; border-radius:9px;
+            background:linear-gradient(135deg, #c0182a, #d4a017);
+            display:flex; align-items:center; justify-content:center;
+            color:white; font-size:12px; font-weight:800; flex-shrink:0;
+            box-shadow:0 2px 8px rgba(192,24,42,.4);
+        }
+        .st-name { font-weight:800; color:var(--white); }
+
+        /* Grade input */
+        .gi {
+            width:72px; padding:7px 8px;
+            background: rgba(255,255,255,.06);
+            border:1.5px solid rgba(212,160,23,.25); border-radius:8px;
+            font-family:'Cairo',sans-serif; font-size:16px; font-weight:800;
+            text-align:center; direction:ltr; color:var(--white);
+            transition:border-color .2s, box-shadow .2s;
+        }
+        .gi:focus { outline:none; border-color:#d4a017; box-shadow:0 0 0 3px rgba(212,160,23,.25); background:rgba(255,255,255,.1); }
+        .gi.ok  { border-color:#34d399; }
+        .gi.err { border-color:#f87171; }
+
+        /* Letter badge */
+        .ltr { padding:4px 10px; border-radius:8px; font-size:13px; font-weight:900; min-width:36px; text-align:center; transition:all .3s; }
+        .ltr.A { background:rgba(16,185,129,.2);  color:#34d399; }
+        .ltr.B { background:rgba(59,130,246,.2);  color:#60a5fa; }
+        .ltr.C { background:rgba(245,158,11,.18); color:#fbbf24; }
+        .ltr.D { background:rgba(249,115,22,.18); color:#fb923c; }
+        .ltr.F { background:rgba(239,68,68,.18);  color:#f87171; }
+        .ltr.X { background:rgba(255,255,255,.06); color:var(--muted); }
+
+        /* Percent mini bar */
+        .pct-num  { font-size:14px; font-weight:800; }
+        .mini-bar { height:5px; background:rgba(255,255,255,.1); border-radius:3px; margin-top:3px; overflow:hidden; min-width:70px; }
+        .mini-fill { height:100%; border-radius:3px; transition:width .4s, background .4s; }
+
+        /* Note input */
+        .note-i {
+            padding:6px 10px;
+            background:rgba(255,255,255,.05);
+            border:1.5px solid rgba(212,160,23,.2); border-radius:7px;
+            font-family:'Cairo',sans-serif; font-size:12px; color:var(--white);
+            width:100%; min-width:100px;
+        }
+        .note-i:focus { outline:none; border-color:#d4a017; background:rgba(255,255,255,.09); }
+        .note-i::placeholder { color:var(--muted); }
+
+        /* Phone input */
+        .phone-i {
+            padding:6px 8px;
+            background:rgba(255,255,255,.05);
+            border:1.5px solid rgba(212,160,23,.2); border-radius:7px;
+            font-family:'Cairo',sans-serif; font-size:12px; color:var(--white);
+            width:100%; min-width:100px; direction:ltr;
+        }
+        .phone-i:focus { outline:none; border-color:#25d366; background:rgba(255,255,255,.09); }
+        .phone-i::placeholder { color:var(--muted); }
+
+        /* WhatsApp button */
+        .btn-wa {
+            background:linear-gradient(135deg,#25d366,#128c7e); color:white;
+            border:none; border-radius:7px; padding:5px 9px;
+            font-size:13px; cursor:pointer; transition:all .2s;
+            display:inline-flex; align-items:center; gap:4px; font-weight:700;
+            font-family:'Cairo',sans-serif; white-space:nowrap;
+        }
+        .btn-wa:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(37,211,102,.4); }
+        .btn-wa:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+
+        /* Save indicator */
+        .save-ind { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:#34d399; font-weight:700; opacity:0; transition:opacity .3s; }
+        .save-ind.show { opacity:1; }
+
+        /* ══ MODAL ══════════════════════════════════════ */
+        .ov {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,.75);
+            backdrop-filter:blur(8px);
+            z-index:300; justify-content:center; align-items:center;
+        }
+        .ov.active { display:flex; }
+        .mb {
+            background:linear-gradient(160deg, #110a00, #080808);
+            border:1px solid rgba(212,160,23,.2);
+            border-radius:20px; width:92%; max-width:520px; max-height:92vh; overflow-y:auto;
+            box-shadow:0 24px 64px rgba(0,0,0,.6), 0 0 40px rgba(212,160,23,.1);
+            animation:popIn .3s cubic-bezier(.34,1.56,.64,1);
+        }
+        .mb.wide { max-width:660px; }
+        @keyframes popIn { from{transform:scale(.85);opacity:0} to{transform:scale(1);opacity:1} }
+        .mh {
+            padding:20px 24px 15px;
+            border-bottom:1px solid rgba(212,160,23,.2);
+            display:flex; align-items:center; justify-content:space-between;
+        }
+        .mh-title {
+            font-size:18px; font-weight:900; font-family:'Tajawal',sans-serif;
+            background:linear-gradient(135deg, var(--white), #f5c842);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        }
+        .mc { padding:20px 24px; }
+        .mf { padding:14px 24px 22px; display:flex; gap:9px; }
+        .mclose {
+            width:30px; height:30px; border-radius:50%;
+            background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1);
+            cursor:pointer; font-size:14px; color:var(--muted);
+            display:flex; align-items:center; justify-content:center; transition:all .2s;
+        }
+        .mclose:hover { background:rgba(255,255,255,.15); color:var(--white); }
+
+        /* Form */
+        .fg { margin-bottom:14px; }
+        .fg label { display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:rgba(255,255,255,.7); }
+        .fc {
+            width:100%; padding:10px 12px;
+            background: rgba(255,255,255,.05);
+            border:1.5px solid rgba(212,160,23,.2); border-radius:9px;
+            font-family:'Cairo',sans-serif; font-size:13px; color:var(--white);
+            transition:border-color .2s;
+        }
+        .fc:focus { outline:none; border-color:#d4a017; background:rgba(255,255,255,.08); box-shadow:0 0 0 3px rgba(212,160,23,.2); }
+        .fc::placeholder { color:var(--muted); }
+        .fc option { background:#110a00; color:var(--white); }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+        /* ══ REPORT ═════════════════════════════════════ */
+        .rg { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; margin-bottom:18px; }
+        .rc {
+            background:rgba(255,255,255,.04); border-radius:12px; padding:14px;
+            text-align:center; border-top:3px solid #d4a017;
+        }
+        .rc-n { font-size:26px; font-weight:900; font-family:'Tajawal',sans-serif; color:var(--white); }
+        .rc-l { font-size:11px; color:var(--muted); margin-top:2px; }
+        .dist-row { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+        .dist-bg  { flex:1; height:7px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden; }
+        .dist-fill { height:100%; border-radius:3px; transition:width .5s; }
+
+        /* ══ TOAST ══════════════════════════════════════ */
+        #toast {
+            position:fixed; bottom:24px; right:24px; z-index:999;
+            padding:13px 20px; border-radius:12px;
+            font-weight:700; font-size:13px;
+            display:none; align-items:center; gap:7px;
+            animation:tsUp .3s ease;
+            backdrop-filter:blur(12px);
+        }
+        #toast.show { display:flex; }
+        #toast.success { background:rgba(16,185,129,.25); color:#34d399; border:1px solid rgba(16,185,129,.4); box-shadow:0 8px 28px rgba(0,0,0,.4); }
+        #toast.danger  { background:rgba(239,68,68,.25);  color:#f87171; border:1px solid rgba(239,68,68,.4);  box-shadow:0 8px 28px rgba(0,0,0,.4); }
+        @keyframes tsUp { from{transform:translateY(14px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+        /* ══ EMPTY STATE ════════════════════════════════ */
+        .empty { text-align:center; padding:55px 20px; color:var(--muted); }
+        .empty-ico   { font-size:56px; margin-bottom:13px; }
+        .empty-title { font-size:18px; font-weight:800; color:var(--white); margin-bottom:6px; }
+        .empty-sub   { font-size:13px; }
+
+        /* ══ REPORT DYNAMIC STYLES ══════════════════════ */
+        .report-info-bar {
+            font-size:12px; color:var(--muted); margin-bottom:16px;
+            padding:10px 14px; background:rgba(255,255,255,.04);
+            border:1px solid var(--glass-border); border-radius:10px;
+        }
+        .report-pass-grid {
+            display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px;
+        }
+        .report-pass-box, .report-fail-box {
+            border-radius:12px; padding:14px; text-align:center;
+        }
+        .report-pass-box { background:rgba(16,185,129,.1);  border:1px solid rgba(16,185,129,.3); }
+        .report-fail-box { background:rgba(239,68,68,.1);   border:1px solid rgba(239,68,68,.3); }
+        .report-pass-box .n { font-size:28px; font-weight:900; color:#34d399; }
+        .report-fail-box .n { font-size:28px; font-weight:900; color:#f87171; }
+        .report-pass-box .l { font-size:11px; color:#34d399; margin-top:3px; }
+        .report-fail-box .l { font-size:11px; color:#f87171; margin-top:3px; }
+        .report-dist-wrap {
+            background:rgba(255,255,255,.03); border-radius:12px; padding:16px;
+            border:1px solid var(--glass-border);
+        }
+        .report-dist-title { font-weight:800; color:var(--white); margin-bottom:12px; font-size:14px; }
+
+        @media print {
+            .topbar,.btn,.search-row,.bc,.ov,#toast,
+            .bg-layer,.particles { display:none!important; }
+            body { background:white; color:#000; }
+            .wrap { padding:0; }
+        }
+
+        ::-webkit-scrollbar { width:6px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:rgba(212,160,23,.4); border-radius:10px; }
+        ::-webkit-scrollbar-thumb:hover { background:rgba(212,160,23,.7); }
+    </style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-layer">
+    <div class="bg-gradient"></div>
+    <div class="dot-grid"></div>
+    <div class="grid-lines"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+<div class="particles" id="particles"></div>
+
+<!-- ═══════════════ TOPBAR ════════════════ -->
+<div class="topbar">
+    <div class="tb-brand">
+        <div class="tb-icon">🎓</div>
+        <div>
+            <div class="tb-title">الدرجات والامتحانات</div>
+            <div class="tb-sub">مرتبط بجدول الحصص والحضور · Firebase</div>
+        </div>
+    </div>
+    <div class="tb-actions">
+        <button class="btn btn-gold btn-sm" id="btnAddExam" style="display:none" onclick="openAddExamModal()">➕ امتحان جديد</button>
+        <a href="index.html" class="btn btn-outline btn-sm">🏠 الرئيسية</a>
+    </div>
+</div>
+
+<div class="wrap">
+
+    <!-- Firebase Status -->
+    <div class="status-bar connecting" id="sb">
+        <div class="s-dot connecting" id="sbDot"></div>
+        <span id="sbMsg">🔌 جاري الاتصال بـ Firebase...</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="sc">   <div class="sc-n" id="stSess">—</div><div class="sc-l">📚 الحصص المحملة</div></div>
+        <div class="sc g"> <div class="sc-n" id="stStu">—</div><div class="sc-l">👥 طلاب في السجلات</div></div>
+        <div class="sc b"> <div class="sc-n" id="stEx">—</div><div class="sc-l">📝 إجمالي الامتحانات</div></div>
+        <div class="sc t"> <div class="sc-n" id="stGr">—</div><div class="sc-l">✅ درجات مُدخَلة</div></div>
+        <div class="sc r"> <div class="sc-n" id="stAv">—</div><div class="sc-l">📊 المتوسط العام</div></div>
+    </div>
+
+    <!-- ══ SECTION 1: SESSIONS ══ -->
+    <div class="section active" id="sec1">
+        <div class="sec-hd">
+            <div>
+                <div class="sec-title">📚 الحصص المتاحة</div>
+                <div class="sec-sub">مُحمَّلة مباشرة من جدول الحصص — اختر حصة لإدارة امتحاناتها</div>
+            </div>
+        </div>
+        <div class="search-row">
+            <input type="text" class="si" id="sessSearch" placeholder="🔍  ابحث بالمادة أو الفصل أو المدرس أو اليوم..." oninput="renderSessions()">
+        </div>
+        <div class="sessions-grid" id="sessGrid">
+            <div class="empty" style="grid-column:1/-1">
+                <div class="empty-ico">⏳</div>
+                <div class="empty-title">جاري التحميل من Firebase...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ SECTION 2: EXAMS ══ -->
+    <div class="section" id="sec2">
+        <div class="bc">
+            <a onclick="goSess()">🏠 الحصص</a>
+            <span>›</span>
+            <span id="bc2" style="color:#f5c842;font-weight:700;">الامتحانات</span>
+        </div>
+        <div class="sec-hd">
+            <div>
+                <div class="sec-title" id="sec2Title">—</div>
+                <div class="sec-sub"   id="sec2Sub">—</div>
+            </div>
+            <div style="display:flex;gap:9px;flex-wrap:wrap;">
+                <button class="btn btn-gold" onclick="openAddExamModal()">➕ امتحان جديد</button>
+                <button class="btn btn-ghost" onclick="goSess()">← رجوع</button>
+            </div>
+        </div>
+        <div class="exams-list" id="examsList">
+            <div class="empty">
+                <div class="empty-ico">📋</div>
+                <div class="empty-title">لا توجد امتحانات بعد</div>
+                <div class="empty-sub">اضغط "امتحان جديد" للبدء</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ SECTION 3: GRADES ══ -->
+    <div class="section" id="sec3">
+        <div class="bc">
+            <a onclick="goSess()">🏠 الحصص</a>
+            <span>›</span>
+            <a onclick="goExams()" id="bc3a">الامتحانات</a>
+            <span>›</span>
+            <span id="bc3" style="color:#f5c842;font-weight:700;">الدرجات</span>
+        </div>
+        <div class="sec-hd">
+            <div>
+                <div class="sec-title" id="sec3Title">—</div>
+                <div class="sec-sub"   id="sec3Sub">—</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-green btn-sm" onclick="saveAll()">💾 حفظ الكل</button>
+                <button class="btn btn-navy btn-sm"  onclick="openReport()">📊 تقرير</button>
+                <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ طباعة</button>
+                <button class="btn btn-ghost btn-sm" onclick="goExams()">← رجوع</button>
+            </div>
+        </div>
+
+        <div class="search-row">
+            <input type="text" class="si" id="grSearch" placeholder="🔍  بحث عن طالب..." oninput="filterGrades()" style="max-width:320px;">
+            <button class="btn btn-ghost btn-sm" onclick="sortG('name')">🔤 بالاسم</button>
+            <button class="btn btn-ghost btn-sm" onclick="sortG('score')">🔢 بالدرجة</button>
+            <span class="save-ind" id="saveInd">✔ تم الحفظ</span>
+        </div>
+
+        <div class="tbl-wrap">
+            <div class="tbl-top">
+                <div class="tbl-top-title" id="tblTitle">جدول الدرجات</div>
+                <div style="font-size:12px;color:var(--muted);" id="tblCount"></div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th>اسم الطالب</th>
+                            <th style="width:100px;">الدرجة</th>
+                            <th style="width:70px;">من</th>
+                            <th style="width:110px;">النسبة %</th>
+                            <th style="width:65px;">التقدير</th>
+                            <th>ملاحظة</th>
+                            <th style="width:145px;">📱 رقم ولي الأمر</th>
+                            <th style="width:55px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="grBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /wrap -->
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ══ MODAL: Add/Edit Exam ══ -->
+<div class="ov" id="examModal">
+    <div class="mb">
+        <div class="mh">
+            <div class="mh-title" id="emTitle">📝 امتحان جديد</div>
+            <button class="mclose" onclick="closeOv('examModal')">✕</button>
+        </div>
+        <div class="mc">
+            <input type="hidden" id="emId">
+            <div class="fg">
+                <label>اسم الامتحان *</label>
+                <input class="fc" id="emName" placeholder="مثال: امتحان الفصل الأول">
+            </div>
+            <div class="form-row">
+                <div class="fg">
+                    <label>الدرجة الكاملة *</label>
+                    <input class="fc" id="emMax" type="number" min="1" placeholder="100">
+                </div>
+                <div class="fg">
+                    <label>تاريخ الامتحان</label>
+                    <input class="fc" id="emDate" type="date">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="fg">
+                    <label>نوع الامتحان</label>
+                    <select class="fc" id="emType">
+                        <option value="written">تحريري ✍️</option>
+                        <option value="oral">شفهي 🎤</option>
+                        <option value="quiz">اختبار قصير 📄</option>
+                        <option value="practical">عملي 🔬</option>
+                        <option value="homework">واجب 📚</option>
+                        <option value="project">مشروع 🏗️</option>
+                        <option value="midterm">نصف الفصل 📋</option>
+                        <option value="final">نهائي 🎓</option>
+                    </select>
+                </div>
+                <div class="fg">
+                    <label>درجة النجاح (%)</label>
+                    <input class="fc" id="emPass" type="number" min="1" max="100" placeholder="50">
+                </div>
+            </div>
+            <div class="fg">
+                <label>ملاحظات (اختياري)</label>
+                <input class="fc" id="emNotes" placeholder="أي تفاصيل إضافية...">
+            </div>
+        </div>
+        <div class="mf">
+            <button class="btn btn-navy" style="flex:1;" onclick="saveExam()">✔ حفظ</button>
+            <button class="btn btn-ghost" style="flex:1;" onclick="closeOv('examModal')">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MODAL: Report ══ -->
+<div class="ov" id="reportModal">
+    <div class="mb wide">
+        <div class="mh">
+            <div class="mh-title">📊 تقرير الامتحان</div>
+            <button class="mclose" onclick="closeOv('reportModal')">✕</button>
+        </div>
+        <div class="mc" id="reportContent"></div>
+        <div class="mf">
+            <button class="btn btn-ghost" style="flex:1;" onclick="closeOv('reportModal')">إغلاق</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT (unchanged logic)
+═══════════════════════════════════════════════ -->
+<script>
+// Floating particles
+const particlesEl = document.getElementById('particles');
+for (let i = 0; i < 25; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.animationDuration = (6 + Math.random() * 10) + 's';
+    p.style.animationDelay = (Math.random() * 10) + 's';
+    p.style.width = p.style.height = (1 + Math.random() * 3) + 'px';
+    const colors = ['#f5c842','#e8c96a','#d4a017','#e8203a','#ff6070','#c0182a'];
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    particlesEl.appendChild(p);
+}
+</script>
+
+<script>
+'use strict';
+
+const SUBJECTS = {
+    math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية',
+    science:'علوم', social:'دراسات اجتماعية',
+    religion:'تربية دينية', computer:'حاسب آلي'
+};
+const CLASSES = {
+    grade1:'الأول الابتدائي', grade2:'الثاني الابتدائي',
+    grade3:'الثالث الابتدائي', grade4:'الرابع الابتدائي',
+    grade5:'الخامس الابتدائي', grade6:'السادس الابتدائي',
+    grade7:'الأول الإعدادي', grade8:'الثاني الإعدادي', grade9:'الثالث الإعدادي'
+};
+const TEACHERS = {
+    t1:'أ. محمد أحمد', t2:'أ. فاطمة علي', t3:'أ. خالد محمود',
+    t4:'أ. سارة حسن', t5:'أ. نور الدين', t6:'أ. منى إبراهيم'
+};
+const EXAM_TYPES = {
+    written:'تحريري ✍️', oral:'شفهي 🎤', quiz:'اختبار قصير 📄',
+    practical:'عملي 🔬', homework:'واجب 📚', project:'مشروع 🏗️',
+    midterm:'نصف الفصل 📋', final:'نهائي 🎓'
+};
+const DAYS = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
+
+function getSubjectName(key) { return SUBJECTS[key] || key; }
+function getClassName(key, customClasses) {
+    if (customClasses && Array.isArray(customClasses)) {
+        const f = customClasses.find(c => c.id == key || c.name == key);
+        if (f) return f.name;
+    }
+    return CLASSES[key] || key;
+}
+function getTeacherName(key) { return TEACHERS[key] || key; }
+function getDayName(i)       { return DAYS[i] !== undefined ? DAYS[i] : String(i); }
+function formatTime(t) {
+    if (!t) return '';
+    const [h,m] = t.split(':'); const hr = parseInt(h);
+    const p = hr >= 17 ? 'مساءً' : hr >= 12 ? 'ظهراً' : 'صباحاً';
+    return `${hr > 12 ? hr-12 : hr}:${m} ${p}`;
+}
+function fDate(d) {
+    if (!d) return '';
+    const p = d.split('-');
+    return `${p[2]}/${p[1]}/${p[0]}`;
+}
+
+function letterGrade(score, max, pass = 50) {
+    const p = (score / max) * 100;
+    if (p >= 90) return 'A';
+    if (p >= 75) return 'B';
+    if (p >= 60) return 'C';
+    if (p >= pass) return 'D';
+    return 'F';
+}
+function gradeColor(score, max) {
+    const p = (score / max) * 100;
+    if (p >= 90) return '#34d399';
+    if (p >= 75) return '#60a5fa';
+    if (p >= 60) return '#fbbf24';
+    if (p >= 50) return '#fb923c';
+    return '#f87171';
+}
+
+/* ── UI Helpers ── */
+function setStatus(s, msg) {
+    document.getElementById('sb').className = 'status-bar ' + s;
+    document.getElementById('sbDot').className = 's-dot ' + s;
+    document.getElementById('sbMsg').textContent = msg;
+}
+
+let _toastT;
+function toast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.className = 'show ' + type;
+    t.textContent = (type === 'success' ? '✔ ' : '✕ ') + msg;
+    clearTimeout(_toastT);
+    _toastT = setTimeout(() => { t.className = ''; }, 3200);
+}
+
+function closeOv(id) { document.getElementById(id).classList.remove('active'); }
+function openOv(id)  { document.getElementById(id).classList.add('active'); }
+window.addEventListener('click', e => { if (e.target.classList.contains('ov')) e.target.classList.remove('active'); });
+
+function showSec(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* ── State ── */
+let allSessions   = [];
+let customClasses = [];
+let studentsMap   = {};
+let examsData     = {};
+let gradesData    = {};
+let parentPhones  = {};
+let curSessId     = null;
+let curExamId     = null;
+let sortDir       = {};
+
+/* ── Firebase Load ── */
+async function loadAll() {
+    setStatus('connecting', '🔌 جاري تحميل البيانات من Firebase...');
+    try {
+        const snap = await db.collection('schedule').doc('data').get();
+        if (snap.exists) {
+            const d = snap.data();
+            customClasses = d.classes || [];
+            allSessions = (d.sessions || []).map(s => ({
+                id:      s.id,
+                sid:     String(s.id),
+                subject: getSubjectName(s.subject),
+                subKey:  s.subject,
+                class:   getClassName(s.class, d.classes),
+                teacher: getTeacherName(s.teacher),
+                day:     getDayName(s.day),
+                dayIdx:  s.day,
+                time:    (s.startTime && s.endTime) ? `${formatTime(s.startTime)} — ${formatTime(s.endTime)}` : '',
+                room:    (s.room || '').toUpperCase()
+            }));
+            setStatus('connected', `🔥 Firebase متصل — ${allSessions.length} حصة محملة`);
+        } else {
+            allSessions = [];
+            setStatus('connected', '⚠️ لا توجد حصص — اذهب لصفحة جدول الحصص وأضف حصصاً');
+        }
+    } catch(e) { setStatus('error', '❌ خطأ: ' + e.message); }
+
+    try {
+        const snap = await userCol('attendanceSessions').get();
+        studentsMap = {};
+        snap.forEach(doc => {
+            const d = doc.data();
+            const key = d.id !== undefined ? String(d.id) : doc.id;
+            if (d.students && d.students.length) {
+                studentsMap[key] = d.students.map(s => ({ id: s.id, name: s.name }));
+            }
+        });
+    } catch(e) { console.warn('Students load:', e); }
+
+    try {
+        const snap = await db.collection('grades').doc('data').get();
+        if (snap.exists) {
+            const d = snap.data();
+            examsData    = d.exams  || {};
+            gradesData   = d.grades || {};
+            parentPhones = d.parentPhones || {};
+        }
+    } catch(e) { console.warn('Grades load:', e); }
+
+    renderSessions();
+    updateStats();
+
+    db.collection('schedule').doc('data').onSnapshot(snap => {
+        if (!snap.exists) return;
+        const d = snap.data();
+        customClasses = d.classes || [];
+        allSessions = (d.sessions || []).map(s => ({
+            id: s.id, sid: String(s.id),
+            subject: getSubjectName(s.subject), subKey: s.subject,
+            class: getClassName(s.class, d.classes),
+            teacher: getTeacherName(s.teacher),
+            day: getDayName(s.day), dayIdx: s.day,
+            time: (s.startTime && s.endTime) ? `${formatTime(s.startTime)} — ${formatTime(s.endTime)}` : '',
+            room: (s.room || '').toUpperCase()
+        }));
+        setStatus('connected', `🔥 Firebase متصل — ${allSessions.length} حصة`);
+        if (!curSessId) renderSessions();
+        updateStats();
+    }, err => { setStatus('error', '❌ ' + err.message); });
+}
+
+let _saveDeb;
+async function _doSave() {
+    setStatus('saving', '💾 جاري الحفظ...');
+    try {
+        await db.collection('grades').doc('data').set({ exams: examsData, grades: gradesData, parentPhones });
+        setStatus('connected', '🔥 Firebase — تم الحفظ ✔');
+        const el = document.getElementById('saveInd');
+        if (el) { el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2200); }
+    } catch(e) { setStatus('error', '❌ خطأ في الحفظ: ' + e.message); }
+}
+function scheduleSave() { clearTimeout(_saveDeb); _saveDeb = setTimeout(_doSave, 700); }
+
+function updateStats() {
+    document.getElementById('stSess').textContent = allSessions.length;
+    let totalStu = 0;
+    Object.values(studentsMap).forEach(arr => totalStu += arr.length);
+    document.getElementById('stStu').textContent = totalStu;
+    let totalEx = 0;
+    Object.values(examsData).forEach(arr => totalEx += arr.length);
+    document.getElementById('stEx').textContent = totalEx;
+    let totalGr = 0, sumG = 0, cntG = 0;
+    Object.values(gradesData).forEach(byEx =>
+        Object.values(byEx).forEach(byStu =>
+            Object.values(byStu).forEach(g => {
+                if (g.score !== '' && g.score !== null && g.score !== undefined) {
+                    totalGr++;
+                    const v = parseFloat(g.score);
+                    if (!isNaN(v)) { sumG += v; cntG++; }
+                }
+            })
+        )
+    );
+    document.getElementById('stGr').textContent = totalGr;
+    document.getElementById('stAv').textContent = cntG ? (sumG/cntG).toFixed(1) : '—';
+}
+
+/* ── Section 1: Sessions ── */
+function renderSessions() {
+    const grid = document.getElementById('sessGrid');
+    const q    = (document.getElementById('sessSearch').value || '').trim().toLowerCase();
+    const list = allSessions.filter(s =>
+        !q || s.subject.toLowerCase().includes(q) || s.class.toLowerCase().includes(q) ||
+        s.teacher.toLowerCase().includes(q) || s.day.toLowerCase().includes(q)
+    );
+
+    if (!list.length) {
+        grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+            <div class="empty-ico">${allSessions.length ? '🔍' : '📅'}</div>
+            <div class="empty-title">${allSessions.length ? 'لا توجد نتائج' : 'لا توجد حصص'}</div>
+            <div class="empty-sub">${allSessions.length ? 'جرب كلمة بحث أخرى' : 'أضف حصصاً من صفحة جدول الحصص أولاً'}</div>
+        </div>`;
+        return;
+    }
+
+    grid.innerHTML = list.map(s => {
+        const exams    = (examsData[s.sid] || []).length;
+        const students = (studentsMap[s.sid] || []).length;
+        let tag;
+        if (!students)      tag = `<span class="tag danger">⚠️ لا يوجد طلاب — سجّل الحضور أولاً</span>`;
+        else if (exams > 0) tag = `<span class="tag ok">📝 ${exams} امتحان</span>`;
+        else                tag = `<span class="tag warn">📋 لا توجد امتحانات بعد</span>`;
+        return `
+        <div class="sess-card" onclick="openSession('${s.sid}')">
+            <div class="sess-subject">${s.subject}</div>
+            <div class="sess-row">🏫 ${s.class}</div>
+            <div class="sess-row">👨‍🏫 ${s.teacher}</div>
+            <div class="sess-row">📅 ${s.day}${s.time ? ' · ' + s.time : ''}</div>
+            <div class="sess-row">👥 <b style="color:#f5c842">${students}</b> طالب مسجّل</div>
+            ${tag}
+        </div>`;
+    }).join('');
+}
+
+function goSess() {
+    curSessId = null; curExamId = null;
+    document.getElementById('btnAddExam').style.display = 'none';
+    showSec('sec1');
+}
+
+function openSession(sid) {
+    curSessId = sid;
+    const s = allSessions.find(x => x.sid === sid);
+    if (!s) return;
+    document.getElementById('sec2Title').textContent = `${s.subject} — ${s.class}`;
+    document.getElementById('sec2Sub').textContent   = `${s.teacher} · ${s.day} ${s.time}`;
+    document.getElementById('bc2').textContent       = s.subject;
+    document.getElementById('btnAddExam').style.display = 'inline-flex';
+    showSec('sec2');
+    renderExams();
+}
+
+/* ── Section 2: Exams ── */
+function renderExams() {
+    const list     = examsData[curSessId] || [];
+    const students = studentsMap[curSessId] || [];
+    const con      = document.getElementById('examsList');
+    if (!list.length) {
+        con.innerHTML = `<div class="empty">
+            <div class="empty-ico">📋</div>
+            <div class="empty-title">لا توجد امتحانات بعد</div>
+            <div class="empty-sub">اضغط "امتحان جديد" لإنشاء أول امتحان</div>
+        </div>`;
+        return;
+    }
+    con.innerHTML = list.map(exam => {
+        const gMap    = ((gradesData[curSessId] || {})[String(exam.id)]) || {};
+        const entered = Object.values(gMap).filter(g => g.score !== '' && g.score !== null && g.score !== undefined).length;
+        const pct   = students.length ? Math.round((entered / students.length) * 100) : 0;
+        const pCol  = pct >= 80 ? '#34d399' : pct >= 50 ? '#fbbf24' : '#f87171';
+        return `
+        <div class="exam-row" onclick="openExam(${exam.id})">
+            <div class="exam-ico">📝</div>
+            <div style="flex:1;">
+                <div class="exam-name">${exam.name}</div>
+                <div class="exam-meta">
+                    ${EXAM_TYPES[exam.type] || exam.type || ''}
+                    ${exam.max  ? ' · الدرجة الكاملة: ' + exam.max : ''}
+                    ${exam.date ? ' · 📅 ' + fDate(exam.date) : ''}
+                    ${exam.notes ? ' · 📌 ' + exam.notes : ''}
+                </div>
+            </div>
+            <div class="exam-prog">
+                <div class="exam-prog-n" style="color:${pCol};">${entered}/${students.length}</div>
+                <div class="exam-prog-l">درجة مُدخَلة</div>
+            </div>
+            <div style="display:flex;gap:7px;" onclick="event.stopPropagation()">
+                <button class="btn btn-ghost btn-xs" onclick="editExam(${exam.id})">✏️</button>
+                <button class="btn btn-red   btn-xs" onclick="deleteExam(${exam.id})">🗑️</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function openAddExamModal() {
+    document.getElementById('emTitle').textContent = '📝 امتحان جديد';
+    document.getElementById('emId').value    = '';
+    document.getElementById('emName').value  = '';
+    document.getElementById('emMax').value   = '100';
+    document.getElementById('emDate').value  = new Date().toISOString().split('T')[0];
+    document.getElementById('emType').value  = 'written';
+    document.getElementById('emPass').value  = '50';
+    document.getElementById('emNotes').value = '';
+    openOv('examModal');
+}
+
+function editExam(examId) {
+    const exam = (examsData[curSessId] || []).find(e => e.id === examId);
+    if (!exam) return;
+    document.getElementById('emTitle').textContent = '✏️ تعديل الامتحان';
+    document.getElementById('emId').value    = examId;
+    document.getElementById('emName').value  = exam.name;
+    document.getElementById('emMax').value   = exam.max;
+    document.getElementById('emDate').value  = exam.date  || '';
+    document.getElementById('emType').value  = exam.type  || 'written';
+    document.getElementById('emPass').value  = exam.pass  || 50;
+    document.getElementById('emNotes').value = exam.notes || '';
+    openOv('examModal');
+}
+
+async function saveExam() {
+    const name   = document.getElementById('emName').value.trim();
+    const max    = parseInt(document.getElementById('emMax').value);
+    const date   = document.getElementById('emDate').value;
+    const type   = document.getElementById('emType').value;
+    const pass   = parseInt(document.getElementById('emPass').value) || 50;
+    const notes  = document.getElementById('emNotes').value.trim();
+    const editId = document.getElementById('emId').value;
+    if (!name)        { toast('أدخل اسم الامتحان', 'danger'); return; }
+    if (!max || max < 1) { toast('أدخل الدرجة الكاملة', 'danger'); return; }
+    if (!examsData[curSessId]) examsData[curSessId] = [];
+    if (editId) {
+        const idx = examsData[curSessId].findIndex(e => e.id === parseInt(editId));
+        if (idx !== -1) examsData[curSessId][idx] = { ...examsData[curSessId][idx], name, max, date, type, pass, notes };
+        toast('تم تعديل الامتحان ✔');
+    } else {
+        examsData[curSessId].push({ id: Date.now(), name, max, date, type, pass, notes });
+        toast('تم إضافة الامتحان ✔');
+    }
+    await _doSave();
+    closeOv('examModal');
+    renderExams();
+    updateStats();
+}
+
+async function deleteExam(examId) {
+    if (!confirm('هل تريد حذف هذا الامتحان وجميع درجاته؟')) return;
+    examsData[curSessId] = (examsData[curSessId] || []).filter(e => e.id !== examId);
+    if (gradesData[curSessId]) delete gradesData[curSessId][String(examId)];
+    await _doSave();
+    renderExams();
+    updateStats();
+    toast('تم حذف الامتحان');
+}
+
+function goExams() { curExamId = null; showSec('sec2'); renderExams(); }
+
+function openExam(examId) {
+    curExamId = examId;
+    const exam = (examsData[curSessId] || []).find(e => e.id === examId);
+    const sess = allSessions.find(s => s.sid === curSessId);
+    if (!exam || !sess) return;
+    document.getElementById('sec3Title').textContent = exam.name;
+    document.getElementById('sec3Sub').textContent   = `${sess.subject} — ${sess.class} · الدرجة الكاملة: ${exam.max} · ${EXAM_TYPES[exam.type]||exam.type||''}`;
+    document.getElementById('bc3').textContent       = exam.name;
+    document.getElementById('bc3a').textContent      = sess.subject;
+    document.getElementById('tblTitle').textContent  = `📋 ${exam.name} — ${sess.subject}`;
+    showSec('sec3');
+    renderGrades();
+}
+
+/* ── Section 3: Grades ── */
+function renderGrades() {
+    const exam     = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    const students = studentsMap[curSessId] || [];
+    const tbody    = document.getElementById('grBody');
+    document.getElementById('tblCount').textContent = `${students.length} طالب`;
+    if (!students.length) {
+        tbody.innerHTML = `<tr><td colspan="9" style="padding:55px;text-align:center;color:var(--muted);">
+            <div style="font-size:46px;margin-bottom:12px;">👥</div>
+            <div style="font-size:17px;font-weight:800;color:var(--white);margin-bottom:6px;">لا يوجد طلاب مسجّلون في هذه الحصة</div>
+            <div style="font-size:13px;">اذهب لصفحة <b>الحضور والغياب</b> وأضف الطلاب لهذه الحصة أولاً</div>
+        </td></tr>`;
+        return;
+    }
+    const gMap = ((gradesData[curSessId] || {})[String(curExamId)]) || {};
+    tbody.innerHTML = students.map((st, idx) => {
+        const g        = gMap[String(st.id)] || { score:'', note:'' };
+        const score    = (g.score !== '' && g.score !== null && g.score !== undefined) ? g.score : '';
+        const note     = g.note || '';
+        const hasScore = score !== '' && !isNaN(parseFloat(score));
+        const fScore   = hasScore ? parseFloat(score) : 0;
+        const pct      = hasScore ? Math.round((fScore / exam.max) * 100) : 0;
+        const ltr      = hasScore ? letterGrade(fScore, exam.max, exam.pass || 50) : 'X';
+        const col      = hasScore ? gradeColor(fScore, exam.max) : '#64748b';
+        const valid    = !hasScore || (fScore >= 0 && fScore <= exam.max);
+        const initials = st.name.split(' ').slice(0,2).map(n => n[0] || '').join('');
+        const phone    = (parentPhones[String(st.id)] || '');
+        return `<tr id="tr-${st.id}">
+            <td style="color:var(--muted);font-weight:600;font-size:12px;">${idx+1}</td>
+            <td>
+                <div style="display:flex;align-items:center;gap:9px;">
+                    <div class="st-avatar">${initials}</div>
+                    <div class="st-name">${st.name}</div>
+                </div>
+            </td>
+            <td>
+                <input type="number" class="gi ${hasScore ? (valid?'ok':'err') : ''}"
+                       id="sc-${st.id}" value="${score}"
+                       min="0" max="${exam.max}" placeholder="&#8212;"
+                       oninput="onInput(${st.id},${exam.max},${exam.pass||50})"
+                       onblur="autoSave(${st.id})">
+            </td>
+            <td style="color:var(--muted);font-weight:700;">${exam.max}</td>
+            <td>
+                <div id="pct-${st.id}" class="pct-num" style="color:${col};">${hasScore ? pct+'%' : '&#8212;'}</div>
+                <div class="mini-bar"><div class="mini-fill" id="bar-${st.id}" style="width:${pct}%;background:${col};"></div></div>
+            </td>
+            <td><span class="ltr ${ltr}" id="ltr-${st.id}">${ltr === 'X' ? '&#8212;' : ltr}</span></td>
+            <td><input type="text" class="note-i" id="nt-${st.id}" value="${note}" placeholder="ملاحظة..." onblur="autoSave(${st.id})"></td>
+            <td><input type="tel" class="phone-i" id="ph-${st.id}" value="${phone}" placeholder="05xxxxxxxx" onblur="savePhone(${st.id})"></td>
+            <td>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <button class="btn-wa" onclick="sendToParent(${st.id})">📲 إرسال</button>
+                    <button class="btn btn-ghost btn-xs" onclick="clearGrade(${st.id})" title="مسح">&#x2715;</button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function onInput(stId, max, pass) {
+    const inp = document.getElementById(`sc-${stId}`);
+    const pEl = document.getElementById(`pct-${stId}`);
+    const bEl = document.getElementById(`bar-${stId}`);
+    const lEl = document.getElementById(`ltr-${stId}`);
+    const val = inp.value;
+    if (val === '') {
+        inp.className = 'gi'; pEl.textContent = '—'; pEl.style.color = '#64748b';
+        bEl.style.width = '0'; bEl.style.background = 'rgba(255,255,255,.1)';
+        lEl.textContent = '—'; lEl.className = 'ltr X'; return;
+    }
+    const score = parseFloat(val);
+    const valid = !isNaN(score) && score >= 0 && score <= max;
+    inp.className = 'gi ' + (valid ? 'ok' : 'err');
+    if (!valid) return;
+    const pct = Math.round((score / max) * 100);
+    const ltr = letterGrade(score, max, pass);
+    const col = gradeColor(score, max);
+    pEl.textContent = pct + '%'; pEl.style.color = col;
+    bEl.style.width = pct + '%'; bEl.style.background = col;
+    lEl.textContent = ltr; lEl.className = 'ltr ' + ltr;
+}
+
+function autoSave(stId) {
+    const sInp = document.getElementById(`sc-${stId}`);
+    const nInp = document.getElementById(`nt-${stId}`);
+    if (!sInp) return;
+    const score = sInp.value !== '' ? parseFloat(sInp.value) : '';
+    const note  = nInp ? nInp.value.trim() : '';
+    if (!gradesData[curSessId]) gradesData[curSessId] = {};
+    if (!gradesData[curSessId][String(curExamId)]) gradesData[curSessId][String(curExamId)] = {};
+    gradesData[curSessId][String(curExamId)][String(stId)] = { score, note };
+    scheduleSave();
+    updateStats();
+}
+
+function clearGrade(stId) {
+    const sInp = document.getElementById(`sc-${stId}`);
+    if (sInp) sInp.value = '';
+    const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    if (exam) onInput(stId, exam.max, exam.pass || 50);
+    const nInp = document.getElementById(`nt-${stId}`);
+    if (nInp) nInp.value = '';
+    autoSave(stId);
+}
+
+async function saveAll() {
+    (studentsMap[curSessId] || []).forEach(st => autoSave(st.id));
+    await _doSave();
+    toast('تم حفظ جميع الدرجات ✔');
+}
+
+function filterGrades() {
+    const q = document.getElementById('grSearch').value.toLowerCase();
+    document.querySelectorAll('#grBody tr').forEach(tr => {
+        tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+function sortG(by) {
+    const students = [...(studentsMap[curSessId] || [])];
+    const exam     = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    const gMap     = ((gradesData[curSessId] || {})[String(curExamId)]) || {};
+    sortDir[by] = sortDir[by] === 'asc' ? 'desc' : 'asc';
+    if (by === 'name') {
+        students.sort((a,b) => sortDir[by] === 'asc' ? a.name.localeCompare(b.name, 'ar') : b.name.localeCompare(a.name, 'ar'));
+    } else {
+        students.sort((a,b) => {
+            const sa = parseFloat((gMap[String(a.id)] || {}).score ?? -1);
+            const sb = parseFloat((gMap[String(b.id)] || {}).score ?? -1);
+            return sortDir[by] === 'asc' ? sa-sb : sb-sa;
+        });
+    }
+    studentsMap[curSessId] = students;
+    renderGrades();
+}
+
+/* ── Report ── */
+function openReport() {
+    const exam     = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    const students = studentsMap[curSessId] || [];
+    const sess     = allSessions.find(s => s.sid === curSessId);
+    const gMap     = ((gradesData[curSessId] || {})[String(curExamId)]) || {};
+    const scores = students
+        .map(st => (gMap[String(st.id)] || {}).score)
+        .filter(s => s !== '' && s !== null && s !== undefined && !isNaN(parseFloat(s)))
+        .map(Number);
+    const total   = students.length;
+    const entered = scores.length;
+    const avg     = entered ? (scores.reduce((a,b)=>a+b,0)/entered).toFixed(1) : '—';
+    const hi      = entered ? Math.max(...scores) : '—';
+    const lo      = entered ? Math.min(...scores) : '—';
+    const p       = exam.pass || 50;
+    const passed  = scores.filter(s => (s/exam.max)*100 >= p).length;
+    const failed  = scores.filter(s => (s/exam.max)*100 <  p).length;
+    const dist = {A:0,B:0,C:0,D:0,F:0};
+    scores.forEach(s => dist[letterGrade(s, exam.max, p)]++);
+    const distRows = [
+        ['A','#34d399','ممتاز (90%+)'],
+        ['B','#60a5fa','جيد جداً (75-89%)'],
+        ['C','#fbbf24','جيد (60-74%)'],
+        ['D','#fb923c','مقبول'],
+        ['F','#f87171','ضعيف (أقل من ' + p + '%)'],
+    ];
+    document.getElementById('reportContent').innerHTML = `
+        <div class="report-info-bar">
+            📚 ${sess?.subject||''} — ${sess?.class||''} &nbsp;·&nbsp;
+            📝 ${exam.name} &nbsp;·&nbsp;
+            الدرجة الكاملة: ${exam.max}
+            ${exam.date ? ' &nbsp;·&nbsp; 📅 ' + fDate(exam.date) : ''}
+        </div>
+        <div class="rg">
+            <div class="rc"><div class="rc-n">${total}</div><div class="rc-l">إجمالي الطلاب</div></div>
+            <div class="rc" style="border-top-color:#34d399;"><div class="rc-n" style="color:#34d399;">${avg}</div><div class="rc-l">المتوسط</div></div>
+            <div class="rc" style="border-top-color:#fbbf24;"><div class="rc-n" style="color:#fbbf24;">${hi}</div><div class="rc-l">أعلى درجة</div></div>
+            <div class="rc" style="border-top-color:#f87171;"><div class="rc-n" style="color:#f87171;">${lo}</div><div class="rc-l">أدنى درجة</div></div>
+        </div>
+        <div class="report-pass-grid">
+            <div class="report-pass-box"><div class="n">${passed}</div><div class="l">✅ ناجح (≥ ${p}%)</div></div>
+            <div class="report-fail-box"><div class="n">${failed}</div><div class="l">❌ راسب (< ${p}%)</div></div>
+        </div>
+        <div class="report-dist-wrap">
+            <div class="report-dist-title">📊 توزيع التقديرات</div>
+            ${distRows.map(([l,c,lbl]) => `
+            <div class="dist-row">
+                <span class="ltr ${l}" style="min-width:34px;">${l}</span>
+                <span style="font-size:12px;color:var(--muted);min-width:130px;">${lbl}</span>
+                <div class="dist-bg">
+                    <div class="dist-fill" style="width:${entered?Math.round((dist[l]/entered)*100):0}%;background:${c};"></div>
+                </div>
+                <span style="font-weight:900;color:${c};min-width:26px;text-align:center;">${dist[l]}</span>
+            </div>`).join('')}
+        </div>
+        ${entered < total ? `
+        <div style="margin-top:12px;padding:9px 13px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;font-size:12px;color:#fbbf24;">
+            ⚠️ ${total - entered} طالب لم تُدخَل درجتهم بعد
+        </div>` : ''}
+    `;
+    openOv('reportModal');
+}
+
+/* ── Parent Phone & WhatsApp ── */
+function savePhone(stId) {
+    const inp = document.getElementById(`ph-${stId}`);
+    if (!inp) return;
+    const val = inp.value.trim();
+    parentPhones[String(stId)] = val;
+    scheduleSave();
+    if (val) toast('تم حفظ رقم ولي الأمر ✔');
+}
+
+function sendToParent(stId) {
+    const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    const sess = allSessions.find(s => s.sid === curSessId);
+    const students = studentsMap[curSessId] || [];
+    const st = students.find(s => s.id === stId);
+    if (!st || !exam) return;
+    const phone = (document.getElementById(`ph-${stId}`) || {}).value || parentPhones[String(stId)] || '';
+    if (!phone) { toast('❌ لم يتم إدخال رقم ولي الأمر', 'danger'); document.getElementById(`ph-${stId}`)?.focus(); return; }
+    const scoreInp = document.getElementById(`sc-${stId}`);
+    const score = scoreInp ? scoreInp.value : '';
+    if (score === '' || isNaN(parseFloat(score))) { toast('❌ لم يتم إدخال الدرجة بعد', 'danger'); return; }
+    const pct  = Math.round((parseFloat(score) / exam.max) * 100);
+    const ltr  = letterGrade(parseFloat(score), exam.max, exam.pass || 50);
+    const note = (document.getElementById(`nt-${stId}`) || {}).value || '';
+    const gradeLabels = { A:'ممتاز', B:'جيد جداً', C:'جيد', D:'مقبول', F:'ضعيف' };
+    const msg = `مرحباً ولي أمر الطالب/ة: ${st.name}\n\nنتيجة الامتحان:\n📚 المادة: ${sess?.subject || ''}\n📝 الامتحان: ${exam.name}\n✏️ الدرجة: ${score} / ${exam.max}\n📊 النسبة: ${pct}%\n🏅 التقدير: ${gradeLabels[ltr]||ltr}${note ? '\n📌 ملاحظة: ' + note : ''}\n\nمع تحياتنا`;
+    let normalized = phone.replace(/[\s\-()]/g, '');
+    if (normalized.startsWith('0')) normalized = '966' + normalized.slice(1);
+    if (!normalized.startsWith('+')) normalized = '+' + normalized;
+    window.open(`https://wa.me/${normalized.replace('+','')}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+/* ── Init ── */
+loadAll();
+</script>
+</body>
+</html>

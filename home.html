@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AL GNRAL — نظام إدارة السنتر التعليمي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-base:       #080808;
+            --bg-surface:    #0f0f0f;
+            --purple-core:   #c9a227;
+            --purple-hi:     #f0c040;
+            --purple-soft:   #ffd700;
+            --purple-ghost:  rgba(212,175,55,.12);
+            --blue:          #dc2626;
+            --green:         #ef4444;
+            --amber:         #f0c040;
+            --cyan:          #b91c1c;
+            --pink:          #fbbf24;
+            --indigo:        #c9a227;
+            --teal:          #991b1b;
+            --red:           #ef4444;
+            --white:         #ffffff;
+            --white-80:      rgba(255,255,255,.8);
+            --white-50:      rgba(255,255,255,.5);
+            --white-20:      rgba(255,255,255,.2);
+            --white-08:      rgba(255,255,255,.08);
+            --white-04:      rgba(255,255,255,.04);
+            --border:        rgba(212,175,55,.2);
+            --border-hi:     rgba(212,175,55,.45);
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-base);
+            min-height: 100vh;
+            color: var(--white);
+            overflow-x: hidden;
+        }
+
+        /* ════════════════════════ BACKGROUND ════════════════════════ */
+        .bg {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            overflow: hidden;
+        }
+        .bg-gradient {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 70% 55% at 50% -5%,  rgba(180,130,20,.45)  0%, transparent 65%),
+                radial-gradient(ellipse 40% 35% at 90% 85%,  rgba(220,38,38,.25)   0%, transparent 55%),
+                radial-gradient(ellipse 35% 30% at 5%  75%,  rgba(185,28,28,.2)    0%, transparent 55%),
+                radial-gradient(ellipse 30% 25% at 80% 10%,  rgba(240,192,64,.12)  0%, transparent 50%),
+                linear-gradient(160deg, #0a0800 0%, #120a00 35%, #080808 70%, #100500 100%);
+        }
+        .bg-grid {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(rgba(212,175,55,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212,175,55,.05) 1px, transparent 1px);
+            background-size: 56px 56px;
+        }
+        .bg-dots {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(212,175,55,.12) 1px, transparent 1px);
+            background-size: 28px 28px;
+            mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black, transparent);
+        }
+        .orb {
+            position: absolute; border-radius: 50%;
+            filter: blur(80px);
+            animation: floatOrb var(--dur, 10s) ease-in-out infinite;
+            animation-delay: var(--delay, 0s);
+        }
+        .orb-1 { width:600px; height:600px; background:rgba(180,130,20,.28); top:-180px; left:35%; --dur:11s; }
+        .orb-2 { width:380px; height:380px; background:rgba(220,38,38,.2);   bottom:0;   right:-80px; --dur:9s; --delay:-4s; }
+        .orb-3 { width:300px; height:300px; background:rgba(185,28,28,.18);  bottom:25%; left:-50px; --dur:13s; --delay:-7s; }
+        .orb-4 { width:200px; height:200px; background:rgba(240,192,64,.1);  top:30%;  right:10%; --dur:8s; --delay:-2s; }
+        @keyframes floatOrb {
+            0%,100% { transform: translate(0,0) scale(1); }
+            33%      { transform: translate(12px,-22px) scale(1.04); }
+            66%      { transform: translate(-10px,12px) scale(.97); }
+        }
+
+        /* Animated horizontal scan */
+        .scan {
+            position: absolute; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent 0%, rgba(212,175,55,.5) 40%, rgba(240,192,64,.7) 50%, rgba(212,175,55,.5) 60%, transparent 100%);
+            animation: scanAnim var(--dur, 6s) ease-in-out infinite;
+            animation-delay: var(--delay, 0s);
+            opacity: 0;
+        }
+        .scan-1 { top: 28%; --dur:7s; }
+        .scan-2 { top: 68%; --dur:9s; --delay:-4.5s; }
+        @keyframes scanAnim {
+            0%   { opacity:0; transform:scaleX(0); }
+            15%  { opacity:1; }
+            85%  { opacity:1; }
+            100% { opacity:0; transform:scaleX(1); }
+        }
+
+        /* ════════════════════════ LAYOUT ════════════════════════ */
+        .page {
+            position: relative; z-index: 10;
+            max-width: 1400px; margin: 0 auto;
+            padding: 24px 24px 80px;
+        }
+
+        /* ════════════════════════ NAVBAR ════════════════════════ */
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 24px;
+            background: rgba(255,255,255,.03);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            margin-bottom: 28px;
+            animation: slideDown .7s cubic-bezier(.22,1,.36,1) both;
+            position: sticky;
+            top: 16px;
+            z-index: 100;
+            box-shadow: 0 8px 40px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.06);
+        }
+
+        .logo {
+            display: flex; align-items: center; gap: 14px;
+            flex-shrink: 0;
+        }
+        .logo-avatar {
+            position: relative;
+            width: 46px; height: 46px;
+        }
+        .logo-avatar::before {
+            content: '';
+            position: absolute; inset: -2px;
+            border-radius: 50%;
+            background: conic-gradient(#ffd700, #dc2626, #ffd700);
+            animation: spin 4s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .logo-img {
+            position: relative; z-index: 1;
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            object-fit: cover; object-position: top;
+            border: 2px solid var(--bg-base);
+        }
+        .logo-info { display: flex; flex-direction: column; }
+        .logo-name {
+            font-size: 18px; font-weight: 900; letter-spacing: .5px;
+            background: linear-gradient(135deg, #fff 20%, #ffd700);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            font-family: 'Space Mono', monospace;
+        }
+        .logo-tagline { font-size: 11px; color: var(--white-50); letter-spacing: .3px; }
+
+        /* Navbar center — live clock */
+        .navbar-center {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--white-04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 16px;
+        }
+        .clock-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #ffd700;
+            box-shadow: 0 0 8px #ffd700;
+            animation: pulse 2s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        @keyframes pulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50%      { opacity:.5; transform:scale(.7); }
+        }
+        .clock-text { font-size: 13px; font-weight: 700; color: var(--white-80); font-family: 'Space Mono', monospace; }
+        .clock-date { font-size: 11px; color: var(--white-50); }
+
+        /* Navbar right */
+        .navbar-right { display: flex; align-items: center; gap: 10px; }
+
+        .notif-btn {
+            position: relative;
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--white-04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all .25s;
+            font-size: 18px;
+        }
+        .notif-btn:hover { background: var(--white-08); border-color: var(--border-hi); transform: translateY(-2px); }
+        .notif-badge {
+            position: absolute; top: 6px; right: 6px;
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--red);
+            border: 1.5px solid var(--bg-base);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .logout-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 9px 20px;
+            background: rgba(239,68,68,.1);
+            border: 1px solid rgba(239,68,68,.25);
+            border-radius: 12px;
+            color: #fca5a5;
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px; font-weight: 700;
+            cursor: pointer;
+            transition: all .25s;
+        }
+        .logout-btn:hover {
+            background: rgba(239,68,68,.2);
+            border-color: rgba(239,68,68,.4);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(239,68,68,.35);
+        }
+
+        /* ════════════════════════ STATS BAR ════════════════════════ */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 36px;
+            animation: slideDown .7s cubic-bezier(.22,1,.36,1) .1s both;
+        }
+        .stat-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 16px 20px;
+            background: var(--white-04);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            transition: all .3s;
+            cursor: default;
+        }
+        .stat-item:hover {
+            background: var(--white-08);
+            border-color: var(--border-hi);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0,0,0,.25);
+        }
+        .stat-icon {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .stat-info { min-width: 0; }
+        .stat-num {
+            font-size: 22px; font-weight: 900;
+            font-family: 'Space Mono', monospace;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+        .stat-label { font-size: 12px; color: var(--white-50); }
+        .stat-trend {
+            margin-right: auto;
+            font-size: 11px; font-weight: 700;
+            padding: 3px 8px; border-radius: 20px;
+        }
+        .trend-up { background: rgba(16,185,129,.15); color: #6ee7b7; }
+        .trend-dn { background: rgba(239,68,68,.15); color: #fca5a5; }
+
+        /* ════════════════════════ HERO ════════════════════════ */
+        .hero {
+            text-align: center;
+            padding: 48px 20px 36px;
+            animation: slideDown .7s cubic-bezier(.22,1,.36,1) .15s both;
+        }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(180,130,20,.12);
+            border: 1px solid rgba(212,175,55,.3);
+            border-radius: 50px;
+            padding: 7px 18px;
+            font-size: 12px; font-weight: 700;
+            color: #ffd700;
+            margin-bottom: 22px;
+            letter-spacing: .5px;
+        }
+        .badge-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #ffd700;
+            box-shadow: 0 0 8px #ffd700;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .hero h1 {
+            font-size: clamp(28px, 4.5vw, 46px);
+            font-weight: 900; line-height: 1.25;
+            margin-bottom: 14px;
+        }
+        .hero h1 .greeting { color: var(--white-80); }
+        .hero h1 .brand {
+            background: linear-gradient(135deg, #ffd700 0%, #f0c040 40%, #dc2626 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            filter: drop-shadow(0 0 24px rgba(212,175,55,.5));
+        }
+        .hero-sub {
+            font-size: 15px; color: var(--white-50);
+            max-width: 480px; margin: 0 auto; line-height: 1.7;
+        }
+
+        /* ════════════════════════ SECTION HEADER ════════════════════════ */
+        .section-header {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 20px;
+            animation: slideDown .7s cubic-bezier(.22,1,.36,1) .25s both;
+        }
+        .section-line {
+            flex: 1; height: 1px;
+            background: linear-gradient(90deg, rgba(212,175,55,.4), transparent);
+        }
+        .section-label {
+            font-size: 12px; font-weight: 700; letter-spacing: 2px;
+            color: #ffd700;
+            text-transform: uppercase;
+        }
+
+        /* ════════════════════════ NAV GRID ════════════════════════ */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 18px;
+        }
+
+        .nav-card {
+            position: relative;
+            display: block;
+            padding: 28px 24px 24px;
+            background: rgba(255,255,255,.035);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            text-decoration: none;
+            color: var(--white);
+            backdrop-filter: blur(12px);
+            overflow: hidden;
+            transition: transform .35s cubic-bezier(.22,1,.36,1),
+                        box-shadow .35s ease,
+                        border-color .35s ease;
+            animation: cardIn .6s cubic-bezier(.22,1,.36,1) both;
+        }
+        .nav-card:nth-child(1)  { animation-delay: .05s; }
+        .nav-card:nth-child(2)  { animation-delay: .10s; }
+        .nav-card:nth-child(3)  { animation-delay: .15s; }
+        .nav-card:nth-child(4)  { animation-delay: .20s; }
+        .nav-card:nth-child(5)  { animation-delay: .25s; }
+        .nav-card:nth-child(6)  { animation-delay: .30s; }
+        .nav-card:nth-child(7)  { animation-delay: .35s; }
+        .nav-card:nth-child(8)  { animation-delay: .40s; }
+        .nav-card:nth-child(9)  { animation-delay: .45s; }
+        @keyframes cardIn {
+            from { opacity:0; transform:translateY(20px) scale(.97); }
+            to   { opacity:1; transform:none; }
+        }
+
+        /* Glowing accent border on top */
+        .nav-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent, var(--purple-hi)), transparent);
+            border-radius: 20px 20px 0 0;
+            opacity: 0;
+            transition: opacity .35s;
+        }
+        /* Background fill on hover */
+        .nav-card::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse 80% 70% at 50% 0%, var(--accent-soft, rgba(168,85,247,.08)), transparent);
+            opacity: 0;
+            transition: opacity .35s;
+        }
+        .nav-card:hover {
+            transform: translateY(-10px) scale(1.01);
+            box-shadow: 0 24px 60px rgba(0,0,0,.4), 0 0 0 1px var(--accent, var(--purple-hi));
+            border-color: transparent;
+        }
+        .nav-card:hover::before { opacity: 1; }
+        .nav-card:hover::after  { opacity: 1; }
+        .nav-card:hover .card-glow { opacity: .9; }
+        .nav-card:hover .card-arrow { opacity:1; transform:translateX(0) scale(1); }
+        .nav-card:hover .card-icon-wrap { transform: scale(1.1) translateY(-2px); }
+
+        /* Ambient glow bubble */
+        .card-glow {
+            position: absolute;
+            width: 160px; height: 160px; border-radius: 50%;
+            filter: blur(50px);
+            background: var(--accent, var(--purple-hi));
+            opacity: 0;
+            transition: opacity .4s;
+            top: -50px; right: -50px;
+        }
+
+        /* Icon wrapper */
+        .card-icon-wrap {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 56px; height: 56px;
+            border-radius: 16px;
+            background: var(--accent-soft, rgba(168,85,247,.1));
+            border: 1px solid var(--accent-border, rgba(168,85,247,.2));
+            margin-bottom: 16px;
+            font-size: 26px;
+            transition: transform .35s cubic-bezier(.22,1,.36,1);
+            position: relative; z-index: 1;
+        }
+
+        .card-title {
+            font-size: 18px; font-weight: 900;
+            margin-bottom: 7px;
+            position: relative; z-index: 1;
+        }
+        .card-desc {
+            font-size: 12.5px;
+            color: var(--white-50);
+            line-height: 1.6;
+            position: relative; z-index: 1;
+        }
+
+        /* Arrow chip */
+        .card-arrow {
+            position: absolute;
+            bottom: 20px; left: 20px;
+            display: flex; align-items: center; gap: 5px;
+            font-size: 11px; font-weight: 700;
+            color: var(--accent, var(--purple-hi));
+            opacity: 0;
+            transform: translateX(6px) scale(.9);
+            transition: all .3s cubic-bezier(.22,1,.36,1);
+            z-index: 1;
+            letter-spacing: .5px;
+        }
+        .card-arrow::before { content: '←'; font-size: 14px; }
+
+        /* Card themes */
+        .c-purple { --accent:#ffd700;  --accent-soft:rgba(212,175,55,.12);  --accent-border:rgba(212,175,55,.3); }
+        .c-blue   { --accent:#dc2626;  --accent-soft:rgba(220,38,38,.12);   --accent-border:rgba(220,38,38,.3); }
+        .c-green  { --accent:#ef4444;  --accent-soft:rgba(239,68,68,.12);   --accent-border:rgba(239,68,68,.3); }
+        .c-amber  { --accent:#f0c040;  --accent-soft:rgba(240,192,64,.12);  --accent-border:rgba(240,192,64,.3); }
+        .c-cyan   { --accent:#b91c1c;  --accent-soft:rgba(185,28,28,.12);   --accent-border:rgba(185,28,28,.3); }
+        .c-indigo { --accent:#fbbf24;  --accent-soft:rgba(251,191,36,.12);  --accent-border:rgba(251,191,36,.3); }
+        .c-pink   { --accent:#dc2626;  --accent-soft:rgba(220,38,38,.12);   --accent-border:rgba(220,38,38,.3); }
+        .c-teal   { --accent:#f59e0b;  --accent-soft:rgba(245,158,11,.12);  --accent-border:rgba(245,158,11,.3); }
+        .c-red    { --accent:#ef4444;  --accent-soft:rgba(239,68,68,.12);   --accent-border:rgba(239,68,68,.3); }
+
+        /* ════════════════════════ FOOTER ════════════════════════ */
+        .footer {
+            margin-top: 60px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px;
+            animation: slideDown .7s cubic-bezier(.22,1,.36,1) .5s both;
+        }
+        .footer-brand {
+            font-size: 13px; font-weight: 700; color: var(--white-50);
+            font-family: 'Space Mono', monospace;
+        }
+        .footer-brand span { color: #ffd700; }
+        .footer-meta {
+            display: flex; gap: 16px;
+        }
+        .footer-dot {
+            width: 4px; height: 4px; border-radius: 50%;
+            background: var(--white-20);
+            align-self: center;
+        }
+        .footer-link {
+            font-size: 12px; color: var(--white-50);
+            text-decoration: none;
+            transition: color .2s;
+        }
+        .footer-link:hover { color: #ffd700; }
+        .footer-version {
+            font-size: 11px; color: var(--white-20);
+            font-family: 'Space Mono', monospace;
+            letter-spacing: 1px;
+        }
+
+        /* ════════════════════════ 3D ICON STYLES ════════════════════════ */
+        .icon-3d {
+            width: 28px; height: 28px;
+            display: block;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,.5));
+            transition: transform .35s cubic-bezier(.22,1,.36,1), filter .35s;
+        }
+        .stat-icon .icon-3d { width: 26px; height: 26px; }
+        .card-icon-wrap .icon-3d { width: 32px; height: 32px; }
+        .notif-btn .icon-3d { width: 20px; height: 20px; }
+        .logout-btn .icon-3d { width: 18px; height: 18px; }
+
+        .nav-card:hover .icon-3d {
+            transform: scale(1.15) translateY(-3px) rotateY(15deg);
+            filter: drop-shadow(0 8px 16px rgba(0,0,0,.6));
+        }
+        .stat-item:hover .icon-3d {
+            transform: scale(1.12) translateY(-2px);
+            filter: drop-shadow(0 6px 12px rgba(0,0,0,.5));
+        }
+
+        /* ════════════════════════ KEYFRAMES ════════════════════════ */
+        @keyframes slideDown {
+            from { opacity:0; transform:translateY(-14px); }
+            to   { opacity:1; transform:none; }
+        }
+
+        /* ════════════════════════ RESPONSIVE ════════════════════════ */
+        @media (max-width: 900px) {
+            .stats-bar { grid-template-columns: repeat(2,1fr); }
+            .navbar-center { display: none; }
+        }
+        @media (max-width: 600px) {
+            .page { padding: 16px 16px 60px; }
+            .navbar { flex-wrap: wrap; }
+            .stats-bar { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .nav-grid { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 26px; }
+            .footer { flex-direction: column; align-items: flex-start; }
+            .stat-trend { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── Background ── -->
+<div class="bg">
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-dots"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+    <div class="scan scan-1"></div>
+    <div class="scan scan-2"></div>
+</div>
+
+<div class="page">
+
+    <!-- ══ NAVBAR ══ -->
+    <nav class="navbar">
+        <div class="logo">
+            <div class="logo-avatar">
+                <img class="logo-img"
+                     src="logo.png"
+                     alt="شعار">
+            </div>
+            <div class="logo-info">
+                <div class="logo-name">AL GENERAL</div>
+                <div class="logo-tagline">سنتر الجنرال</div>
+            </div>
+        </div>
+
+        <div class="navbar-center">
+            <div class="clock-dot"></div>
+            <div>
+                <div class="clock-text" id="clock">--:--:--</div>
+                <div class="clock-date" id="dateLabel">الاثنين</div>
+            </div>
+        </div>
+
+        <div class="navbar-right">
+            <div class="notif-btn" title="الإشعارات">
+                <svg class="icon-3d" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="bell-top" x1="8" y1="4" x2="24" y2="20" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#f9e4ff"/>
+                      <stop offset="60%" stop-color="#c084fc"/>
+                      <stop offset="100%" stop-color="#7c3aed"/>
+                    </linearGradient>
+                    <linearGradient id="bell-shadow" x1="8" y1="18" x2="24" y2="30" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#7c3aed" stop-opacity=".8"/>
+                      <stop offset="100%" stop-color="#3b0764" stop-opacity=".9"/>
+                    </linearGradient>
+                    <filter id="bell-glow"><feGaussianBlur stdDeviation="1.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                  </defs>
+                  <!-- bell body shadow -->
+                  <ellipse cx="16" cy="26" rx="8" ry="2" fill="rgba(0,0,0,.3)"/>
+                  <!-- bell body 3D -->
+                  <path d="M16 5 C10 5 7 10 7 16 L7 22 L25 22 L25 16 C25 10 22 5 16 5Z" fill="url(#bell-top)" filter="url(#bell-glow)"/>
+                  <!-- side shading -->
+                  <path d="M7 16 L7 22 L11 22 L11 16 C11 11 12.5 7 16 5 C11 5.5 7 10 7 16Z" fill="rgba(0,0,0,.2)"/>
+                  <!-- highlight -->
+                  <path d="M13 8 C11 10 10 13 10 16" stroke="rgba(255,255,255,.5)" stroke-width="1.5" stroke-linecap="round"/>
+                  <!-- base bar -->
+                  <rect x="6" y="22" width="20" height="2.5" rx="1.25" fill="url(#bell-shadow)"/>
+                  <!-- clapper -->
+                  <circle cx="16" cy="26.5" r="2" fill="url(#bell-shadow)"/>
+                  <circle cx="16" cy="26.5" r="1" fill="rgba(255,255,255,.3)"/>
+                  <!-- top mount -->
+                  <circle cx="16" cy="5" r="1.5" fill="#e9d5ff"/>
+                </svg>
+                <div class="notif-badge"></div>
+            </div>
+            <button class="logout-btn" onclick="logout()">
+                <svg class="icon-3d" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="door-face" x1="6" y1="4" x2="22" y2="28" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#fca5a5"/>
+                      <stop offset="100%" stop-color="#ef4444"/>
+                    </linearGradient>
+                    <linearGradient id="door-side" x1="22" y1="4" x2="26" y2="28" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#b91c1c"/>
+                      <stop offset="100%" stop-color="#7f1d1d"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- door face -->
+                  <rect x="6" y="4" width="16" height="24" rx="2" fill="url(#door-face)"/>
+                  <!-- door side 3D -->
+                  <path d="M22 4 L26 7 L26 28 L22 28Z" fill="url(#door-side)"/>
+                  <!-- door top 3D -->
+                  <path d="M6 4 L10 7 L26 7 L22 4Z" fill="rgba(252,165,165,.9)"/>
+                  <!-- panel inset -->
+                  <rect x="9" y="8" width="10" height="8" rx="1" fill="rgba(0,0,0,.15)"/>
+                  <rect x="9" y="18" width="10" height="7" rx="1" fill="rgba(0,0,0,.15)"/>
+                  <!-- knob -->
+                  <circle cx="20" cy="16" r="1.5" fill="#fcd34d"/>
+                  <circle cx="20" cy="16" r=".7" fill="#fef08a"/>
+                  <!-- exit arrow -->
+                  <path d="M29 16 L25 13 L25 15 L21 15 L21 17 L25 17 L25 19Z" fill="rgba(255,255,255,.9)"/>
+                </svg>
+                تسجيل الخروج
+            </button>
+        </div>
+    </nav>
+
+    <!-- ══ STATS BAR ══ -->
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-icon" style="background:rgba(180,130,20,.15);border:1px solid rgba(212,175,55,.3);">
+                <svg class="icon-3d" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="grad-cyan-hi" x1="6" y1="2" x2="26" y2="30" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#a5f3fc"/>
+                      <stop offset="55%" stop-color="#06b6d4"/>
+                      <stop offset="100%" stop-color="#0e7490"/>
+                    </linearGradient>
+                    <linearGradient id="grad-cyan-side" x1="18" y1="2" x2="26" y2="20" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#0891b2"/>
+                      <stop offset="100%" stop-color="#164e63"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- graduation cap shadow -->
+                  <ellipse cx="16" cy="30" rx="10" ry="2" fill="rgba(0,0,0,.3)"/>
+                  <!-- head -->
+                  <circle cx="16" cy="11" r="5.5" fill="url(#grad-cyan-hi)"/>
+                  <path d="M10.5 11 C10.5 11 10 8 16 7.5" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/>
+                  <!-- body -->
+                  <path d="M9 22 C9 18 11 16 16 16 C21 16 23 18 23 22 L23 27 L9 27Z" fill="url(#grad-cyan-hi)"/>
+                  <!-- body side -->
+                  <path d="M23 22 C23 18 21 16 16 16 C18 16 21 18 24 22 L24 27 L23 27Z" fill="url(#grad-cyan-side)"/>
+                  <!-- cap board -->
+                  <rect x="9" y="7" width="14" height="3" rx=".5" fill="#0e7490" transform="rotate(-8 16 8.5)"/>
+                  <polygon points="16,4 9,8 16,10 23,8" fill="#06b6d4"/>
+                  <polygon points="16,4 23,8 24,7 16,3" fill="#0e7490"/>
+                  <!-- highlight on head -->
+                  <circle cx="14" cy="9" r="1.5" fill="rgba(255,255,255,.3)"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <div class="stat-num" style="color:#ffd700;" id="statTotalStudents">—</div>
+                <div class="stat-label">إجمالي الطلاب</div>
+            </div>
+            <div class="stat-trend trend-up" id="statStudentsTrend">جاري التحميل...</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-icon" style="background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.3);">
+                <svg class="icon-3d" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="grad-amb" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#fef08a"/>
+                      <stop offset="55%" stop-color="#f59e0b"/>
+                      <stop offset="100%" stop-color="#b45309"/>
+                    </linearGradient>
+                    <linearGradient id="board-face" x1="4" y1="6" x2="22" y2="24" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#1d4ed8"/>
+                      <stop offset="100%" stop-color="#1e3a8a"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- shadow -->
+                  <ellipse cx="16" cy="30" rx="10" ry="1.5" fill="rgba(0,0,0,.3)"/>
+                  <!-- chalkboard -->
+                  <rect x="3" y="5" width="20" height="14" rx="1.5" fill="url(#board-face)"/>
+                  <path d="M23 5 L27 8 L27 22 L23 19Z" fill="#1e3a8a"/>
+                  <path d="M3 5 L7 8 L27 8 L23 5Z" fill="#2563eb"/>
+                  <!-- chalk writing -->
+                  <path d="M7 12 L13 12" stroke="rgba(255,255,255,.8)" stroke-width="1.2" stroke-linecap="round"/>
+                  <path d="M7 15 L17 15" stroke="rgba(255,255,255,.5)" stroke-width="1" stroke-linecap="round"/>
+                  <path d="M15 10 L19 14" stroke="#fef08a" stroke-width="1.2" stroke-linecap="round"/>
+                  <path d="M19 10 L15 14" stroke="#fef08a" stroke-width="1.2" stroke-linecap="round"/>
+                  <!-- person -->
+                  <circle cx="24" cy="13" r="3.5" fill="url(#grad-amb)"/>
+                  <circle cx="23" cy="12" r="1" fill="rgba(255,255,255,.3)"/>
+                  <path d="M20 22 C20 19 21.5 18 24 18 C26.5 18 28 19 28 22 L28 25 L20 25Z" fill="url(#grad-amb)"/>
+                  <path d="M28 22 C28 19 26.5 18 24 18 C25.5 18 27.5 19 29 22 L29 25 L28 25Z" fill="#b45309"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <div class="stat-num" style="color:#f0c040;" id="statActiveTeachers">—</div>
+                <div class="stat-label">المدرسين النشطين</div>
+            </div>
+            <div class="stat-trend trend-up">ثابت</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-icon" style="background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.3);">
+                <svg class="icon-3d" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="grad-grn" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#6ee7b7"/>
+                      <stop offset="55%" stop-color="#10b981"/>
+                      <stop offset="100%" stop-color="#065f46"/>
+                    </linearGradient>
+                    <linearGradient id="grad-grn-side" x1="22" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#059669"/>
+                      <stop offset="100%" stop-color="#064e3b"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- shadow -->
+                  <ellipse cx="16" cy="30" rx="11" ry="2" fill="rgba(0,0,.0,.3)"/>
+                  <!-- shield/badge face -->
+                  <path d="M16 3 L6 7 L6 18 C6 23 10 27 16 29 C22 27 26 23 26 18 L26 7Z" fill="url(#grad-grn)"/>
+                  <!-- side 3D -->
+                  <path d="M26 7 L29 9 L29 20 C29 25 25 29 20 31 L16 29 C22 27 26 23 26 18Z" fill="url(#grad-grn-side)"/>
+                  <!-- top 3D -->
+                  <path d="M16 3 L26 7 L29 9 L19 5Z" fill="#6ee7b7"/>
+                  <!-- checkmark -->
+                  <path d="M10 16 L14 20 L22 12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- highlight -->
+                  <path d="M10 9 C10 9 12 7 16 7" stroke="rgba(255,255,255,.4)" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <div class="stat-num" style="color:#ef4444;" id="statAttendanceRate">—</div>
+                <div class="stat-label">نسبة الحضور اليوم</div>
+            </div>
+            <div class="stat-trend trend-up" id="statAttendanceTrend">جاري التحميل...</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-icon" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.28);">
+                <svg class="icon-3d" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="coin-face" x1="5" y1="5" x2="27" y2="27" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#c7d2fe"/>
+                      <stop offset="50%" stop-color="#6366f1"/>
+                      <stop offset="100%" stop-color="#3730a3"/>
+                    </linearGradient>
+                    <linearGradient id="coin-edge" x1="22" y1="5" x2="28" y2="27" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#4338ca"/>
+                      <stop offset="100%" stop-color="#1e1b4b"/>
+                    </linearGradient>
+                    <radialGradient id="coin-shine" cx="35%" cy="35%" r="50%">
+                      <stop offset="0%" stop-color="rgba(255,255,255,.5)"/>
+                      <stop offset="100%" stop-color="transparent"/>
+                    </radialGradient>
+                  </defs>
+                  <ellipse cx="16" cy="29" rx="10" ry="2" fill="rgba(0,0,0,.3)"/>
+                  <!-- coin body -->
+                  <circle cx="16" cy="15" r="11" fill="url(#coin-face)"/>
+                  <!-- coin edge 3D -->
+                  <path d="M27 15 C27 21.6 22.1 27 16 27 C16 27 27 26 27 15Z" fill="url(#coin-edge)"/>
+                  <!-- coin shine -->
+                  <circle cx="16" cy="15" r="11" fill="url(#coin-shine)"/>
+                  <!-- Egyptian pound sign -->
+                  <text x="16" y="20" text-anchor="middle" font-family="Cairo,sans-serif" font-size="11" font-weight="900" fill="white">ج</text>
+                  <!-- inner ring -->
+                  <circle cx="16" cy="15" r="8.5" stroke="rgba(255,255,255,.2)" stroke-width="1" fill="none"/>
+                  <!-- highlight dot -->
+                  <circle cx="12" cy="11" r="2" fill="rgba(255,255,255,.25)"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <div class="stat-num" style="color:#fbbf24;" id="statRevenue">—</div>
+                <div class="stat-label">إيرادات الشهر (ج.م)</div>
+            </div>
+            <div class="stat-trend trend-dn" id="statRevenueTrend">جاري التحميل...</div>
+        </div>
+    </div>
+
+    <!-- ══ HERO ══ -->
+    <div class="hero">
+        <div class="hero-badge">
+            <div class="badge-dot"></div>
+            منصة تعليمية متكاملة · مباشر
+        </div>
+        <h1>
+            <span class="greeting">👋 مرحباً بك في<br></span>
+            <span class="brand">سنتر الجنرال</span>
+        </h1>
+        <p class="hero-sub">نظام متكامل لإدارة جميع عمليات السنتر التعليمي بكفاءة عالية وسهولة تامة</p>
+    </div>
+
+    <!-- ══ SECTION LABEL ══ -->
+    <div class="section-header">
+        <div class="section-label">الأقسام الرئيسية</div>
+        <div class="section-line"></div>
+    </div>
+
+    <!-- ══ NAV GRID ══ -->
+    <div class="nav-grid">
+
+        <a href="dashboard.html" class="nav-card c-purple">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap">
+                <svg class="icon-3d" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="chart-bar1" x1="6" y1="10" x2="6" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#e9d5ff"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+                    <linearGradient id="chart-bar2" x1="14" y1="16" x2="14" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#c084fc"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+                    <linearGradient id="chart-bar3" x1="22" y1="8" x2="22" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#f0abfc"/><stop offset="100%" stop-color="#a21caf"/></linearGradient>
+                    <linearGradient id="chart-bar4" x1="30" y1="14" x2="30" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#818cf8"/><stop offset="100%" stop-color="#3730a3"/></linearGradient>
+                  </defs>
+                  <!-- floor -->
+                  <rect x="4" y="28" width="28" height="2" rx="1" fill="rgba(168,85,247,.4)"/>
+                  <!-- bars front -->
+                  <rect x="5" y="12" width="6" height="16" rx="1.5" fill="url(#chart-bar1)"/>
+                  <rect x="13" y="18" width="6" height="10" rx="1.5" fill="url(#chart-bar2)"/>
+                  <rect x="21" y="9" width="6" height="19" rx="1.5" fill="url(#chart-bar3)"/>
+                  <!-- bar tops 3D -->
+                  <path d="M5 12 L7 10 L13 10 L11 12Z" fill="rgba(255,255,255,.5)"/>
+                  <path d="M13 18 L15 16 L21 16 L19 18Z" fill="rgba(255,255,255,.4)"/>
+                  <path d="M21 9 L23 7 L29 7 L27 9Z" fill="rgba(255,255,255,.55)"/>
+                  <!-- bar sides 3D -->
+                  <path d="M11 12 L13 10 L13 18 L11 20Z" fill="rgba(0,0,0,.25)"/>
+                  <path d="M19 18 L21 16 L21 9 L19 11Z" fill="rgba(0,0,0,.2)"/>
+                  <!-- trend line -->
+                  <path d="M8 20 L16 16 L24 11" stroke="rgba(255,255,255,.6)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 2"/>
+                  <!-- dot -->
+                  <circle cx="24" cy="11" r="2" fill="white"/>
+                </svg>
+            </div>
+            <div class="card-title">لوحة التحكم</div>
+            <div class="card-desc">عرض الإحصائيات الشاملة والتقارير الفورية للسنتر</div>
+            <div class="card-arrow">الدخول</div>
+        </a>
+
+        <a href="schedule_management.html" class="nav-card c-blue">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap">
+                <svg class="icon-3d" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="cal-face" x1="4" y1="6" x2="28" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93c5fd"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient>
+                    <linearGradient id="cal-header" x1="4" y1="6" x2="28" y2="14" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+                    <linearGradient id="cal-side" x1="28" y1="6" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1e40af"/><stop offset="100%" stop-color="#1e3a8a"/></linearGradient>
+                  </defs>
+                  <!-- shadow -->
+                  <ellipse cx="18" cy="33" rx="11" ry="2" fill="rgba(0,0,0,.3)"/>
+                  <!-- calendar body face -->
+                  <rect x="4" y="8" width="24" height="23" rx="2" fill="url(#cal-face)"/>
+                  <!-- side 3D -->
+                  <path d="M28 8 L32 11 L32 34 L28 31Z" fill="url(#cal-side)"/>
+                  <!-- top 3D -->
+                  <path d="M4 8 L8 11 L32 11 L28 8Z" fill="#bfdbfe"/>
+                  <!-- header -->
+                  <rect x="4" y="8" width="24" height="8" rx="2" fill="url(#cal-header)"/>
+                  <rect x="4" y="13" width="24" height="3" fill="#3b82f6"/>
+                  <!-- ring hooks -->
+                  <rect x="10" y="5" width="3" height="7" rx="1.5" fill="#1e40af"/>
+                  <rect x="19" y="5" width="3" height="7" rx="1.5" fill="#1e40af"/>
+                  <!-- grid dots -->
+                  <circle cx="10" cy="21" r="1.5" fill="white" opacity=".9"/>
+                  <circle cx="16" cy="21" r="1.5" fill="white" opacity=".7"/>
+                  <circle cx="22" cy="21" r="1.5" fill="white" opacity=".7"/>
+                  <circle cx="10" cy="27" r="1.5" fill="white" opacity=".7"/>
+                  <circle cx="16" cy="27" r="2" fill="#fcd34d"/>
+                  <circle cx="22" cy="27" r="1.5" fill="white" opacity=".7"/>
+                  <!-- highlight -->
+                  <rect x="6" y="9" width="8" height="2" rx="1" fill="rgba(255,255,255,.3)"/>
+                </svg>
+            </div>
+            <div class="card-title">جدول الحصص</div>
+            <div class="card-desc">إدارة الجدول الدراسي والفصول والمواعيد</div>
+            <div class="card-arrow">الدخول</div>
+        </a>
+
+        <a href="attendance.html" class="nav-card c-green">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap">
+                <svg class="icon-3d" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="check-face" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6ee7b7"/><stop offset="55%" stop-color="#10b981"/><stop offset="100%" stop-color="#065f46"/></linearGradient>
+                    <linearGradient id="check-side" x1="28" y1="4" x2="34" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#064e3b"/></linearGradient>
+                  </defs>
+                  <ellipse cx="18" cy="33" rx="11" ry="2" fill="rgba(0,0,0,.3)"/>
+                  <!-- rounded square face -->
+                  <rect x="4" y="4" width="24" height="28" rx="4" fill="url(#check-face)"/>
+                  <!-- side 3D -->
+                  <path d="M28 4 L32 7 L32 35 L28 32Z" fill="url(#check-side)"/>
+                  <!-- top 3D -->
+                  <path d="M4 4 L8 7 L32 7 L28 4Z" fill="#a7f3d0"/>
+                  <!-- lines -->
+                  <rect x="9" y="13" width="14" height="1.8" rx=".9" fill="rgba(255,255,255,.25)"/>
+                  <rect x="9" y="17" width="10" height="1.8" rx=".9" fill="rgba(255,255,255,.2)"/>
+                  <rect x="9" y="21" width="12" height="1.8" rx=".9" fill="rgba(255,255,255,.2)"/>
+                  <!-- big checkmark -->
+                  <path d="M9 18 L14 23 L23 11" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- highlight -->
+                  <rect x="6" y="6" width="8" height="2" rx="1" fill="rgba(255,255,255,.35)"/>
+                </svg>
+            </div>
+            <div class="card-title">الحضور والغياب</div>
+            <div class="card-desc">تسجيل حضور وغياب الطلاب بدقة ومتابعة فورية</div>
+            <div class="card-arrow">الدخول</div>
+        </a>
+
+        <a href="teachers.html" class="nav-card c-amber">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap">
+                <svg class="icon-3d" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="teach-body" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#fde68a"/><stop offset="55%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#92400e"/></linearGradient>
+                    <linearGradient id="teach-board" x1="4" y1="4" x2="24" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#1e3a8a"/></linearGradient>
+                  </defs>
+                  <!-- chalkboard -->
+                  <rect x="3" y="4" width="21" height="15" rx="2" fill="url(#teach-board)"/>
+                  <path d="M24 4 L28 7 L28 22 L24 19Z" fill="#1e3a8a"/>
+                  <path d="M3 4 L7 7 L28 7 L24 4Z" fill="#3b82f6"/>
+                  <!-- writings on board -->
+                  <path d="M7 12 L13 12" stroke="rgba(255,255,255,.7)" stroke-width="1.2" stroke-linecap="round"/>
+                  <path d="M7 15 L16 15" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/>
+                  <path d="M17 10 L20 14" stroke="#fcd34d" stroke-width="1.3" stroke-linecap="round"/>
+                  <path d="M20 10 L17 14" stroke="#fcd34d" stroke-width="1.3" stroke-linecap="round"/>
+                  <!-- person head -->
+                  <circle cx="27" cy="14" r="4.5" fill="url(#teach-body)"/>
+                  <circle cx="26" cy="13" r="1.3" fill="rgba(255,255,255,.3)"/>
+                  <!-- person body -->
+                  <path d="M22 26 C22 23 23.5 22 27 22 C30.5 22 32 23 32 26 L32 30 L22 30Z" fill="url(#teach-body)"/>
+                  <path d="M32 26 C32 23 30.5 22 27 22 C29 22 31.5 23 33 26 L33 30 L32 30Z" fill="#92400e"/>
+                  <!-- tie -->
+                  <path d="M27 22 L25.5 28 L27 29 L28.5 28Z" fill="#ef4444"/>
+                </svg>
+            </div>
+            <div class="card-title">إدارة المدرسين</div>
+            <div class="card-desc">بيانات المدرسين والمواد والرواتب والجداول</div>
+            <div class="card-arrow">الدخول</div>
+        </a>
+
+        <a href="students.html" class="nav-card c-cyan">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap">
+                <svg class="icon-3d" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="stud-body" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5f3fc"/><stop offset="55%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#164e63"/></linearGradient>
+                    <linearGradient id="stud-side" x1="24" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0891b2"/><stop offset="100%" stop-color="#0c4a6e"/></linearGradient>
+                  </defs>
+                  <ellipse cx="18" cy="33" rx="11" ry="2" fill="rgba(0,0,0,.3)"/>
+                  <!-- head -->
+                  <circle cx="18" cy="12" r="6" fill="url(#stud-body)"/>
+                  <circle cx="16.5" cy="10.5" r="2" fill="rgba(255,255,255,.3)"/>
+                  <!-- graduation cap -->
+                  <polygon points="18,4 10,9 18,12 26,9" fill="#0e7490"/>
+                  <polygon points="18,4 26,9 28,8 20,3" fill="#164e63"/>
+                  <rect x="25" y="9" width="1.5" height="5" fill="#0e7490"/>
+                  <circle cx="25.75" cy="14.5" r="1.5" fill="#f59e0b"/>
+                  <!-- body -->
+                  <path d="M10 28 C10 23 13 21 18 21 C23 21 26 23 26 28 L26 32 L10 32Z" fill="url(#stud-body)"/>
+                  <!-- body side 3D -->
+                  <path d="M26 28 C26 23 23 21 18 21 C21 21 24 23 27 28 L27 32 L26 32Z" fill="url(#stud-side)"/>
+                  <!-- collar -->
+                  <path d="M16 21 L18 25 L20 21" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="card-title">إدارة الطلاب</div>
+            <div class="card-desc">بيانات الطلاب والمعلومات الشخصية والاشتراكات</div>
+            <div class="card-arrow">الدخول</div>
+        </a>
+
+        <a href="finance.html" class="nav-card c-indigo">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap">
+                <svg class="icon-3d" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="coin1-f" x1="4" y1="10" x2="22" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#c7d2fe"/><stop offset="55%" stop-color="#6366f1"/><stop offset="100%" stop-color="#312e81"/></linearGradient>
+                    <radialGradient id="coin1-sh" cx="35%" cy="35%" r="55%"><stop offset="0%" stop-color="rgba(255,255,255,.45)"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+                    <linearGradient id="coin2-f" x1="12" y1="6" x2="32" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#fef08a"/><stop offset="55%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#78350f"/></linearGradient>
+                  </defs>
+                  <!-- back coin shadow -->
+                  <ellipse cx="22" cy="30" rx="9" ry="2" fill="rgba(0,0,0,.25)"/>
+                  <ellipse cx="13" cy="31" rx="9" ry="2" fill="rgba(0,0,0,.2)"/>
+                  <!-- back coin -->
+                  <circle cx="22" cy="16" r="10" fill="url(#coin2-f)"/>
+                  <path d="M32 16 C32 21.5 27.5 26 22 26 C22 26 32 25 32 16Z" fill="#78350f"/>
+                  <circle cx="22" cy="16" r="10" fill="url(#coin1-sh)"/>
+                  <circle cx="22" cy="16" r="7.5" stroke="rgba(255,255,255,.2)" stroke-width="1" fill="none"/>
+                  <text x="22" y="20" text-anchor="middle" font-family="Cairo,sans-serif" font-size="10" font-weight="900" fill="white">$</text>
+                  <!-- front coin -->
+                  <circle cx="13" cy="19" r="10" fill="url(#coin1-f)"/>
+                  <path d="M23 19 C23 24.5 18.5 29 13 29 C13 29 23 28 23 19Z" fill="#312e81"/>
+                  <circle cx="13" cy="19" r="10" fill="url(#coin1-sh)"/>
+                  <circle cx="13" cy="19" r="7.5" stroke="rgba(255,255,255,.2)" stroke-width="1" fill="none"/>
+                  <text x="13" y="23" text-anchor="middle" font-family="Cairo,sans-serif" font-size="10" font-weight="900" fill="white">ج</text>
+                  <circle cx="10" cy="16" r="2" fill="rgba(255,255,255,.25)"/>
+                </svg>
+            </div>
+            <div class="card-title">المالية</div>
+            <div class="card-desc">دفع الاشتراكات وإدارة الإيرادات والمصروفات</div>
+            <div class="card-arrow">الدخول</div>
+        </a>
+
+        <a href="books.html" class="nav-card c-pink">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap">
+                <svg class="icon-3d" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="bk1" x1="4" y1="6" x2="14" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#f9a8d4"/><stop offset="100%" stop-color="#be185d"/></linearGradient>
+                    <linearGradient id="bk2" x1="12" y1="4" x2="22" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#c4b5fd"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+                    <linearGradient id="bk3" x1="20" y1="6" x2="32" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6ee7b7"/><stop offset="100%" stop-color="#065f46"/></linearGradient>
+                  </defs>
+                  <ellipse cx="18" cy="32" rx="13" ry="2" fill="rgba(0,0,0,.3)"/>
+                  <!-- book 1 (back-left) -->
+                  <rect x="3" y="8" width="9" height="22" rx="1.5" fill="url(#bk1)"/>
+                  <path d="M12 8 L14 10 L14 32 L12 30Z" fill="#9d174d"/>
+                  <path d="M3 8 L5 10 L14 10 L12 8Z" fill="#fce7f3"/>
+                  <rect x="5" y="14" width="5" height="1" rx=".5" fill="rgba(255,255,255,.4)"/>
+                  <rect x="5" y="17" width="5" height="1" rx=".5" fill="rgba(255,255,255,.3)"/>
+                  <!-- book 2 (middle) -->
+                  <rect x="12" y="5" width="9" height="25" rx="1.5" fill="url(#bk2)"/>
+                  <path d="M21 5 L23 7 L23 32 L21 30Z" fill="#5b21b6"/>
+                  <path d="M12 5 L14 7 L23 7 L21 5Z" fill="#ede9fe"/>
+                  <rect x="14" y="11" width="5" height="1" rx=".5" fill="rgba(255,255,255,.4)"/>
+                  <rect x="14" y="14" width="5" height="1" rx=".5" fill="rgba(255,255,255,.3)"/>
+                  <!-- book 3 (front-right) -->
+                  <rect x="21" y="7" width="9" height="23" rx="1.5" fill="url(#bk3)"/>
+                  <path d="M30 7 L33 9 L33 32 L30 30Z" fill="#064e3b"/>
+                  <path d="M21 7 L24 9 L33 9 L30 7Z" fill="#d1fae5"/>
+                  <rect x="23" y="13" width="5" height="1" rx=".5" fill="rgba(255,255,255,.4)"/>
+                  <rect x="23" y="16" width="5" height="1" rx=".5" fill="rgba(255,255,255,.3)"/>
+                </svg>
+            </div>
+            <div class="card-title">حجز الكتب</div>
+            <div class="card-desc">حجز الكتب الدراسية للمراحل المختلفة وتتبع المخزون</div>
+            <div class="card-arrow">الدخول</div>
+        </a>
+
+        <a href="grades.html" class="nav-card c-teal">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap">
+                <svg class="icon-3d" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="trophy-body" x1="6" y1="4" x2="30" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#fef08a"/><stop offset="50%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#78350f"/></linearGradient>
+                    <linearGradient id="trophy-side" x1="24" y1="4" x2="30" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#451a03"/></linearGradient>
+                    <radialGradient id="trophy-shine" cx="35%" cy="30%" r="50%"><stop offset="0%" stop-color="rgba(255,255,255,.5)"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+                  </defs>
+                  <ellipse cx="18" cy="34" rx="8" ry="1.5" fill="rgba(0,0,0,.3)"/>
+                  <!-- base -->
+                  <rect x="11" y="30" width="14" height="3" rx="1" fill="url(#trophy-body)"/>
+                  <path d="M25 30 L27 32 L27 33 L25 33Z" fill="url(#trophy-side)"/>
+                  <!-- stem -->
+                  <rect x="16" y="25" width="4" height="6" fill="url(#trophy-body)"/>
+                  <path d="M20 25 L22 26 L22 31 L20 30Z" fill="url(#trophy-side)"/>
+                  <!-- cup body -->
+                  <path d="M8 6 L10 22 C10 24 13 26 18 26 C23 26 26 24 26 22 L28 6Z" fill="url(#trophy-body)"/>
+                  <!-- cup side 3D -->
+                  <path d="M26 22 C26 24 23 26 18 26 C20.5 26 24 24.5 27 22 L29 6 L28 6Z" fill="url(#trophy-side)"/>
+                  <!-- shine -->
+                  <path d="M8 6 L10 22 C10 24 13 26 18 26 C23 26 26 24 26 22 L28 6Z" fill="url(#trophy-shine)"/>
+                  <!-- handles -->
+                  <path d="M8 8 C4 8 4 16 8 16" stroke="url(#trophy-body)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                  <path d="M28 8 C32 8 32 16 28 16" stroke="url(#trophy-body)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                  <!-- star -->
+                  <path d="M18 10 L19 13 L22 13 L20 15 L21 18 L18 16 L15 18 L16 15 L14 13 L17 13Z" fill="rgba(255,255,255,.7)"/>
+                </svg>
+            </div>
+            <div class="card-title">الدرجات</div>
+            <div class="card-desc">جميع تقارير درجات الطلاب والنتائج التفصيلية</div>
+            <div class="card-arrow">الدخول</div>
+        </a>
+
+        <a href="reports.html" class="nav-card c-red">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap">
+                <svg class="icon-3d" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="rep-face" x1="3" y1="4" x2="29" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#fca5a5"/><stop offset="55%" stop-color="#ef4444"/><stop offset="100%" stop-color="#7f1d1d"/></linearGradient>
+                    <linearGradient id="rep-side" x1="26" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#b91c1c"/><stop offset="100%" stop-color="#450a0a"/></linearGradient>
+                    <linearGradient id="rep-fill" x1="6" y1="12" x2="26" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="rgba(252,165,165,.4)"/><stop offset="100%" stop-color="rgba(239,68,68,.1)"/></linearGradient>
+                  </defs>
+                  <ellipse cx="18" cy="33" rx="12" ry="2" fill="rgba(0,0,0,.3)"/>
+                  <!-- document face -->
+                  <rect x="4" y="3" width="22" height="28" rx="2.5" fill="rgba(15,15,30,.8)"/>
+                  <!-- side 3D -->
+                  <path d="M26 3 L30 6 L30 34 L26 31Z" fill="rgba(10,10,20,.9)"/>
+                  <!-- top 3D -->
+                  <path d="M4 3 L8 6 L30 6 L26 3Z" fill="rgba(60,60,80,.8)"/>
+                  <!-- chart area fill -->
+                  <path d="M7 24 L11 19 L15 22 L20 13 L23 17 L23 27 L7 27Z" fill="url(#rep-fill)"/>
+                  <!-- trend line -->
+                  <path d="M7 24 L11 19 L15 22 L20 13 L23 17" stroke="url(#rep-face)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                  <!-- dots on line -->
+                  <circle cx="7" cy="24" r="2" fill="#ef4444"/>
+                  <circle cx="11" cy="19" r="2" fill="#ef4444"/>
+                  <circle cx="15" cy="22" r="2" fill="#ef4444"/>
+                  <circle cx="20" cy="13" r="2.5" fill="#fca5a5"/>
+                  <circle cx="23" cy="17" r="2" fill="#ef4444"/>
+                  <!-- axes -->
+                  <line x1="6" y1="28" x2="24" y2="28" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
+                  <line x1="6" y1="10" x2="6" y2="28" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
+                  <!-- top label lines -->
+                  <rect x="8" y="6" width="8" height="1.5" rx=".75" fill="rgba(255,255,255,.2)"/>
+                </svg>
+            </div>
+            <div class="card-title">التقارير الشاملة</div>
+            <div class="card-desc">جميع تقارير وتحليلات المنظومة بشكل مفصل</div>
+            <div class="card-arrow">الدخول</div>
+        </a>
+
+    </div>
+
+    <!-- ══ FOOTER ══ -->
+    <footer class="footer">
+        <div class="footer-brand">
+            <span>AL GENERAL</span> — نظام إدارة السنتر
+        </div>
+        <div class="footer-meta">
+            <a href="#" class="footer-link">الدعم الفني</a>
+            <div class="footer-dot"></div>
+            <a href="#" class="footer-link">الإعدادات</a>
+            <div class="footer-dot"></div>
+            <a href="#" class="footer-link">سياسة الخصوصية</a>
+        </div>
+        <div class="footer-version">v2.4.1 · 2026</div>
+    </footer>
+
+</div>
+
+<script>
+    /* ── Auth Check ── */
+    window.onload = function () {
+        // Comment out for preview
+        // const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+        // if (isLoggedIn !== 'true') window.location.href = 'login.html';
+        startClock();
+    };
+
+    function logout() {
+        sessionStorage.removeItem('isLoggedIn');
+        sessionStorage.removeItem('currentUser');
+        window.location.href = 'login.html';
+    }
+
+    /* ── Live Clock ── */
+    function startClock() {
+        const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+        const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+        function tick() {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2,'0');
+            const mm = String(now.getMinutes()).padStart(2,'0');
+            const ss = String(now.getSeconds()).padStart(2,'0');
+            document.getElementById('clock').textContent = `${hh}:${mm}:${ss}`;
+            document.getElementById('dateLabel').textContent =
+                `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
+        }
+        tick();
+        setInterval(tick, 1000);
+    }
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+(function() {
+    const firebaseConfig = {
+        apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+        authDomain: "al-gnarl.firebaseapp.com",
+        projectId: "al-gnarl",
+        storageBucket: "al-gnarl.firebasestorage.app",
+        messagingSenderId: "288765966471",
+        appId: "1:288765966471:web:63358febfb82843c2fa022"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ── مساعد تحديث العنصر ──
+    function setEl(id, val) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    }
+
+    // ── 1. إجمالي الطلاب من students/data ──
+    db.collection('students').doc('data').onSnapshot(snap => {
+        const students = snap.exists ? (snap.data().students || []) : [];
+        setEl('statTotalStudents', students.length);
+        setEl('statStudentsTrend', students.length > 0 ? '🟢 محدّث' : '—');
+    }, err => {
+        setEl('statTotalStudents', '!');
+        console.error('students error', err);
+    });
+
+    // ── 2. نسبة الحضور اليوم من attendanceHistory ──
+    function getTodayStr() {
+        const now = new Date();
+        return now.toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+
+    db.collection('attendance_data').doc('default_user')
+      .collection('attendanceHistory').onSnapshot(snap => {
+        if (snap.empty) {
+            setEl('statAttendanceRate', '—');
+            setEl('statAttendanceTrend', 'لا يوجد بيانات');
+            return;
+        }
+
+        const today = getTodayStr();
+        let totalPresent = 0, totalStudents = 0;
+        let todayPresent = 0, todayTotal = 0;
+
+        snap.forEach(doc => {
+            const record = doc.data();
+            const studs = record.students || [];
+            const present = studs.filter(s => s.status === 'present').length;
+
+            totalPresent  += present;
+            totalStudents += studs.length;
+
+            // سجلات اليوم فقط
+            const saveDate = record.saveDate || '';
+            if (saveDate === today) {
+                todayPresent += present;
+                todayTotal   += studs.length;
+            }
+        });
+
+        // لو في بيانات اليوم استخدمها، وإلا استخدم الإجمالي
+        if (todayTotal > 0) {
+            const rate = Math.round((todayPresent / todayTotal) * 100);
+            setEl('statAttendanceRate', rate + '%');
+            setEl('statAttendanceTrend', todayPresent + ' / ' + todayTotal + ' اليوم');
+        } else if (totalStudents > 0) {
+            const rate = Math.round((totalPresent / totalStudents) * 100);
+            setEl('statAttendanceRate', rate + '%');
+            setEl('statAttendanceTrend', 'متوسط إجمالي');
+        } else {
+            setEl('statAttendanceRate', '—');
+            setEl('statAttendanceTrend', 'لا يوجد بيانات');
+        }
+    }, err => {
+        setEl('statAttendanceRate', '!');
+        console.error('attendance error', err);
+    });
+
+    // ── 3. المدرسين من schedule/data ──
+    db.collection('schedule').doc('data').onSnapshot(snap => {
+        if (!snap.exists) { setEl('statActiveTeachers', '—'); return; }
+        const sessions = snap.data().sessions || [];
+        const uniqueTeachers = new Set(sessions.map(s => s.teacher).filter(Boolean));
+        setEl('statActiveTeachers', uniqueTeachers.size || '—');
+    }, err => {
+        setEl('statActiveTeachers', '!');
+        console.error('schedule error', err);
+    });
+
+    // ── 4. الإيرادات من finance/payments ──
+    db.collection('finance').doc('payments').onSnapshot(snap => {
+        if (!snap.exists) {
+            setEl('statRevenue', '—');
+            setEl('statRevenueTrend', 'لا يوجد بيانات');
+            return;
+        }
+        const data = snap.data().data || {};
+        const now = new Date();
+        const thisMonth = now.getMonth();
+        const thisYear  = now.getFullYear();
+
+        let monthTotal = 0;
+        let allTotal   = 0;
+
+        Object.values(data).forEach(student => {
+            const history = student.history || [];
+            history.forEach(payment => {
+                const amount = payment.amount || 0;
+                allTotal += amount;
+                // لو في تاريخ للدفعة نحسب اللي في الشهر ده
+                if (payment.date) {
+                    const d = new Date(payment.date);
+                    if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
+                        monthTotal += amount;
+                    }
+                }
+            });
+        });
+
+        const display = monthTotal > 0 ? monthTotal : allTotal;
+        const label   = monthTotal > 0 ? 'هذا الشهر' : 'إجمالي';
+
+        if (display >= 1000) {
+            setEl('statRevenue', (display / 1000).toFixed(1) + 'k');
+        } else {
+            setEl('statRevenue', display.toLocaleString());
+        }
+
+        const trend = document.getElementById('statRevenueTrend');
+        if (trend) {
+            trend.textContent = label;
+            trend.className = 'stat-trend ' + (display > 0 ? 'trend-up' : 'trend-dn');
+        }
+    }, err => {
+        setEl('statRevenue', '!');
+        console.error('finance error', err);
+    });
+
+})();
+</script>
+
+</body>
+</html>

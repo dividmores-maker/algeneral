@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - نظام إدارة السنتر التعليمي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-base:       #080808;
+            --gold:          #d4a017;
+            --gold-hi:       #f5c842;
+            --gold-soft:     #e8c96a;
+            --crimson:       #c0182a;
+            --crimson-hi:    #e8203a;
+            --crimson-soft:  #ff6070;
+            --green-accent:  #10b981;
+            --amber-accent:  #f59e0b;
+            --red-accent:    #ef4444;
+            --white:         #ffffff;
+            --card-bg:       rgba(10,6,0,0.55);
+            --card-border:   rgba(212,160,23,0.2);
+            --text-muted:    rgba(255,255,255,0.5);
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-base);
+            min-height: 100vh;
+            color: var(--white);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* ── Background ── */
+        .bg-layer {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        }
+        .bg-gradient {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 75% 55% at 50% -5%,  rgba(212,160,23,.38) 0%, transparent 62%),
+                radial-gradient(ellipse 55% 45% at 85% 85%,  rgba(192,24,42,.28)  0%, transparent 55%),
+                radial-gradient(ellipse 45% 38% at 15% 75%,  rgba(212,160,23,.16) 0%, transparent 50%),
+                linear-gradient(160deg, #0d0900 0%, #110a00 40%, #080808 70%, #0d0203 100%);
+        }
+        .grid-lines {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(rgba(212,160,23,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212,160,23,.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .dot-grid {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(212,160,23,.13) 1px, transparent 1px);
+            background-size: 30px 30px;
+            mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black, transparent);
+        }
+        .orb {
+            position: absolute; border-radius: 50%; filter: blur(90px);
+            animation: floatOrb 9s ease-in-out infinite;
+        }
+        .orb-1 { width:500px; height:500px; background:rgba(212,160,23,.22); top:-110px; left:50%; animation-delay:0s; }
+        .orb-2 { width:350px; height:350px; background:rgba(192,24,42,.2);   bottom:10%; right:-50px; animation-delay:-4s; }
+        .orb-3 { width:280px; height:280px; background:rgba(212,160,23,.12); bottom:20%; left:-30px;  animation-delay:-7s; }
+        @keyframes floatOrb {
+            0%,100% { transform:translateY(0) translateX(0); }
+            33%      { transform:translateY(-25px) translateX(12px); }
+            66%      { transform:translateY(12px) translateX(-12px); }
+        }
+        .scan-line {
+            position: absolute; height:1px; left:0; right:0; opacity:0;
+            background: linear-gradient(90deg, transparent, rgba(212,160,23,.55), transparent);
+            animation: scanLine 5s ease-in-out infinite;
+        }
+        .scan-line:nth-child(1) { top:25%; }
+        .scan-line:nth-child(2) { top:65%; animation-delay:2.5s; }
+        @keyframes scanLine {
+            0%   { opacity:0; transform:scaleX(0); }
+            50%  { opacity:1; transform:scaleX(1); }
+            100% { opacity:0; transform:scaleX(0); }
+        }
+
+        /* ── Layout ── */
+        .page {
+            position: relative; z-index: 10;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 20px 40px;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 28px;
+            padding: 22px 28px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            backdrop-filter: blur(14px);
+            animation: fadeDown .6s ease both;
+        }
+        .header-brand {
+            display: flex; align-items: center; gap: 14px;
+        }
+        .header-icon {
+            width: 50px; height: 50px;
+            background: linear-gradient(135deg, var(--gold), var(--crimson));
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 0 20px rgba(212,160,23,.5);
+        }
+        .header-title { font-size: 22px; font-weight: 900; color: var(--white); }
+        .header-sub   { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+        .header-nav   { display: flex; gap: 10px; flex-wrap: wrap; }
+        .nav-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 14px; font-weight: 700;
+            cursor: pointer; text-decoration: none;
+            border: 1px solid transparent;
+            transition: all .25s ease;
+        }
+        .nav-btn-ghost {
+            background: rgba(255,255,255,.06);
+            border-color: rgba(255,255,255,.1);
+            color: var(--white);
+        }
+        .nav-btn-ghost:hover {
+            background: rgba(212,160,23,.15);
+            border-color: var(--gold-soft);
+            box-shadow: 0 0 14px rgba(212,160,23,.3);
+        }
+        .nav-btn-primary {
+            background: linear-gradient(135deg, var(--crimson), var(--gold));
+            color: var(--white);
+            box-shadow: 0 4px 16px rgba(192,24,42,.4);
+        }
+        .nav-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(212,160,23,.5);
+        }
+
+        /* ── Firebase Bar ── */
+        .firebase-bar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 11px 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-size: 13px; font-weight: 700;
+            border: 1px solid;
+            backdrop-filter: blur(10px);
+            animation: fadeDown .6s ease .1s both;
+            transition: all .3s;
+        }
+        .firebase-bar.connected  { background:rgba(16,185,129,.12); border-color:rgba(16,185,129,.35); color:#6ee7b7; }
+        .firebase-bar.error      { background:rgba(239,68,68,.12);  border-color:rgba(239,68,68,.35);  color:#fca5a5; }
+        .firebase-bar.connecting { background:rgba(245,158,11,.1);  border-color:rgba(245,158,11,.3);  color:#fcd34d; }
+        .firebase-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .firebase-dot.connected  { background:#10b981; box-shadow:0 0 8px #10b981; animation:fbPulse 2s infinite; }
+        .firebase-dot.error      { background:#ef4444; }
+        .firebase-dot.connecting { background:#f59e0b; animation:fbPulse .6s infinite; }
+        @keyframes fbPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        /* ── Stats Grid ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            padding: 22px 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            transition: transform .25s ease, box-shadow .25s ease;
+            animation: fadeDown .6s ease both;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(212,160,23,.18);
+        }
+        .stat-card-head {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 14px;
+        }
+        .stat-label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+        .stat-badge {
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .badge-gold   { background: rgba(212,160,23,.22); }
+        .badge-green  { background: rgba(16,185,129,.2); }
+        .badge-blue   { background: rgba(59,130,246,.2); }
+        .badge-amber  { background: rgba(245,158,11,.2); }
+        .badge-red    { background: rgba(239,68,68,.2); }
+
+        .stat-number {
+            font-size: 38px; font-weight: 900;
+            background: linear-gradient(135deg, var(--white), var(--gold-soft));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .stat-number.green  { background: linear-gradient(135deg, #6ee7b7, #10b981); -webkit-background-clip: text; background-clip: text; }
+        .stat-number.blue   { background: linear-gradient(135deg, #93c5fd, #3b82f6); -webkit-background-clip: text; background-clip: text; }
+        .stat-number.amber  { background: linear-gradient(135deg, #fde68a, #f59e0b); -webkit-background-clip: text; background-clip: text; }
+        .stat-number.red    { background: linear-gradient(135deg, #fca5a5, #ef4444); -webkit-background-clip: text; background-clip: text; }
+        .stat-change { font-size: 12px; color: var(--text-muted); }
+
+        /* ── Quick Stats Row ── */
+        .quick-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .quick-card {
+            padding: 18px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: transform .25s;
+            animation: fadeDown .6s ease both;
+        }
+        .quick-card:hover { transform: translateY(-3px); }
+        .quick-icon { font-size: 28px; margin-bottom: 8px; }
+        .quick-val  { font-size: 26px; font-weight: 900; color: var(--white); margin-bottom: 4px; }
+        .quick-lbl  { font-size: 12px; color: var(--text-muted); }
+
+        /* ── Two-col charts row ── */
+        .chart-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* ── Glass card ── */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            animation: fadeDown .6s ease both;
+        }
+        .glass-card h2 {
+            font-size: 16px; font-weight: 700;
+            color: var(--white);
+            margin-bottom: 20px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .glass-card h2 span { font-size: 18px; }
+
+        /* ── Progress items ── */
+        .prog-item { margin-bottom: 18px; }
+        .prog-header {
+            display: flex; justify-content: space-between;
+            font-size: 13px; color: rgba(255,255,255,.75);
+            margin-bottom: 7px;
+        }
+        .prog-track {
+            height: 8px;
+            background: rgba(255,255,255,.08);
+            border-radius: 10px; overflow: hidden;
+        }
+        .prog-fill {
+            height: 100%; border-radius: 10px;
+            transition: width .6s cubic-bezier(.4,0,.2,1);
+        }
+        .fill-gold   { background: linear-gradient(90deg, var(--gold), var(--gold-hi)); box-shadow: 0 0 8px rgba(212,160,23,.5); }
+        .fill-green  { background: linear-gradient(90deg, #059669, #10b981); }
+        .fill-amber  { background: linear-gradient(90deg, #d97706, #f59e0b); }
+        .fill-red    { background: linear-gradient(90deg, #dc2626, #ef4444); }
+
+        /* ── Sessions summary ── */
+        .session-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 16px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            transition: all .25s ease;
+        }
+        .session-item:hover {
+            background: rgba(212,160,23,.08);
+            border-color: rgba(212,160,23,.3);
+            transform: translateX(-4px);
+        }
+        .session-item.completed {
+            border-right: 3px solid var(--green-accent);
+        }
+        .session-item.pending {
+            border-right: 3px solid var(--amber-accent);
+        }
+        .session-details h3 { font-size: 14px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+        .session-details p  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .session-badge {
+            padding: 5px 14px; border-radius: 20px;
+            font-size: 12px; font-weight: 700;
+            white-space: nowrap;
+        }
+        .session-badge.done    { background: rgba(16,185,129,.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,.3); }
+        .session-badge.waiting { background: rgba(245,158,11,.15); color: #fde68a; border: 1px solid rgba(245,158,11,.3); }
+
+        /* ── Activity items ── */
+        .activity-item {
+            padding: 14px 16px;
+            border-right: 3px solid var(--gold);
+            background: rgba(255,255,255,.04);
+            border-radius: 10px;
+            margin-bottom: 12px;
+            transition: all .25s ease;
+        }
+        .activity-item:hover { transform: translateX(-4px); background: rgba(212,160,23,.07); }
+        .activity-item.success { border-right-color: var(--green-accent); }
+        .activity-item.warning { border-right-color: var(--amber-accent); }
+        .activity-item.danger  { border-right-color: var(--red-accent); }
+        .activity-item strong  { font-size: 13px; color: var(--white); }
+        .activity-item p       { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+        .activity-time         { font-size: 11px; color: rgba(212,160,23,.7); margin-top: 5px; }
+
+        /* ── Compact progress for sessions ── */
+        .sessions-mini {
+            display: flex; gap: 20px; margin-top: 20px;
+        }
+        .mini-stat { text-align: center; }
+        .mini-stat .val { font-size: 24px; font-weight: 900; margin-bottom: 2px; }
+        .mini-stat .lbl { font-size: 12px; color: var(--text-muted); }
+        .val-green  { color: var(--green-accent); }
+        .val-amber  { color: var(--amber-accent); }
+        .val-gold   { color: var(--gold-soft); }
+
+        /* ── Empty state ── */
+        .empty { text-align: center; color: var(--text-muted); padding: 20px; font-size: 13px; }
+
+        /* ── Animations ── */
+        @keyframes fadeDown {
+            from { opacity:0; transform:translateY(-16px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .delay-1 { animation-delay: .1s; }
+        .delay-2 { animation-delay: .2s; }
+        .delay-3 { animation-delay: .3s; }
+        .delay-4 { animation-delay: .4s; }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            .header { flex-direction: column; text-align: center; }
+            .chart-row { grid-template-columns: 1fr; }
+            .sessions-mini { flex-wrap: wrap; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Background -->
+    <div class="bg-layer">
+        <div class="bg-gradient"></div>
+        <div class="dot-grid"></div>
+        <div class="grid-lines"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="scan-line"></div>
+        <div class="scan-line"></div>
+    </div>
+
+    <div class="page">
+
+        <!-- Header -->
+        <div class="header">
+            <div class="header-brand">
+                <div class="header-icon">📊</div>
+                <div>
+                    <div class="header-title">لوحة التحكم الرئيسية</div>
+                    <div class="header-sub">نظرة شاملة على أداء السنتر</div>
+                </div>
+            </div>
+            <nav class="header-nav">
+                <a href="teachers.html"    class="nav-btn nav-btn-ghost">👨‍🏫 المدرسين</a>
+                <a href="attendance.html"  class="nav-btn nav-btn-ghost">✅ الحضور والغياب</a>
+                <a href="index.html"       class="nav-btn nav-btn-primary">🏠 الرئيسية</a>
+            </nav>
+        </div>
+
+        <!-- Firebase Status -->
+        <div class="firebase-bar connecting" id="firebaseStatusBar">
+            <div class="firebase-dot connecting" id="firebaseDot"></div>
+            <span id="firebaseMsg">🔌 جاري الاتصال بـ Firebase...</span>
+        </div>
+
+        <!-- Main Stats -->
+        <div class="stats-grid">
+            <div class="stat-card delay-1">
+                <div class="stat-card-head">
+                    <div class="stat-label">إجمالي الطلاب</div>
+                    <div class="stat-badge badge-gold">👥</div>
+                </div>
+                <div class="stat-number" id="totalStudents">0</div>
+                <div class="stat-change" id="studentsChange">في جميع الحصص</div>
+            </div>
+            <div class="stat-card delay-2">
+                <div class="stat-card-head">
+                    <div class="stat-label">المدرسين النشطين</div>
+                    <div class="stat-badge badge-green">👨‍🏫</div>
+                </div>
+                <div class="stat-number green" id="activeTeachers">0</div>
+                <div class="stat-change" id="teachersChange">من إجمالي المدرسين</div>
+            </div>
+            <div class="stat-card delay-3">
+                <div class="stat-card-head">
+                    <div class="stat-label">إجمالي الحصص</div>
+                    <div class="stat-badge badge-blue">📚</div>
+                </div>
+                <div class="stat-number blue" id="totalSessions">0</div>
+                <div class="stat-change" id="totalSessionsChange">حصص متاحة</div>
+            </div>
+            <div class="stat-card delay-4">
+                <div class="stat-card-head">
+                    <div class="stat-label">متوسط الحضور</div>
+                    <div class="stat-badge badge-amber">📈</div>
+                </div>
+                <div class="stat-number amber" id="avgAttendance">0%</div>
+                <div class="stat-change" id="attendanceChange">نسبة الحضور العامة</div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="quick-row">
+            <div class="quick-card delay-1">
+                <div class="quick-icon">✅</div>
+                <div class="quick-val" id="totalPresent">0</div>
+                <div class="quick-lbl">طالب حاضر</div>
+            </div>
+            <div class="quick-card delay-2">
+                <div class="quick-icon">❌</div>
+                <div class="quick-val" id="totalAbsent">0</div>
+                <div class="quick-lbl">طالب غائب</div>
+            </div>
+            <div class="quick-card delay-3">
+                <div class="quick-icon">⏳</div>
+                <div class="quick-val" id="pendingSessions">0</div>
+                <div class="quick-lbl">حصص قيد الانتظار</div>
+            </div>
+            <div class="quick-card delay-4">
+                <div class="quick-icon">🎓</div>
+                <div class="quick-val" id="uniqueStudents">0</div>
+                <div class="quick-lbl">طالب فريد</div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="chart-row">
+            <div class="glass-card">
+                <h2><span>📈</span> نسبة الحضور حسب الحصص</h2>
+                <div id="attendanceBySession"><div class="empty">لا توجد حصص مسجلة بعد</div></div>
+            </div>
+            <div class="glass-card">
+                <h2><span>📊</span> تقدم تسجيل الحصص</h2>
+                <div id="sessionsProgress"></div>
+            </div>
+        </div>
+
+        <!-- Sessions Summary -->
+        <div class="glass-card" style="margin-bottom:20px;">
+            <h2><span>📚</span> ملخص الحصص</h2>
+            <div id="sessionsSummaryList"><div class="empty">لا توجد حصص</div></div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="chart-row">
+            <div class="glass-card">
+                <h2><span>🔔</span> آخر الأنشطة</h2>
+                <div id="recentActivitiesList"><div class="empty">لا توجد أنشطة</div></div>
+            </div>
+            <div class="glass-card">
+                <h2><span>👨‍🏫</span> المدرسين النشطين</h2>
+                <div id="teachersSection"><div class="empty">لا يوجد مدرسين نشطين</div></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getFirestore, doc, onSnapshot, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+        const firebaseConfig = {
+  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+  authDomain: "al-gnarl.firebaseapp.com",
+  projectId: "al-gnarl",
+  storageBucket: "al-gnarl.firebasestorage.app",
+  messagingSenderId: "288765966471",
+  appId: "1:288765966471:web:63358febfb82843c2fa022"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const db  = getFirestore(app);
+
+        function setFirebaseStatus(state, msg) {
+            const bar = document.getElementById('firebaseStatusBar');
+            const dot = document.getElementById('firebaseDot');
+            const txt = document.getElementById('firebaseMsg');
+            if (!bar) return;
+            bar.className = 'firebase-bar ' + state;
+            dot.className = 'firebase-dot ' + state;
+            txt.textContent = msg;
+        }
+
+        let sessions = [];
+        let teachers = [];
+
+        async function migrateLocalStorageToFirestore() {
+            const localSessions = localStorage.getItem('attendanceSessions');
+            if (localSessions) {
+                try {
+                    const parsed = JSON.parse(localSessions);
+                    await setDoc(doc(db, 'dashboard', 'attendanceSessions'), { data: parsed });
+                    localStorage.removeItem('attendanceSessions');
+                } catch(e) { console.warn('migration sessions failed', e); }
+            }
+            const localTeachers = localStorage.getItem('teachers');
+            if (localTeachers) {
+                try {
+                    const parsed = JSON.parse(localTeachers);
+                    await setDoc(doc(db, 'dashboard', 'teachers'), { data: parsed });
+                    localStorage.removeItem('teachers');
+                } catch(e) { console.warn('migration teachers failed', e); }
+            }
+        }
+
+        function listenToSessions() {
+            return onSnapshot(
+                doc(db, 'dashboard', 'attendanceSessions'),
+                (snap) => {
+                    sessions = snap.exists() ? (snap.data().data || []) : getDefaultSessions();
+                    setFirebaseStatus('connected', '🔥 Firebase متصل — البيانات محدّثة');
+                    updateDashboard();
+                },
+                (err) => {
+                    console.error(err);
+                    setFirebaseStatus('error', '❌ خطأ في الاتصال بـ Firebase');
+                    const local = localStorage.getItem('attendanceSessions');
+                    sessions = local ? JSON.parse(local) : getDefaultSessions();
+                    updateDashboard();
+                }
+            );
+        }
+
+        function listenToTeachers() {
+            return onSnapshot(
+                doc(db, 'dashboard', 'teachers'),
+                (snap) => {
+                    teachers = snap.exists() ? (snap.data().data || []) : getDefaultTeachers();
+                    updateDashboard();
+                },
+                (err) => {
+                    console.error(err);
+                    const local = localStorage.getItem('teachers');
+                    teachers = local ? JSON.parse(local) : getDefaultTeachers();
+                    updateDashboard();
+                }
+            );
+        }
+
+        function getDefaultSessions() {
+            return [
+                { id:1, subject:'رياضيات', class:'الأول الابتدائي', teacher:'أ. محمد أحمد', day:'السبت', time:'2:00 - 3:30 ظهراً', room:'A1',
+                  students:[{id:1,name:'أحمد محمد',status:'present'},{id:2,name:'محمد علي',status:'present'},{id:3,name:'سارة حسن',status:'absent'},{id:4,name:'فاطمة أحمد',status:'present'},{id:5,name:'عمر خالد',status:'present'}], completed:true },
+                { id:2, subject:'لغة عربية', class:'الثاني الابتدائي', teacher:'أ. فاطمة علي', day:'الأحد', time:'3:45 - 5:15 مساءً', room:'A2',
+                  students:[{id:6,name:'نور الدين',status:'present'},{id:7,name:'ياسمين حسن',status:'present'},{id:8,name:'كريم أحمد',status:'present'}], completed:true },
+                { id:3, subject:'علوم', class:'الثالث الإعدادي', teacher:'أ. خالد محمود', day:'الاثنين', time:'5:30 - 7:00 مساءً', room:'B1',
+                  students:[{id:9,name:'علي محمود',status:null},{id:10,name:'منى إبراهيم',status:null},{id:11,name:'حسن أحمد',status:null},{id:12,name:'ليلى محمد',status:null}], completed:false }
+            ];
+        }
+
+        function getDefaultTeachers() {
+            return [
+                { id:1, name:'أ. محمد أحمد',  phone:'01012345678', email:'mohamed@example.com', salary:5000, subjects:['math','science'], active:true },
+                { id:2, name:'أ. فاطمة علي',  phone:'01098765432', email:'fatma@example.com',   salary:4500, subjects:['arabic'],         active:true },
+                { id:3, name:'أ. خالد محمود', phone:'01055556666', email:'khaled@example.com',  salary:5500, subjects:['science'],        active:true }
+            ];
+        }
+
+        /* ─ Dashboard Logic ─ */
+        function calculateStats() {
+            const stats = {
+                totalStudents: 0, totalSessions: sessions.length,
+                completedSessions: 0, totalPresent: 0, totalAbsent: 0,
+                pendingSessions: 0, uniqueStudents: new Set(),
+                totalTeachers: teachers.length,
+                activeTeachers: teachers.filter(t => t.active).length
+            };
+            sessions.forEach(s => {
+                stats.totalStudents += s.students.length;
+                if (s.completed) stats.completedSessions++; else stats.pendingSessions++;
+                s.students.forEach(st => {
+                    stats.uniqueStudents.add(st.name);
+                    if (st.status === 'present') stats.totalPresent++;
+                    if (st.status === 'absent')  stats.totalAbsent++;
+                });
+            });
+            const total = stats.totalPresent + stats.totalAbsent;
+            const avgAttendance = total > 0 ? Math.round((stats.totalPresent / total) * 100) : 0;
+            return { ...stats, avgAttendance, uniqueStudents: stats.uniqueStudents.size };
+        }
+
+        function updateDashboard() {
+            const stats = calculateStats();
+            document.getElementById('totalStudents').textContent    = stats.totalStudents;
+            document.getElementById('studentsChange').textContent   = `في ${stats.totalSessions} حصص`;
+            document.getElementById('activeTeachers').textContent   = stats.activeTeachers;
+            document.getElementById('teachersChange').textContent   = `من ${stats.totalTeachers} مدرس`;
+            document.getElementById('totalSessions').textContent    = stats.totalSessions;
+            document.getElementById('totalSessionsChange').textContent = `${stats.pendingSessions} قيد الانتظار`;
+            document.getElementById('avgAttendance').textContent    = stats.avgAttendance + '%';
+            document.getElementById('attendanceChange').textContent = `${stats.totalPresent} حاضر من ${stats.totalPresent + stats.totalAbsent}`;
+            document.getElementById('totalPresent').textContent     = stats.totalPresent;
+            document.getElementById('totalAbsent').textContent      = stats.totalAbsent;
+            document.getElementById('pendingSessions').textContent  = stats.pendingSessions;
+            document.getElementById('uniqueStudents').textContent   = stats.uniqueStudents;
+            renderAttendanceBySession();
+            renderSessionsProgress(stats);
+            renderSessionsSummary();
+            renderRecentActivities();
+            renderTeachersSection();
+        }
+
+        function renderAttendanceBySession() {
+            const c = document.getElementById('attendanceBySession');
+            const completed = sessions.filter(s => s.completed);
+            if (!completed.length) { c.innerHTML = '<div class="empty">لا توجد حصص مسجلة بعد</div>'; return; }
+            c.innerHTML = '';
+            completed.forEach(s => {
+                const present = s.students.filter(st => st.status === 'present').length;
+                const pct = s.students.length > 0 ? Math.round((present / s.students.length) * 100) : 0;
+                const cls = pct >= 90 ? 'fill-green' : pct >= 70 ? 'fill-gold' : 'fill-amber';
+                c.innerHTML += `
+                    <div class="prog-item">
+                        <div class="prog-header"><span>${s.subject} - ${s.class}</span><span>${pct}%</span></div>
+                        <div class="prog-track"><div class="prog-fill ${cls}" style="width:${pct}%"></div></div>
+                    </div>`;
+            });
+        }
+
+        function renderSessionsProgress(stats) {
+            const c = document.getElementById('sessionsProgress');
+            const pct = stats.totalSessions > 0 ? Math.round((stats.completedSessions / stats.totalSessions) * 100) : 0;
+            c.innerHTML = `
+                <div class="prog-item">
+                    <div class="prog-header"><span>الحصص المكتملة</span><span>${stats.completedSessions} / ${stats.totalSessions}</span></div>
+                    <div class="prog-track"><div class="prog-fill fill-green" style="width:${pct}%"></div></div>
+                </div>
+                <div class="sessions-mini">
+                    <div class="mini-stat"><div class="val val-green">${stats.completedSessions}</div><div class="lbl">مكتملة</div></div>
+                    <div class="mini-stat"><div class="val val-amber">${stats.pendingSessions}</div><div class="lbl">قيد الانتظار</div></div>
+                    <div class="mini-stat"><div class="val val-gold">${pct}%</div><div class="lbl">نسبة الإنجاز</div></div>
+                </div>`;
+        }
+
+        function renderSessionsSummary() {
+            const c = document.getElementById('sessionsSummaryList');
+            if (!sessions.length) { c.innerHTML = '<div class="empty">لا توجد حصص</div>'; return; }
+            c.innerHTML = '';
+            sessions.forEach(s => {
+                const present = s.students.filter(st => st.status === 'present').length;
+                const absent  = s.students.filter(st => st.status === 'absent').length;
+                c.innerHTML += `
+                    <div class="session-item ${s.completed ? 'completed' : 'pending'}">
+                        <div class="session-details">
+                            <h3>${s.subject} - ${s.class}</h3>
+                            <p>👨‍🏫 ${s.teacher} &nbsp;•&nbsp; 📅 ${s.day} ${s.time} &nbsp;•&nbsp; 🏫 قاعة ${s.room}</p>
+                            ${s.completed
+                                ? `<p>✅ ${present} حاضر &nbsp;•&nbsp; ❌ ${absent} غائب &nbsp;•&nbsp; 👥 ${s.students.length} طالب</p>`
+                                : `<p>👥 ${s.students.length} طالب</p>`}
+                        </div>
+                        <span class="session-badge ${s.completed ? 'done' : 'waiting'}">
+                            ${s.completed ? '✓ مكتملة' : '⏳ قيد الانتظار'}
+                        </span>
+                    </div>`;
+            });
+        }
+
+        function renderRecentActivities() {
+            const c = document.getElementById('recentActivitiesList');
+            const acts = [];
+            sessions.forEach(s => {
+                const present = s.students.filter(st => st.status === 'present').length;
+                const absent  = s.students.filter(st => st.status === 'absent').length;
+                acts.push(s.completed
+                    ? { type:'success', title:'تسجيل حضور حصة', desc:`تم تسجيل حضور حصة ${s.subject} - ${s.class}: ${present} حاضر، ${absent} غائب`, time:'اليوم' }
+                    : { type:'warning', title:'حصة قيد الانتظار', desc:`حصة ${s.subject} - ${s.class} تحتاج تسجيل حضور`, time:'قيد الانتظار' }
+                );
+            });
+            if (!acts.length) { c.innerHTML = '<div class="empty">لا توجد أنشطة</div>'; return; }
+            c.innerHTML = '';
+            acts.slice(0, 5).forEach(a => {
+                c.innerHTML += `
+                    <div class="activity-item ${a.type}">
+                        <strong>${a.title}</strong>
+                        <p>${a.desc}</p>
+                        <div class="activity-time">${a.time}</div>
+                    </div>`;
+            });
+        }
+
+        function renderTeachersSection() {
+            const c = document.getElementById('teachersSection');
+            const subjectNames = { math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية', science:'علوم', social:'دراسات اجتماعية', religion:'تربية دينية', computer:'حاسب آلي' };
+            const active = teachers.filter(t => t.active);
+            if (!active.length) { c.innerHTML = '<div class="empty">لا يوجد مدرسين نشطين</div>'; return; }
+            c.innerHTML = '';
+            active.forEach(t => {
+                const subs = t.subjects.map(s => subjectNames[s] || s).join(' • ');
+                c.innerHTML += `
+                    <div class="activity-item success">
+                        <strong>${t.name}</strong>
+                        <p>📚 ${subs}</p>
+                        <p>📱 ${t.phone}${t.email ? ` &nbsp;•&nbsp; 📧 ${t.email}` : ''}</p>
+                        <p>💰 الراتب: ${t.salary} جنيه</p>
+                    </div>`;
+            });
+        }
+
+        /* ─ Init ─ */
+        setFirebaseStatus('connecting', '🔌 جاري الاتصال بـ Firebase...');
+        migrateLocalStorageToFirestore().then(() => {
+            listenToSessions();
+            listenToTeachers();
+        });
+    </script>
+</body>
+</html>

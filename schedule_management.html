@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جدول الحصص وإدارة الفصول</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-base:      #080808;
+            --gold:         #d4a017;
+            --gold-hi:      #f5c842;
+            --gold-soft:    #e8c96a;
+            --gold-dim:     #a07810;
+            --crimson:      #c0182a;
+            --crimson-hi:   #e8203a;
+            --crimson-soft: #ff6070;
+            --white:        #ffffff;
+            --white-80:     rgba(255,255,255,.8);
+            --white-50:     rgba(255,255,255,.5);
+            --white-20:     rgba(255,255,255,.2);
+            --white-08:     rgba(255,255,255,.08);
+            --card-bg:      rgba(12,8,0,.7);
+            --glass-border: rgba(212,160,23,.18);
+            --border-hi:    rgba(212,160,23,.38);
+            --green:        #22c55e;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-base);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* ── Background ── */
+        .bg-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .bg-gradient {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 75% 55% at 50% -5%,  rgba(212,160,23,.35) 0%, transparent 62%),
+                radial-gradient(ellipse 50% 42% at 88% 85%,  rgba(192,24,42,.26)  0%, transparent 55%),
+                radial-gradient(ellipse 42% 36% at 10% 75%,  rgba(212,160,23,.16) 0%, transparent 52%),
+                radial-gradient(ellipse 28% 24% at 78% 12%,  rgba(192,24,42,.12)  0%, transparent 48%),
+                linear-gradient(160deg, #0d0900 0%, #100a00 35%, #080808 65%, #0d0203 100%);
+        }
+        .grid-lines {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(rgba(212,160,23,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212,160,23,.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .dot-grid {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(212,160,23,.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent);
+        }
+        .orb { position: absolute; border-radius: 50%; filter: blur(80px); animation: floatOrb 8s ease-in-out infinite; }
+        .orb-1 { width:420px; height:420px; background:rgba(212,160,23,.18); top:-110px; left:50%; transform:translateX(-50%); animation-delay:0s; }
+        .orb-2 { width:300px; height:300px; background:rgba(192,24,42,.2);   bottom:10%; right:-50px; animation-delay:-3s; }
+        .orb-3 { width:250px; height:250px; background:rgba(212,160,23,.12); bottom:20%; left:-30px;  animation-delay:-5s; }
+        @keyframes floatOrb {
+            0%,100% { transform:translateY(0) translateX(0); }
+            33%      { transform:translateY(-20px) translateX(10px); }
+            66%      { transform:translateY(10px) translateX(-10px); }
+        }
+
+        .particles { position:fixed; inset:0; z-index:1; pointer-events:none; }
+        .particle  { position:absolute; border-radius:50%; animation:floatParticle linear infinite; opacity:0; }
+        @keyframes floatParticle {
+            0%   { transform:translateY(100vh); opacity:0; }
+            10%  { opacity:.5; }
+            90%  { opacity:.25; }
+            100% { transform:translateY(-10vh) translateX(30px); opacity:0; }
+        }
+
+        /* ── Container ── */
+        .container { position:relative; z-index:10; max-width:1600px; margin:0 auto; }
+
+        /* ── Header ── */
+        .header {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(16px);
+            padding: 22px 28px;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(212,160,23,.08);
+            margin-bottom: 22px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 15px;
+            animation: fadeSlideDown .6s ease both;
+        }
+        .header h1 {
+            font-size: 26px; font-weight: 900;
+            background: linear-gradient(135deg, var(--gold-hi), var(--gold-soft), var(--crimson-soft));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            filter: drop-shadow(0 0 12px rgba(212,160,23,.4));
+        }
+        .header-buttons { display:flex; gap:10px; flex-wrap:wrap; }
+
+        /* ── Buttons ── */
+        .btn {
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+            color: #0d0800; padding: 11px 22px; border: none; border-radius: 10px;
+            font-size: 15px; font-family: 'Cairo', sans-serif; font-weight: 900;
+            cursor: pointer; transition: all .3s ease;
+            box-shadow: 0 4px 15px rgba(212,160,23,.3);
+            text-decoration: none; display: inline-block;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(212,160,23,.5); filter: brightness(1.1); }
+        .btn-secondary {
+            background: rgba(255,255,255,.07);
+            color: var(--white-80);
+            border: 1px solid rgba(255,255,255,.12);
+            box-shadow: none;
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,.13); color: var(--white); }
+        .btn-danger {
+            background: linear-gradient(135deg, var(--crimson), var(--crimson-hi));
+            color: white;
+            box-shadow: 0 4px 15px rgba(192,24,42,.35);
+        }
+        .btn-danger:hover { box-shadow: 0 6px 22px rgba(192,24,42,.55); }
+        .btn-success { background: linear-gradient(135deg,#16a34a,#22c55e); color:white; box-shadow:0 4px 15px rgba(22,163,74,.35); }
+        .btn-warning {
+            background: linear-gradient(135deg, var(--gold), var(--gold-hi));
+            color: #0d0800;
+            font-weight: 900;
+            box-shadow: 0 4px 15px rgba(212,160,23,.35);
+        }
+        .btn-warning:hover { box-shadow: 0 6px 22px rgba(212,160,23,.55); }
+
+        /* ── Firebase Bar ── */
+        .firebase-bar {
+            display:flex; align-items:center; gap:10px; padding:11px 18px;
+            border-radius:12px; margin-bottom:20px; font-size:13px; font-weight:700;
+            transition:all .3s; backdrop-filter:blur(8px);
+            animation: fadeSlideDown .6s ease .1s both;
+        }
+        .firebase-bar.connected  { background:rgba(34,197,94,.12);  color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+        .firebase-bar.error      { background:rgba(239,68,68,.12);   color:#f87171; border:1px solid rgba(239,68,68,.3); }
+        .firebase-bar.connecting { background:rgba(212,160,23,.1);   color:var(--gold-soft); border:1px solid rgba(212,160,23,.3); }
+        .firebase-bar.saving     { background:rgba(192,24,42,.1);    color:var(--crimson-soft); border:1px solid rgba(192,24,42,.3); }
+        .firebase-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .firebase-dot.connected  { background:#4ade80; box-shadow:0 0 8px #4ade80; animation:fbBlink 2s infinite; }
+        .firebase-dot.error      { background:#f87171; }
+        .firebase-dot.connecting { background:var(--gold-hi); box-shadow:0 0 8px var(--gold-hi); animation:fbBlink .6s infinite; }
+        .firebase-dot.saving     { background:var(--crimson-soft); box-shadow:0 0 8px var(--crimson-soft); animation:fbBlink .4s infinite; }
+        @keyframes fbBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        /* ── Alert ── */
+        .alert { padding:13px 18px; border-radius:10px; margin-bottom:18px; font-weight:700; font-size:14px; backdrop-filter:blur(8px); }
+        .alert-success { background:rgba(34,197,94,.15);  color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+        .alert-danger  { background:rgba(192,24,42,.15);  color:var(--crimson-soft); border:1px solid rgba(192,24,42,.3); }
+
+        /* ── Schedule Container ── */
+        .schedule-container {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(16px);
+            padding: 22px;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(212,160,23,.06);
+            overflow-x: auto;
+            animation: fadeSlideDown .6s ease .15s both;
+        }
+
+        /* ── Schedule Table ── */
+        .schedule-table { width:100%; border-collapse:collapse; min-width:1000px; }
+        .schedule-table th {
+            background: linear-gradient(135deg, rgba(160,120,16,.7), rgba(212,160,23,.5));
+            color: #0d0800; padding: 14px 16px; text-align: center;
+            font-size: 15px; font-weight: 900;
+            border-bottom: 1px solid rgba(212,160,23,.3);
+        }
+        .schedule-table th:first-child { border-radius: 10px 0 0 0; }
+        .schedule-table th:last-child  { border-radius: 0 10px 0 0; }
+        .schedule-table td {
+            padding: 10px; border: 1px solid rgba(212,160,23,.08);
+            text-align: center; vertical-align: top; min-height: 100px;
+        }
+        .time-cell {
+            background: rgba(160,120,16,.12);
+            font-weight: 700;
+            color: var(--gold-soft);
+            font-size: 13px;
+            border-right: 2px solid rgba(212,160,23,.3) !important;
+        }
+
+        /* ── Session Cards ── */
+        .session-card {
+            padding: 9px 11px; border-radius: 9px; margin-bottom: 5px;
+            cursor: pointer; transition: all .3s ease;
+            border-right: 3px solid;
+            backdrop-filter: blur(6px);
+        }
+        .session-card:hover { transform:scale(1.04); box-shadow:0 4px 14px rgba(212,160,23,.3); }
+
+        /* Adapted subject colors — warm palette */
+        .session-card.math     { background:rgba(245,158,11,.13);  border-right-color:#f59e0b; }
+        .session-card.science  { background:rgba(34,197,94,.11);   border-right-color:#22c55e; }
+        .session-card.english  { background:rgba(212,160,23,.14);  border-right-color:#d4a017; }
+        .session-card.arabic   { background:rgba(192,24,42,.13);   border-right-color:#e8203a; }
+        .session-card.social   { background:rgba(251,146,60,.12);  border-right-color:#fb923c; }
+        .session-card.religion { background:rgba(180,130,30,.12);  border-right-color:#b4821e; }
+        .session-card.computer { background:rgba(232,32,58,.11);   border-right-color:#c0182a; }
+        .session-card.geography { background:rgba(99,102,241,.12);  border-right-color:#6366f1; }
+
+        .session-title { font-weight:700; font-size:13px; margin-bottom:3px; color:rgba(255,255,255,.92); }
+        .session-info  { font-size:11px; color:rgba(255,255,255,.55); }
+        .session-date-label { font-size:10px; margin-top:3px; color:rgba(212,160,23,.75); }
+
+        /* ── Classes Grid ── */
+        .classes-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px; margin-top:20px; }
+        .class-card {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            padding: 20px; border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.35);
+            border-right: 4px solid var(--gold);
+            transition: all .3s ease;
+        }
+        .class-card:hover { transform:translateY(-4px); box-shadow:0 8px 28px rgba(212,160,23,.25); border-color:rgba(212,160,23,.5); }
+        .class-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+        .class-name   { font-size:16px; font-weight:700; color:var(--white); }
+        .class-capacity { background:rgba(212,160,23,.15); color:var(--gold-soft); border:1px solid rgba(212,160,23,.3); padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700; }
+        .class-info   { color:rgba(255,255,255,.55); font-size:14px; margin-bottom:7px; }
+        .class-actions { display:flex; gap:8px; margin-top:14px; }
+        .class-actions button { flex:1; padding:9px; font-size:12px; }
+
+        /* ── Modal ── */
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.78); backdrop-filter:blur(6px); justify-content:center; align-items:center; z-index:1000; }
+        .modal.active { display:flex; }
+        .modal-content {
+            background: #0d0800;
+            border: 1px solid rgba(212,160,23,.28);
+            box-shadow: 0 20px 60px rgba(0,0,0,.7), 0 0 40px rgba(212,160,23,.12);
+            padding: 30px; border-radius: 18px;
+            width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+        }
+        .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; padding-bottom:14px; border-bottom:1px solid rgba(212,160,23,.18); }
+        .modal-header h2 {
+            font-size:20px; font-weight:900;
+            background: linear-gradient(135deg, var(--gold-hi), var(--gold-soft));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .close-btn {
+            background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+            border-radius:8px; font-size:22px; cursor:pointer; color:rgba(255,255,255,.5);
+            width:36px; height:36px; display:flex; align-items:center; justify-content:center; transition:all .2s;
+        }
+        .close-btn:hover { background:rgba(192,24,42,.2); color:#f87171; border-color:rgba(192,24,42,.3); }
+
+        /* ── Form ── */
+        .form-group { margin-bottom:18px; }
+        .form-group label { display:block; margin-bottom:7px; font-weight:700; color:rgba(255,255,255,.8); font-size:14px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width:100%; padding:12px 14px;
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(212,160,23,.22);
+            border-radius:10px; font-size:14px; font-family:'Cairo',sans-serif;
+            color:var(--white); transition:border-color .2s, box-shadow .2s; outline:none;
+        }
+        .form-group input::placeholder, .form-group textarea::placeholder { color:rgba(255,255,255,.3); }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,160,23,.15);
+        }
+        .form-group select option { background:#0d0800; color:white; }
+        .form-group textarea { resize:vertical; min-height:80px; }
+        .form-group small { display:block; margin-top:5px; color:rgba(212,160,23,.7); font-size:12px; }
+
+        /* ── Session Details ── */
+        .session-details-info {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(212,160,23,.18);
+            padding: 16px; border-radius: 12px; margin-bottom: 16px;
+        }
+        .session-details-info div    { margin-bottom:10px; color:rgba(255,255,255,.75); font-size:14px; }
+        .session-details-info strong { color: var(--gold-soft); }
+
+        /* ── Occupancy Bar ── */
+        .occupancy-track { background:rgba(255,255,255,.08); border-radius:10px; height:8px; margin:10px 0; overflow:hidden; }
+        .occupancy-fill  { height:100%; border-radius:10px; transition:width .3s; }
+
+        /* ── Animation ── */
+        @keyframes fadeSlideDown { from{opacity:0;transform:translateY(-16px);}to{opacity:1;transform:translateY(0);} }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width:6px; }
+        ::-webkit-scrollbar-track { background:rgba(255,255,255,.02); }
+        ::-webkit-scrollbar-thumb { background:rgba(212,160,23,.35); border-radius:10px; }
+        ::-webkit-scrollbar-thumb:hover { background:rgba(212,160,23,.6); }
+    </style>
+</head>
+<body>
+
+    <!-- Background -->
+    <div class="bg-layer">
+        <div class="bg-gradient"></div>
+        <div class="dot-grid"></div>
+        <div class="grid-lines"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>📅 جدول الحصص وإدارة الفصول</h1>
+            </div>
+            <div class="header-buttons">
+                <button class="btn" onclick="showAddSessionModal()">➕ إضافة حصة</button>
+                <button class="btn btn-secondary" onclick="toggleClassesSection()">🏫 الفصول</button>
+                <a href="home.html" class="btn btn-warning">🏠 الرئيسية</a>
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <!-- Firebase Status -->
+        <div class="firebase-bar connecting" id="firebaseStatusBar">
+            <div class="firebase-dot connecting" id="firebaseDot"></div>
+            <span id="firebaseMsg">🔌 جاري الاتصال بـ Firebase...</span>
+        </div>
+
+        <!-- Schedule Table -->
+        <div class="schedule-container" id="scheduleSection">
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th style="width:110px;">الوقت</th>
+                        <th>السبت</th>
+                        <th>الأحد</th>
+                        <th>الاثنين</th>
+                        <th>الثلاثاء</th>
+                        <th>الأربعاء</th>
+                        <th>الخميس</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Classes Section -->
+        <div id="classesSection" style="display:none;">
+            <div class="classes-grid" id="classesGrid"></div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Session Modal -->
+    <div class="modal" id="addSessionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="sessionModalTitle">➕ إضافة حصة جديدة</h2>
+                <button class="close-btn" onclick="closeModal('addSessionModal')">&times;</button>
+            </div>
+            <form id="sessionForm" onsubmit="saveSession(event)">
+                <input type="hidden" id="sessionId">
+                <div class="form-group">
+                    <label>المادة</label>
+                    <select id="sessionSubject" required>
+                        <option value="">اختر المادة</option>
+                        <option value="social">تاريخ</option>
+                        <option value="geography">جغرافيا</option>
+                        <option value="arabic">لغة عربية</option>
+                        <option value="math">رياضيات</option>
+                        <option value="english">لغة إنجليزية</option>
+                        <option value="science">علوم</option>
+                        <option value="religion">تربية دينية</option>
+                        <option value="computer">حاسب آلي</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>الصف</label>
+                    <select id="sessionClass" required>
+                        <option value="">اختر الصف</option>
+                        <optgroup label="المرحلة الابتدائية">
+                            <option value="grade1p">الأول الابتدائي</option>
+                            <option value="grade2p">الثاني الابتدائي</option>
+                            <option value="grade3p">الثالث الابتدائي</option>
+                            <option value="grade4p">الرابع الابتدائي</option>
+                            <option value="grade5p">الخامس الابتدائي</option>
+                            <option value="grade6p">السادس الابتدائي</option>
+                        </optgroup>
+                        <optgroup label="المرحلة الإعدادية">
+                            <option value="grade7">الأول الإعدادي</option>
+                            <option value="grade8">الثاني الإعدادي</option>
+                            <option value="grade9">الثالث الإعدادي</option>
+                        </optgroup>
+                        <optgroup label="المرحلة الثانوية">
+                            <option value="grade10">الأول الثانوي</option>
+                            <option value="grade11">الثاني الثانوي</option>
+                            <option value="grade12">الثالث الثانوي</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>المدرس</label>
+                    <select id="sessionTeacher" required>
+                        <option value="">اختر المدرس</option>
+                        <option value="t1">أ. رامي ابو نور</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>القاعة</label>
+                    <select id="sessionRoom" required>
+                        <option value="">اختر القاعة</option>
+                        <option value="a1">قاعة A1</option>
+                        <option value="a2">قاعة A2</option>
+                        <option value="b1">قاعة B1</option>
+                        <option value="b2">قاعة B2</option>
+                        <option value="c1">قاعة C1</option>
+                        <option value="c2">قاعة C2</option>
+                        <option value="d1">قاعة D1</option>
+                        <option value="d2">قاعة D2</option>
+                        <option value="e1">قاعة E1</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>اليوم</label>
+                    <select id="sessionDay" required>
+                        <option value="">اختر اليوم</option>
+                        <option value="0">السبت</option>
+                        <option value="1">الأحد</option>
+                        <option value="2">الاثنين</option>
+                        <option value="3">الثلاثاء</option>
+                        <option value="4">الأربعاء</option>
+                        <option value="5">الخميس</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>وقت البداية</label>
+                    <input type="time" id="sessionStartTime" min="00:00" max="24:59" required>
+                    <small>من الساعة 00:00 ظهراً</small>
+                </div>
+                <div class="form-group">
+                    <label>وقت النهاية</label>
+                    <input type="time" id="sessionEndTime" min="00:00" max="24:59" required>
+                    <small>حتى الساعة 24:59 مساءً</small>
+                </div>
+                <div class="form-group">
+                    <label>ملاحظات</label>
+                    <textarea id="sessionNotes" placeholder="ملاحظات إضافية (اختياري)"></textarea>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:20px;">
+                    <button type="submit" class="btn" style="flex:1;">✓ حفظ</button>
+                    <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('addSessionModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Session Details Modal -->
+    <div class="modal" id="sessionDetailsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📋 تفاصيل الحصة</h2>
+                <button class="close-btn" onclick="closeModal('sessionDetailsModal')">&times;</button>
+            </div>
+            <div id="sessionDetailsContent"></div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Class Modal -->
+    <div class="modal" id="addClassModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="classModalTitle">🏫 إضافة فصل جديد</h2>
+                <button class="close-btn" onclick="closeModal('addClassModal')">&times;</button>
+            </div>
+            <form id="classForm" onsubmit="saveClass(event)">
+                <input type="hidden" id="classId">
+                <div class="form-group">
+                    <label>اسم الفصل</label>
+                    <input type="text" id="className" placeholder="مثال: الصف الأول الابتدائي - أ" required>
+                </div>
+                <div class="form-group">
+                    <label>رقم القاعة</label>
+                    <input type="text" id="classRoom" placeholder="مثال: A1" required>
+                </div>
+                <div class="form-group">
+                    <label>السعة القصوى</label>
+                    <input type="number" id="classCapacity" placeholder="عدد الطلاب" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>عدد الطلاب المسجلين</label>
+                    <input type="number" id="classEnrolled" placeholder="عدد الطلاب الحاليين" min="0" value="0">
+                </div>
+                <div class="form-group">
+                    <label>المرحلة الدراسية</label>
+                    <select id="classLevel" required>
+                        <option value="">اختر المرحلة</option>
+                        <optgroup label="المرحلة الابتدائية">
+                            <option value="grade1p">الأول الابتدائي</option>
+                            <option value="grade2p">الثاني الابتدائي</option>
+                            <option value="grade3p">الثالث الابتدائي</option>
+                            <option value="grade4p">الرابع الابتدائي</option>
+                            <option value="grade5p">الخامس الابتدائي</option>
+                            <option value="grade6p">السادس الابتدائي</option>
+                        </optgroup>
+                        <optgroup label="المرحلة الإعدادية">
+                            <option value="grade7">الأول الإعدادي</option>
+                            <option value="grade8">الثاني الإعدادي</option>
+                            <option value="grade9">الثالث الإعدادي</option>
+                        </optgroup>
+                        <optgroup label="المرحلة الثانوية">
+                            <option value="grade10">الأول الثانوي</option>
+                            <option value="grade11">الثاني الثانوي</option>
+                            <option value="grade12">الثالث الثانوي</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:20px;">
+                    <button type="submit" class="btn" style="flex:1;">✓ حفظ</button>
+                    <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('addClassModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ── Particles — gold & red palette ──
+        const particlesContainer = document.getElementById('particles');
+        const pColors = ['#f5c842','#e8c96a','#d4a017','#e8203a','#ff6070','#c0182a'];
+        for (let i = 0; i < 25; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.style.left = Math.random() * 100 + 'vw';
+            p.style.animationDuration = (6 + Math.random() * 10) + 's';
+            p.style.animationDelay    = (Math.random() * 10) + 's';
+            const sz = (1 + Math.random() * 3) + 'px';
+            p.style.width = p.style.height = sz;
+            p.style.background = pColors[Math.floor(Math.random() * pColors.length)];
+            particlesContainer.appendChild(p);
+        }
+    </script>
+
+    <script type="module">
+        const days = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
+
+        function getDateForDay(dayIndex) {
+            const today = new Date();
+            const currentDay = today.getDay();
+            const targetDay  = dayIndex === 0 ? 6 : dayIndex - 1;
+            let diff = targetDay - currentDay;
+            if (diff < 0) diff += 7;
+            const targetDate = new Date(today);
+            targetDate.setDate(today.getDate() + diff);
+            return targetDate.toISOString().split('T')[0];
+        }
+
+        function formatArabicDate(dateString) {
+            const date = new Date(dateString);
+            return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`;
+        }
+
+        const subjectNames = { math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية', science:'علوم', social:'تاريخ', geography:'جغرافيا', religion:'تربية دينية', computer:'حاسب آلي' };
+        const teacherNames = { t1:'أ.رامي ابو نور', t2:'أ. فاطمة علي', t3:'أ. خالد محمود', t4:'أ. سارة حسن', t5:'أ. نور الدين', t6:'أ. منى إبراهيم' };
+        const classNames   = { grade1p:'الأول الابتدائي', grade2p:'الثاني الابتدائي', grade3p:'الثالث الابتدائي', grade4p:'الرابع الابتدائي', grade5p:'الخامس الابتدائي', grade6p:'السادس الابتدائي', grade7:'الأول الإعدادي', grade8:'الثاني الإعدادي', grade9:'الثالث الإعدادي', grade10:'الأول الثانوي', grade11:'الثاني الثانوي', grade12:'الثالث الثانوي' };
+        const roomNames    = { a1:'A1',a2:'A2',b1:'B1',b2:'B2',c1:'C1',c2:'C2',d1:'D1',d2:'D2',e1:'E1' };
+
+        import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getFirestore, doc, onSnapshot, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+        const firebaseConfig = {
+  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+  authDomain: "al-gnarl.firebaseapp.com",
+  projectId: "al-gnarl",
+  storageBucket: "al-gnarl.firebasestorage.app",
+  messagingSenderId: "288765966471",
+  appId: "1:288765966471:web:63358febfb82843c2fa022"
+};
+        const app = initializeApp(firebaseConfig);
+        const db  = getFirestore(app);
+
+        function setFbStatus(state, msg) {
+            const bar = document.getElementById('firebaseStatusBar');
+            const dot = document.getElementById('firebaseDot');
+            const txt = document.getElementById('firebaseMsg');
+            if (!bar) return;
+            bar.className = 'firebase-bar ' + state;
+            dot.className = 'firebase-dot ' + state;
+            txt.textContent = msg;
+        }
+
+        async function migrateIfNeeded() {
+            const localSessions = localStorage.getItem('scheduleSessions');
+            const localClasses  = localStorage.getItem('scheduleClasses');
+            if (localSessions || localClasses) {
+                try {
+                    const snap = await getDoc(doc(db, 'schedule', 'data'));
+                    if (!snap.exists()) {
+                        await setDoc(doc(db, 'schedule', 'data'), {
+                            sessions:      localSessions ? JSON.parse(localSessions) : [],
+                            classes:       localClasses  ? JSON.parse(localClasses)  : defaultClasses(),
+                            nextSessionId: parseInt(localStorage.getItem('nextSessionId') || '1'),
+                            nextClassId:   parseInt(localStorage.getItem('nextClassId')   || '10')
+                        });
+                    }
+                    localStorage.removeItem('scheduleSessions');
+                    localStorage.removeItem('scheduleClasses');
+                    localStorage.removeItem('nextSessionId');
+                    localStorage.removeItem('nextClassId');
+                } catch(e) { console.warn('Migration error:', e); }
+            }
+        }
+
+        async function saveScheduleData() {
+            setFbStatus('saving', '💾 جاري الحفظ على Firebase...');
+            try {
+                await setDoc(doc(db, 'schedule', 'data'), { sessions, classes, nextSessionId, nextClassId });
+                setFbStatus('connected', '🔥 Firebase — تم الحفظ ✔');
+            } catch(e) {
+                console.error('Save error:', e);
+                setFbStatus('error', '❌ خطأ في الحفظ — ' + e.message);
+            }
+        }
+
+        function startListener() {
+            onSnapshot(doc(db, 'schedule', 'data'),
+                (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        sessions      = data.sessions      || [];
+                        classes       = data.classes       || defaultClasses();
+                        nextSessionId = data.nextSessionId || 1;
+                        nextClassId   = data.nextClassId   || 10;
+                    } else {
+                        sessions = []; classes = defaultClasses();
+                        nextSessionId = 1; nextClassId = 10;
+                        saveScheduleData();
+                    }
+                    setFbStatus('connected', '🔥 Firebase متصل — البيانات محدّثة لحظياً');
+                    renderSchedule();
+                },
+                (err) => {
+                    console.error('Listener error:', err);
+                    setFbStatus('error', '❌ خطأ في الاتصال — تأكد من Firebase Rules');
+                }
+            );
+        }
+
+        function defaultClasses() {
+            return [
+                { id:1,  name:'الصف الأول الابتدائي - أ',   room:'A1', capacity:25, enrolled:22, level:'grade1p' },
+                { id:2,  name:'الصف الثاني الابتدائي - أ',  room:'A2', capacity:25, enrolled:23, level:'grade2p' },
+                { id:3,  name:'الصف الثالث الابتدائي - أ',  room:'B1', capacity:28, enrolled:26, level:'grade3p' },
+                { id:4,  name:'الصف الرابع الابتدائي - أ',  room:'B2', capacity:28, enrolled:25, level:'grade4p' },
+                { id:5,  name:'الصف الخامس الابتدائي - أ',  room:'C1', capacity:30, enrolled:28, level:'grade5p' },
+                { id:6,  name:'الصف السادس الابتدائي - أ',  room:'C2', capacity:30, enrolled:29, level:'grade6p' },
+                { id:7,  name:'الصف الأول الإعدادي - أ',    room:'D1', capacity:32, enrolled:30, level:'grade7'  },
+                { id:8,  name:'الصف الثاني الإعدادي - أ',   room:'D2', capacity:32, enrolled:31, level:'grade8'  },
+                { id:9,  name:'الصف الثالث الإعدادي - أ',   room:'E1', capacity:35, enrolled:33, level:'grade9'  }
+            ];
+        }
+
+        let sessions = [], classes = defaultClasses(), nextClassId = 10, nextSessionId = 1;
+
+        setFbStatus('connecting', '🔌 جاري الاتصال بـ Firebase...');
+        migrateIfNeeded().then(() => startListener());
+
+        function formatTime(time) {
+            const [hours, minutes] = time.split(':');
+            const hour = parseInt(hours);
+            let period = 'صباحاً';
+            if (hour >= 12 && hour < 17) period = 'ظهراً';
+            else if (hour >= 17) period = 'مساءً';
+            const displayHour = hour > 12 ? hour - 12 : hour;
+            return `${displayHour}:${minutes} ${period}`;
+        }
+
+        function showAlert(message, type = 'success') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            const container = document.getElementById('alertContainer');
+            container.innerHTML = '';
+            container.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+
+        function renderSchedule() {
+            const tbody = document.getElementById('scheduleBody');
+            tbody.innerHTML = '';
+            const allTimes = new Set();
+            sessions.forEach(s => allTimes.add(`${s.startTime}-${s.endTime}`));
+            const sortedTimes = Array.from(allTimes).sort();
+            const slotsToRender = sortedTimes.length > 0
+                ? sortedTimes
+                : ['14:00-16:00','16:00-18:00','18:00-20:00','20:00-21:00'];
+
+            slotsToRender.forEach(timeRange => {
+                const [start, end] = timeRange.split('-');
+                const row = document.createElement('tr');
+                const timeCell = document.createElement('td');
+                timeCell.className = 'time-cell';
+                timeCell.innerHTML = `<div style="font-size:12px;">${formatTime(start)}</div><div style="font-size:10px;opacity:0.7;">↓</div><div style="font-size:12px;">${formatTime(end)}</div>`;
+                row.appendChild(timeCell);
+
+                for (let day = 0; day < 6; day++) {
+                    const cell = document.createElement('td');
+                    const daySessions = sessions.filter(s => s.day === day && `${s.startTime}-${s.endTime}` === timeRange);
+                    daySessions.forEach(session => {
+                        if (!session.date) session.date = getDateForDay(session.day);
+                        const card = document.createElement('div');
+                        card.className = `session-card ${session.subject}`;
+                        card.onclick = () => showSessionDetails(session);
+                        card.innerHTML = `
+                            <div class="session-title">${subjectNames[session.subject] || session.subject}</div>
+                            <div class="session-info">${classNames[session.class] || session.class} • ${roomNames[session.room] || session.room}</div>
+                            <div class="session-info">أ.رامي ابو نور</div>
+                            <div class="session-date-label">📅 ${formatArabicDate(session.date)}</div>
+                        `;
+                        cell.appendChild(card);
+                    });
+                    row.appendChild(cell);
+                }
+                tbody.appendChild(row);
+            });
+        }
+
+        function showAddSessionModal() {
+            document.getElementById('sessionModalTitle').textContent = '➕ إضافة حصة جديدة';
+            document.getElementById('sessionForm').reset();
+            document.getElementById('sessionId').value = '';
+            document.getElementById('addSessionModal').classList.add('active');
+        }
+
+        function showEditSessionModal(session) {
+            document.getElementById('sessionModalTitle').textContent = '✏️ تعديل الحصة';
+            document.getElementById('sessionId').value         = session.id;
+            document.getElementById('sessionSubject').value   = session.subject;
+            document.getElementById('sessionClass').value     = session.class;
+            document.getElementById('sessionTeacher').value   = session.teacher;
+            document.getElementById('sessionRoom').value      = session.room;
+            document.getElementById('sessionDay').value       = session.day;
+            document.getElementById('sessionStartTime').value = session.startTime;
+            document.getElementById('sessionEndTime').value   = session.endTime;
+            document.getElementById('sessionNotes').value     = session.notes || '';
+            document.getElementById('addSessionModal').classList.add('active');
+        }
+
+        function saveSession(e) {
+            e.preventDefault();
+            const startTime = document.getElementById('sessionStartTime').value;
+            const endTime   = document.getElementById('sessionEndTime').value;
+            const dayVal    = document.getElementById('sessionDay').value;
+
+            if (!startTime) { showAlert('الرجاء اختيار وقت البداية', 'danger'); return; }
+            if (!endTime)   { showAlert('الرجاء اختيار وقت النهاية', 'danger'); return; }
+            if (dayVal === '') { showAlert('الرجاء اختيار اليوم', 'danger'); return; }
+            if (startTime >= endTime) {
+                showAlert('وقت النهاية يجب أن يكون بعد وقت البداية', 'danger'); return;
+            }
+
+            const sessionId = document.getElementById('sessionId').value;
+            const day = parseInt(dayVal);
+            const sessionData = {
+                id:        sessionId ? parseInt(sessionId) : nextSessionId++,
+                subject:   document.getElementById('sessionSubject').value,
+                class:     document.getElementById('sessionClass').value,
+                teacher:   document.getElementById('sessionTeacher').value,
+                room:      document.getElementById('sessionRoom').value,
+                day,
+                startTime,
+                endTime,
+                notes:     document.getElementById('sessionNotes').value,
+                date:      getDateForDay(day)
+            };
+
+            if (sessionId) {
+                const index = sessions.findIndex(s => s.id === parseInt(sessionId));
+                sessions[index] = sessionData;
+                saveScheduleData();
+                showAlert('تم تعديل الحصة بنجاح! ✔');
+            } else {
+                sessions.push(sessionData);
+                saveScheduleData();
+                showAlert('تم إضافة الحصة بنجاح! ✔');
+            }
+            closeModal('addSessionModal');
+            renderSchedule();
+        }
+
+        function showSessionDetails(session) {
+            document.getElementById('sessionDetailsContent').innerHTML = `
+                <div style="padding:16px 0;">
+                    <h3 style="background:linear-gradient(135deg,#f5c842,#e8c96a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:18px;font-size:18px;font-weight:900;">
+                        ${subjectNames[session.subject]} - ${classNames[session.class]}
+                    </h3>
+                    <div class="session-details-info">
+                        <div><strong>اليوم:</strong> ${days[session.day]}</div>
+                        <div><strong>التاريخ:</strong> ${formatArabicDate(session.date || getDateForDay(session.day))}</div>
+                        <div><strong>الوقت:</strong> ${formatTime(session.startTime)} - ${formatTime(session.endTime)}</div>
+                        <div><strong>القاعة:</strong> ${roomNames[session.room]}</div>
+                        <div><strong>المدرس:</strong> ${teacherNames[session.teacher]}</div>
+                        ${session.notes ? `<div><strong>ملاحظات:</strong> ${session.notes}</div>` : ''}
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:18px;">
+                        <button class="btn" style="flex:1;" onclick='showEditSessionModal(${JSON.stringify(session).replace(/'/g, "\\'")})'>✏️ تعديل</button>
+                        <button class="btn btn-danger" style="flex:1;" onclick="deleteSession(${session.id})">🗑️ حذف</button>
+                        <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('sessionDetailsModal')">إغلاق</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('sessionDetailsModal').classList.add('active');
+        }
+
+        function deleteSession(sessionId) {
+            if (confirm('هل أنت متأكد من حذف هذه الحصة؟')) {
+                sessions = sessions.filter(s => s.id !== sessionId);
+                saveScheduleData();
+                showAlert('تم حذف الحصة بنجاح!', 'success');
+                closeModal('sessionDetailsModal');
+                renderSchedule();
+            }
+        }
+
+        function toggleClassesSection() {
+            const scheduleSection = document.getElementById('scheduleSection');
+            const classesSection  = document.getElementById('classesSection');
+            if (classesSection.style.display === 'none') {
+                scheduleSection.style.display = 'none';
+                classesSection.style.display  = 'block';
+                renderClasses();
+            } else {
+                scheduleSection.style.display = 'block';
+                classesSection.style.display  = 'none';
+            }
+        }
+
+        function renderClasses() {
+            const grid = document.getElementById('classesGrid');
+            grid.innerHTML = `
+                <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                    <h2 style="font-size:22px;font-weight:900;background:linear-gradient(135deg,#f5c842,#e8c96a,#ff6070);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">🏫 الفصول المتاحة</h2>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn" onclick="showAddClassModal()">➕ إضافة فصل</button>
+                        <button class="btn btn-secondary" onclick="toggleClassesSection()">← عودة للجدول</button>
+                    </div>
+                </div>
+            `;
+            classes.forEach(cls => {
+                const occupancy = Math.round((cls.enrolled / cls.capacity) * 100);
+                const barColor  = occupancy > 90 ? '#e8203a' : occupancy > 70 ? '#f59e0b' : '#22c55e';
+                grid.innerHTML += `
+                    <div class="class-card">
+                        <div class="class-header">
+                            <div class="class-name">${cls.name}</div>
+                            <div class="class-capacity">${cls.enrolled}/${cls.capacity}</div>
+                        </div>
+                        <div class="class-info">📍 ${cls.room}</div>
+                        <div class="class-info">📊 نسبة الإشغال: ${occupancy}%</div>
+                        <div class="occupancy-track">
+                            <div class="occupancy-fill" style="background:${barColor};width:${occupancy}%;"></div>
+                        </div>
+                        <div class="class-actions">
+                            <button class="btn" onclick="showEditClassModal(${cls.id})">✏️ تعديل</button>
+                            <button class="btn btn-danger" onclick="deleteClass(${cls.id})">🗑️ حذف</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function showAddClassModal() {
+            document.getElementById('classModalTitle').textContent = '🏫 إضافة فصل جديد';
+            document.getElementById('classForm').reset();
+            document.getElementById('classId').value = '';
+            document.getElementById('classEnrolled').value = '0';
+            document.getElementById('addClassModal').classList.add('active');
+        }
+
+        function showEditClassModal(classId) {
+            const cls = classes.find(c => c.id === classId);
+            if (!cls) return;
+            document.getElementById('classModalTitle').textContent = '✏️ تعديل الفصل';
+            document.getElementById('classId').value       = cls.id;
+            document.getElementById('className').value     = cls.name;
+            document.getElementById('classRoom').value     = cls.room;
+            document.getElementById('classCapacity').value = cls.capacity;
+            document.getElementById('classEnrolled').value = cls.enrolled;
+            document.getElementById('classLevel').value    = cls.level;
+            document.getElementById('addClassModal').classList.add('active');
+        }
+
+        function saveClass(e) {
+            e.preventDefault();
+            const classId = document.getElementById('classId').value;
+            const classData = {
+                id:       classId ? parseInt(classId) : nextClassId++,
+                name:     document.getElementById('className').value,
+                room:     document.getElementById('classRoom').value,
+                capacity: parseInt(document.getElementById('classCapacity').value),
+                enrolled: parseInt(document.getElementById('classEnrolled').value),
+                level:    parseInt(document.getElementById('classLevel').value)
+            };
+            if (classId) {
+                const index = classes.findIndex(c => c.id === parseInt(classId));
+                classes[index] = classData;
+                saveScheduleData();
+                showAlert('تم تعديل الفصل بنجاح! ✔');
+            } else {
+                classes.push(classData);
+                saveScheduleData();
+                showAlert('تم إضافة الفصل بنجاح! ✔');
+            }
+            closeModal('addClassModal');
+            renderClasses();
+        }
+
+        function deleteClass(classId) {
+            if (confirm('هل أنت متأكد من حذف هذا الفصل؟')) {
+                classes = classes.filter(c => c.id !== classId);
+                saveScheduleData();
+                showAlert('تم حذف الفصل بنجاح!', 'success');
+                renderClasses();
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) event.target.classList.remove('active');
+        };
+
+        window.showAddSessionModal  = showAddSessionModal;
+        window.showEditSessionModal = showEditSessionModal;
+        window.saveSession          = saveSession;
+        window.showSessionDetails   = showSessionDetails;
+        window.deleteSession        = deleteSession;
+        window.toggleClassesSection = toggleClassesSection;
+        window.showAddClassModal    = showAddClassModal;
+        window.showEditClassModal   = showEditClassModal;
+        window.saveClass            = saveClass;
+        window.deleteClass          = deleteClass;
+        window.closeModal           = closeModal;
+    </script>
+</body>
+</html>

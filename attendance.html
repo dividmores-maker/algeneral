@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الحضور والغياب</title>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+  authDomain: "al-gnarl.firebaseapp.com",
+  projectId: "al-gnarl",
+  storageBucket: "al-gnarl.firebasestorage.app",
+  messagingSenderId: "288765966471",
+  appId: "1:288765966471:web:63358febfb82843c2fa022"
+};
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gold:      #ffd700;
+            --gold-hi:   #fff7b0;
+            --gold-mid:  #f0c040;
+            --gold-dk:   #b8860b;
+            --red:       #ef4444;
+            --red-dk:    #b91c1c;
+            --red-soft:  #fca5a5;
+            --bg-base:   #080808;
+            --border:    rgba(212,175,55,.2);
+            --border-hi: rgba(212,175,55,.45);
+            --white-80:  rgba(255,255,255,.8);
+            --white-50:  rgba(255,255,255,.5);
+            --white-20:  rgba(255,255,255,.2);
+            --white-08:  rgba(255,255,255,.08);
+            --white-04:  rgba(255,255,255,.04);
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-base);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        /* ═══ ANIMATED BACKGROUND ═══ */
+        .bg-wrap {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+        }
+        .bg-gradient {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 70% 55% at 50% -5%,  rgba(180,130,20,.45) 0%, transparent 65%),
+                radial-gradient(ellipse 40% 35% at 90% 85%,  rgba(220,38,38,.25)  0%, transparent 55%),
+                radial-gradient(ellipse 35% 30% at 5%  75%,  rgba(185,28,28,.2)   0%, transparent 55%),
+                radial-gradient(ellipse 30% 25% at 80% 10%,  rgba(240,192,64,.12) 0%, transparent 50%),
+                linear-gradient(160deg, #0a0800 0%, #120a00 35%, #080808 70%, #100500 100%);
+        }
+        .bg-grid {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(rgba(212,175,55,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212,175,55,.05) 1px, transparent 1px);
+            background-size: 56px 56px;
+        }
+        .bg-dots {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(212,175,55,.12) 1px, transparent 1px);
+            background-size: 28px 28px;
+            mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black, transparent);
+        }
+        .orb {
+            position: absolute; border-radius: 50%;
+            filter: blur(80px);
+            animation: floatOrb var(--dur,10s) ease-in-out infinite;
+            animation-delay: var(--delay,0s);
+        }
+        .orb-1 { width:600px;height:600px;background:rgba(180,130,20,.28);top:-180px;left:35%;--dur:11s; }
+        .orb-2 { width:380px;height:380px;background:rgba(220,38,38,.2);bottom:0;right:-80px;--dur:9s;--delay:-4s; }
+        .orb-3 { width:300px;height:300px;background:rgba(185,28,28,.18);bottom:25%;left:-50px;--dur:13s;--delay:-7s; }
+        .orb-4 { width:200px;height:200px;background:rgba(240,192,64,.1);top:30%;right:10%;--dur:8s;--delay:-2s; }
+        @keyframes floatOrb {
+            0%,100%{transform:translate(0,0) scale(1);}
+            33%{transform:translate(12px,-22px) scale(1.04);}
+            66%{transform:translate(-10px,12px) scale(.97);}
+        }
+        .scan {
+            position:absolute;left:0;right:0;height:1px;
+            background:linear-gradient(90deg,transparent 0%,rgba(212,175,55,.5) 40%,rgba(240,192,64,.7) 50%,rgba(212,175,55,.5) 60%,transparent 100%);
+            animation:scanAnim var(--dur,6s) ease-in-out infinite;
+            animation-delay:var(--delay,0s);opacity:0;
+        }
+        .scan-1{top:28%;--dur:7s;}
+        .scan-2{top:68%;--dur:9s;--delay:-4.5s;}
+        @keyframes scanAnim{
+            0%{opacity:0;transform:scaleX(0);}
+            15%{opacity:1;}85%{opacity:1;}
+            100%{opacity:0;transform:scaleX(1);}
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
+            background: rgba(255,255,255,.04);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 25px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header h1 {
+            background: linear-gradient(135deg, #ffd700 0%, #f0c040 50%, #ef4444 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            font-size: 28px; font-weight: 900;
+            filter: drop-shadow(0 0 18px rgba(212,175,55,.4));
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ef4444, #b91c1c);
+            color: white;
+            box-shadow: 0 4px 15px rgba(220,38,38,.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #15803d, #22c55e);
+            color: white;
+            box-shadow: 0 4px 15px rgba(34,197,94,.35);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,.1);
+            color: rgba(255,255,255,.8);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 15px rgba(0,0,0,.3);
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,.15);
+            border-color: var(--border-hi);
+        }
+
+        .sessions-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        .sessions-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .sessions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .session-card {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border-right: 4px solid #2196f3;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .session-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.3);
+        }
+
+        .session-card.completed {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-right-color: #4caf50;
+        }
+
+        .session-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .session-info {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .session-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .session-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .session-status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .attendance-container {
+            background: rgba(255,255,255,.04);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 25px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,.35);
+            margin-bottom: 25px;
+        }
+
+        .attendance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .attendance-header h2 {
+            color: #667eea;
+            font-size: 22px;
+        }
+
+        .students-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .student-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: rgba(255,255,255,.93);
+            border: 1px solid rgba(212,175,55,.3);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .student-item:hover {
+            background: #fff;
+            border-color: rgba(212,175,55,.6);
+            transform: translateX(-4px);
+            box-shadow: 0 6px 22px rgba(0,0,0,.2), 0 0 0 1px rgba(212,175,55,.2);
+        }
+
+        .student-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .student-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #b8860b 0%, #ffd700 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1a0f00;
+            font-size: 20px;
+            font-weight: bold;
+            border: 2px solid rgba(212,175,55,.4);
+            box-shadow: 0 0 14px rgba(212,175,55,.3);
+        }
+
+        .student-details h3 {
+            color: #111;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .student-details p {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .attendance-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .attendance-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .attendance-btn.present {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .attendance-btn.present.active {
+            background: #28a745;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .attendance-btn.absent {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .attendance-btn.absent.active {
+            background: #dc3545;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .summary-box {
+            background: rgba(255,255,255,.04);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .summary-item {
+            flex: 1;
+        }
+
+        .summary-item .number {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--gold);
+            margin-bottom: 5px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .summary-item.present .number {
+            color: #28a745;
+        }
+
+        .summary-item.absent .number {
+            color: #dc3545;
+        }
+
+        .summary-item .label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(14,10,0,.95);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            box-shadow: 0 24px 60px rgba(0,0,0,.7);
+            padding: 30px;
+            border-radius: 18px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .modal-header h2 {
+            color: #667eea;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .debug-info {
+            background: rgba(255,255,255,.05);
+            border: 1px solid var(--border);
+            color: rgba(255,255,255,.6);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        /* ── Barcode Scanner UI ── */
+        .bc-section {
+            background: rgba(212,175,55,.07);
+            border: 1px solid rgba(212,175,55,.3);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 18px;
+        }
+        .bc-section h3 { color: var(--gold); margin-bottom:10px; font-size:17px; font-weight:900; }
+        .bc-ready-bar {
+            display:flex; align-items:center; gap:12px;
+            background: rgba(34,197,94,.12);
+            border: 1px solid rgba(34,197,94,.3);
+            border-radius:10px; padding:12px 18px;
+            margin-bottom:14px; font-size:14px; font-weight:bold; color:#4ade80;
+        }
+        .bc-dot {
+            width:14px; height:14px; border-radius:50%; flex-shrink:0;
+            background:#22c55e; box-shadow:0 0 10px #22c55e;
+            animation:blink 1.5s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+        .bc-log {
+            background: rgba(0,0,0,.3);
+            border: 1px solid var(--border);
+            border-radius:10px; padding:10px;
+            max-height:220px; overflow-y:auto; margin-top:12px;
+        }
+        .bc-log-row {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:7px 10px; border-radius:6px; margin-bottom:5px;
+            font-size:13px; animation: fadeIn .4s;
+        }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+        .bc-log-row.present  { background:rgba(34,197,94,.12); color:#4ade80; border-right:4px solid #22c55e; }
+        .bc-log-row.notfound { background:rgba(240,192,64,.12); color:var(--gold); border-right:4px solid var(--gold-mid); }
+        .bc-log-row.already  { background:rgba(239,68,68,.1); color:#fca5a5; border-right:4px solid #ef4444; }
+        .badge-bc {
+            display:inline-flex; align-items:center; gap:4px;
+            background:rgba(212,175,55,.15); color:var(--gold);
+            border: 1px solid rgba(212,175,55,.3);
+            padding:2px 9px; border-radius:20px; font-size:11px; font-weight:bold;
+        }
+
+        /* ── WhatsApp Send Button ── */
+        .btn-whatsapp {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .btn-whatsapp:hover { box-shadow: 0 6px 20px rgba(37,211,102,0.6); }
+
+        .whatsapp-section {
+            background: rgba(37,211,102,.07);
+            border: 1px solid rgba(37,211,102,.3);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 18px;
+        }
+        .whatsapp-section h3 { color: #4ade80; margin-bottom: 4px; font-size: 17px; font-weight: 900; }
+        .wa-subtitle { color: rgba(255,255,255,.5); font-size: 13px; margin-bottom: 14px; }
+
+        .whatsapp-student-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            flex-wrap: wrap;
+        }
+        .whatsapp-student-row.present-row  { background:#d4edda; border-right:4px solid #28a745; }
+        .whatsapp-student-row.absent-row   { background:#f8d7da; border-right:4px solid #dc3545; }
+        .whatsapp-student-row.unmarked-row { background:#fff3cd; border-right:4px solid #ffc107; }
+
+        .wa-name { flex: 1; font-weight: bold; color: #333; min-width: 120px; }
+        .wa-status { font-size: 12px; padding: 2px 10px; border-radius: 20px; font-weight: bold; }
+        .wa-status.p { background:#28a745; color:white; }
+        .wa-status.a { background:#dc3545; color:white; }
+        .wa-status.u { background:#ffc107; color:#333; }
+
+        .wa-phone-input {
+            width: 135px;
+            padding: 6px 9px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            text-align: center;
+            direction: ltr;
+            background: rgba(255,255,255,.07);
+            color: #fff;
+        }
+        .wa-send-btn {
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 15px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .wa-send-btn:hover { background: #128C7E; transform: scale(1.05); }
+        .wa-send-btn:disabled { background: #aaa; transform: none; cursor: default; }
+        .session-fp-badge {
+            display:inline-block;
+            background:rgba(34,197,94,.15); color:#4ade80;
+            border: 1px solid rgba(34,197,94,.3);
+            padding:2px 9px; border-radius:20px; font-size:11px; font-weight:bold;
+            margin-top:5px;
+        }
+
+        /* ── Session Log Table ── */
+        #sessionLogTable tbody tr {
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+        #sessionLogTable tbody tr:hover { background: rgba(212,175,55,.08); }
+        #sessionLogTable tbody tr:nth-child(even) { background: rgba(255,255,255,.03); }
+        #sessionLogTable tbody tr:nth-child(even):hover { background: rgba(212,175,55,.08); }
+        #sessionLogTable { color: rgba(255,255,255,.85); }
+        .log-stat-card {
+            background: rgba(255,255,255,.05);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,.3);
+            border-top: 3px solid var(--gold-mid);
+        }
+        .log-stat-card .stat-num {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--gold);
+            font-family: 'Space Mono', monospace;
+        }
+        .log-stat-card .stat-label {
+            font-size: 12px;
+            color: rgba(255,255,255,.5);
+            margin-top: 4px;
+        }
+        .attendance-rate-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e0e0;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        .attendance-rate-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #ef4444, #ffd700, #22c55e);
+            transition: width 0.5s ease;
+        }
+        .log-detail-student {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .firebase-status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .firebase-status-bar.connected  { background:rgba(34,197,94,.1); color:#4ade80; border:1px solid rgba(34,197,94,.35); }
+        .firebase-status-bar.connecting { background:rgba(212,175,55,.1); color:var(--gold); border:1px solid rgba(212,175,55,.35); }
+        .firebase-status-bar.warning    { background:rgba(212,175,55,.1); color:var(--gold); border:1px solid rgba(212,175,55,.35); }
+        .firebase-status-bar.error      { background:rgba(239,68,68,.1); color:#fca5a5; border:1px solid rgba(239,68,68,.35); }
+        .firebase-dot {
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+        }
+        .firebase-status-bar.connected .firebase-dot { background: #28a745; box-shadow: 0 0 8px #28a745; animation: blink 1.5s infinite; }
+        .firebase-status-bar.connecting .firebase-dot { background: #ffc107; animation: blink 0.6s infinite; }
+        .firebase-status-bar.warning .firebase-dot { background: #ffc107; }
+        .firebase-status-bar.error .firebase-dot { background: #dc3545; }
+
+    </style>
+</head>
+<body>
+
+<div class="bg-wrap">
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-dots"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+    <div class="scan scan-1"></div>
+    <div class="scan scan-2"></div>
+</div>
+
+    <div class="container" id="mainApp">
+        <div class="header">
+            <div>
+                <h1>✅ الحضور والغياب</h1>
+                <p style="color: rgba(255,255,255,.5); margin-top: 5px;">تسجيل حضور وغياب الطلاب</p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn" onclick="showSessionLog()" style="background:linear-gradient(135deg,#065f46,#22c55e);color:white;">📋 سجل الحصص</button>
+                <button class="btn" onclick="showReports()">📊 التقارير</button>
+                <a href="index.html" class="btn btn-warning">🏠 الرئيسية</a>
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <!-- Firebase Status Bar -->
+        <div id="firebaseStatusBar" class="firebase-status-bar connecting">
+            <span id="firebaseDot" class="firebase-dot"></span>
+            <span id="firebaseMsg">🔌 جاري الاتصال...</span>
+        </div>
+        <div class="sessions-container" id="sessionsContainer">
+            <h2>📚 الحصص المتاحة</h2>
+            <div class="sessions-grid" id="sessionsGrid"></div>
+        </div>
+
+        <!-- Session Log Section -->
+        <div class="attendance-container" id="sessionLogContainer" style="display: none;">
+            <div class="attendance-header">
+                <h2>📋 سجل الحصص اليومية</h2>
+                <button class="btn btn-secondary" onclick="backToSessions()">← رجوع</button>
+            </div>
+
+            <!-- Filters -->
+            <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(212,175,55,.15); border-radius: 14px; padding: 20px; margin-bottom: 25px;">
+                <h3 style="color: var(--gold,#ffd700); margin-bottom: 15px; font-size: 16px; font-weight: 900;">🔍 البحث والفلترة</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end;">
+                    <div>
+                        <label style="display:block; margin-bottom:6px; font-weight:bold; color:rgba(255,255,255,.6); font-size:13px;">📅 من تاريخ</label>
+                        <input type="date" id="logDateFrom" style="background:rgba(255,255,255,.06);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:8px;padding:10px;font-size:14px;width:100%;" onchange="renderSessionLog()" style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom:6px; font-weight:bold; color:rgba(255,255,255,.6); font-size:13px;">📅 إلى تاريخ</label>
+                        <input type="date" id="logDateTo" style="background:rgba(255,255,255,.06);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:8px;padding:10px;font-size:14px;width:100%;" onchange="renderSessionLog()" style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom:6px; font-weight:bold; color:rgba(255,255,255,.6); font-size:13px;">📚 المادة</label>
+                        <select id="logSubjectFilter" style="background:rgba(255,255,255,.06);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:8px;padding:10px;font-size:14px;width:100%;" onchange="renderSessionLog()" style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;">
+                            <option value="">جميع المواد</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom:6px; font-weight:bold; color:rgba(255,255,255,.6); font-size:13px;">📅 اليوم</label>
+                        <select id="logDayFilter" style="background:rgba(255,255,255,.06);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:8px;padding:10px;font-size:14px;width:100%;" onchange="renderSessionLog()" style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;">
+                            <option value="">جميع الأيام</option>
+                            <option value="السبت">السبت</option>
+                            <option value="الأحد">الأحد</option>
+                            <option value="الاثنين">الاثنين</option>
+                            <option value="الثلاثاء">الثلاثاء</option>
+                            <option value="الأربعاء">الأربعاء</option>
+                            <option value="الخميس">الخميس</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:end;">
+                        <button class="btn btn-secondary" onclick="clearLogFilters()" style="flex:1; padding:10px;">🔄 مسح الفلاتر</button>
+                        <button class="btn" onclick="exportLogToCSV()" style="flex:1; padding:10px; background: linear-gradient(135deg,#11998e,#38ef7d);">📥 تصدير CSV</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Summary -->
+            <div id="logStats" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:15px; margin-bottom:25px;"></div>
+
+            <!-- Log Table -->
+            <div style="overflow-x:auto; border-radius:14px; box-shadow: 0 4px 24px rgba(0,0,0,.4); border:1px solid rgba(212,175,55,.15);">
+                <table id="sessionLogTable" style="width:100%; border-collapse:collapse; font-size:14px; background:transparent;">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg,#3d2a00 0%,#b8860b 50%,#3d2a00 100%); color:#fff7b0;">
+                            <th style="padding:14px 16px; text-align:right; font-weight:600;">📅 التاريخ</th>
+                            <th style="padding:14px 16px; text-align:right; font-weight:600;">📚 الحصة</th>
+                            <th style="padding:14px 16px; text-align:right; font-weight:600;">🏫 الفصل</th>
+                            <th style="padding:14px 16px; text-align:right; font-weight:600;">👨‍🏫 المدرس</th>
+                            <th style="padding:14px 16px; text-align:right; font-weight:600;">🕐 الوقت</th>
+                            <th style="padding:14px 16px; text-align:center; font-weight:600;">✅ حاضر</th>
+                            <th style="padding:14px 16px; text-align:center; font-weight:600;">❌ غائب</th>
+                            <th style="padding:14px 16px; text-align:center; font-weight:600;">👥 الإجمالي</th>
+                            <th style="padding:14px 16px; text-align:center; font-weight:600;">نسبة الحضور</th>
+                            <th style="padding:14px 16px; text-align:center; font-weight:600;">التفاصيل</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessionLogBody">
+                        <tr><td colspan="10" style="padding:40px;text-align:center;color:rgba(255,255,255,.4);">لا توجد سجلات بعد</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Session Log Details Modal -->
+        <div class="modal" id="sessionLogDetailModal">
+            <div class="modal-content" style="max-width:700px; max-height:85vh; overflow-y:auto;">
+                <div class="modal-header">
+                    <h2 id="logDetailTitle" style="font-size:18px;">تفاصيل الحصة</h2>
+                    <button class="close-btn" onclick="closeModal('sessionLogDetailModal')">&times;</button>
+                </div>
+                <div id="logDetailContent"></div>
+            </div>
+        </div>
+
+        <!-- Reports Section -->
+        <div class="attendance-container" id="reportsContainer" style="display: none;">
+            <div class="attendance-header">
+                <h2>📊 تقارير الحضور والغياب</h2>
+                <button class="btn btn-secondary" onclick="backToSessions()">← رجوع</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 600px; margin-bottom: 25px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>اختر التاريخ</label>
+                    <input type="date" id="dateFilter" style="background:rgba(255,255,255,.06);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:8px;" onchange="filterReportsByDate()" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>اختر اليوم</label>
+                    <select id="dayFilter" style="background:rgba(255,255,255,.06);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:8px;padding:10px;font-size:14px;width:100%;" onchange="filterReportsByDay()" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <option value="">جميع الأيام</option>
+                        <option value="0">السبت</option>
+                        <option value="1">الأحد</option>
+                        <option value="2">الاثنين</option>
+                        <option value="3">الثلاثاء</option>
+                        <option value="4">الأربعاء</option>
+                        <option value="5">الخميس</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="clearFilters()" style="margin-bottom: 25px;">🔄 إعادة تعيين الفلاتر</button>
+
+            <!-- Debug Info -->
+            <div id="debugInfo" class="debug-info" style="display: none;"></div>
+
+            <div class="sessions-grid" id="reportsGrid"></div>
+        </div>
+
+        <!-- Report Details Section -->
+        <div class="attendance-container" id="reportDetailsContainer" style="display: none;">
+            <div class="attendance-header">
+                <h2 id="reportTitle"></h2>
+                <button class="btn btn-secondary" onclick="backToReports()">← رجوع للتقارير</button>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-item">
+                    <div class="number" id="reportTotalCount">0</div>
+                    <div class="label">إجمالي الطلاب</div>
+                </div>
+                <div class="summary-item present">
+                    <div class="number" id="reportPresentCount">0</div>
+                    <div class="label">حاضر</div>
+                </div>
+                <div class="summary-item absent">
+                    <div class="number" id="reportAbsentCount">0</div>
+                    <div class="label">غائب</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <h3 style="color: #4ade80; margin-bottom: 15px; font-size: 18px;">✅ الطلاب الحاضرون</h3>
+                <div id="presentStudentsList" style="display: grid; gap: 10px;"></div>
+            </div>
+
+            <div>
+                <h3 style="color: #f87171; margin-bottom: 15px; font-size: 18px;">❌ الطلاب الغائبون</h3>
+                <div id="absentStudentsList" style="display: grid; gap: 10px;"></div>
+            </div>
+        </div>
+
+        <!-- Attendance Section -->
+        <div class="attendance-container" id="attendanceContainer" style="display: none;">
+            <div class="attendance-header">
+                <h2 id="sessionTitle"></h2>
+                <button class="btn btn-secondary" onclick="backToSessions()">← رجوع</button>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-item">
+                    <div class="number" id="totalCount">0</div>
+                    <div class="label">إجمالي الطلاب</div>
+                </div>
+                <div class="summary-item present">
+                    <div class="number" id="presentCount">0</div>
+                    <div class="label">حاضر</div>
+                </div>
+                <div class="summary-item absent">
+                    <div class="number" id="absentCount">0</div>
+                    <div class="label">غائب</div>
+                </div>
+            </div>
+
+            <!-- Barcode Scanner Section -->
+            <input type="text" id="barcodeInput" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;" autocomplete="off" />
+            <div class="bc-section">
+                <h3>🔖 تسجيل الحضور بالباركود — مباشر</h3>
+                <div class="bc-ready-bar">
+                    <div class="bc-dot"></div>
+                    <span>✅ جاهز — مرر كارت الطالب على القارئ لتسجيل حضوره</span>
+                </div>
+                <p style="color:rgba(255,255,255,.5);font-size:13px;margin-bottom:12px;">
+                    القارئ يعمل مباشرة بدون أي إعداد — فقط وصّله بـ USB وابدأ.
+                </p>
+                <div style="margin-bottom:12px;">
+                    <button class="btn" style="font-size:13px;padding:8px 16px;background:linear-gradient(135deg,#065f46,#22c55e);color:white;" onclick="showCodeMapModal()">🪪 إدارة باركود الطلاب</button>
+                    <span id="mappingCount" style="margin-right:10px;color:#444;font-size:13px;font-weight:bold;"></span>
+                </div>
+                <div style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:6px;">📋 آخر الكروت المسجلة:</div>
+                <div class="bc-log" id="bcLog">
+                    <p style="color:rgba(255,255,255,.4);text-align:center;padding:10px;">في انتظار قراءة الباركود...</p>
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+                <button class="btn" onclick="showAddStudentModal()">➕ إضافة طالب للحصة</button>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn btn-whatsapp" onclick="showWhatsappSection()">📱 إرسال لولي الأمر</button>
+                    <button class="btn btn-success" onclick="saveAttendance()">💾 حفظ الحضور</button>
+                    <button class="btn" style="background:linear-gradient(135deg,#b91c1c,#ef4444);color:white;box-shadow:0 4px 15px rgba(239,68,68,0.45);" onclick="endSession()">🏁 انتهاء الحصة</button>
+                </div>
+            </div>
+
+            <!-- WhatsApp Section -->
+            <div class="whatsapp-section" id="whatsappSection" style="display:none;">
+                <h3>📱 إرسال إشعار لأولياء الأمور عبر واتساب</h3>
+                <p class="wa-subtitle">أدخل رقم ولي الأمر لكل طالب ثم اضغط إرسال — سيفتح واتساب بالرسالة تلقائياً</p>
+                <div id="whatsappStudentsList"></div>
+            </div>
+
+            <div class="students-list" id="studentsList"></div>
+        </div>
+    </div>
+
+    <!-- Code Mapping Modal -->
+    <div class="modal" id="codeMapModal">
+        <div class="modal-content" style="max-width:580px;">
+            <div class="modal-header">
+                <h2>🪪 باركود كروت الطلاب</h2>
+                <button class="close-btn" onclick="closeModal('codeMapModal')">&times;</button>
+            </div>
+            <p style="color:rgba(255,255,255,.5);font-size:13px;margin-bottom:15px;">كل طالب له باركود على كارته. اربط رقم الباركود باسم الطالب هنا.</p>
+            <div id="codeMapList" style="max-height:300px;overflow-y:auto;margin-bottom:15px;"></div>
+            <div style="background:rgba(255,255,255,.05);border:1px solid rgba(212,175,55,.15);border-radius:10px;padding:15px;">
+                <div style="font-weight:bold;margin-bottom:10px;color:#ffd700;">➕ إضافة / تعديل</div>
+                <div style="display:grid;grid-template-columns:1fr 2fr auto;gap:10px;align-items:end;">
+                    <div>
+                        <label style="font-size:12px;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">كود الجهاز</label>
+                        <input type="text" id="codeInput" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:6px;padding:9px;width:100%;" placeholder="مثال: 100234" style="width:100%;padding:9px;border:2px solid #e0e0e0;border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="font-size:12px;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">اسم الطالب</label>
+                        <input type="text" id="codeNameInput" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:6px;padding:9px;width:100%;" placeholder="اسم الطالب كما في القائمة" style="width:100%;padding:9px;border:2px solid #e0e0e0;border-radius:6px;">
+                    </div>
+                    <button class="btn btn-success" style="padding:9px 16px;" onclick="addCodeMapping()">حفظ</button>
+                </div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-secondary" style="font-size:13px;" onclick="importCodesFromStudents()">📥 استيراد أسماء الطلاب الحاليين</button>
+                <button class="btn" style="font-size:13px;background:#dc3545;" onclick="clearAllMappings()">🗑️ حذف الكل</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div class="modal" id="addStudentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ إضافة طالب للحصة</h2>
+                <button class="close-btn" onclick="closeModal('addStudentModal')">&times;</button>
+            </div>
+            <form onsubmit="addStudentToSession(event)">
+                <div class="form-group">
+                    <label>اسم الطالب</label>
+                    <input type="text" id="studentName" placeholder="أدخل اسم الطالب" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;font-family:Cairo,sans-serif;" required>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn" style="flex: 1;">✔ إضافة</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeModal('addStudentModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Student Modal -->
+    <div class="modal" id="editStudentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ تعديل اسم الطالب</h2>
+                <button class="close-btn" onclick="closeModal('editStudentModal')">&times;</button>
+            </div>
+            <form onsubmit="saveEditStudent(event)">
+                <input type="hidden" id="editStudentId">
+                <div class="form-group">
+                    <label>الاسم الجديد</label>
+                    <input type="text" id="editStudentName"
+                           placeholder="أدخل الاسم الجديد"
+                           style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;font-family:'Cairo',sans-serif;"
+                           required>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:20px;">
+                    <button type="submit" class="btn" style="flex:1;">💾 حفظ التعديل</button>
+                    <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('editStudentModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    </div><!-- /#mainApp -->
+
+    <!-- ══ Auth + Firestore + Main App ═══════════════════════ -->
+    <script>
+        let currentUser = { uid: 'default_user' };
+        let _appReady   = false;
+
+        function setFirebaseStatus(state, msg) {
+            const bar = document.getElementById('firebaseStatusBar');
+            const dot = document.getElementById('firebaseDot');
+            const txt = document.getElementById('firebaseMsg');
+            if (!bar) return;
+            bar.className = 'firebase-status-bar ' + state;
+            txt.textContent = msg;
+        }
+
+        // ── Firestore helpers ──
+        function userCol(colName) {
+            return db.collection('attendance_data').doc('default_user').collection(colName);
+        }
+
+        // ── Mapping helpers ──
+        async function loadMappings() {
+            const snap = await userCol('zkCodeMap').get();
+            const map = {};
+            snap.forEach(doc => { map[doc.id] = doc.data().name; });
+            return map;
+        }
+
+        async function saveMappings(map) {
+            const batch = db.batch();
+            const existing = await userCol('zkCodeMap').get();
+            existing.forEach(doc => batch.delete(doc.ref));
+            Object.entries(map).forEach(([code, name]) => {
+                batch.set(userCol('zkCodeMap').doc(String(code)), { name });
+            });
+            await batch.commit();
+            updateMappingCount();
+        }
+
+        // حفظ أرقام أولياء الأمور (Firestore)
+        async function loadParentPhones() {
+            const snap = await userCol('parentPhones').get();
+            const phones = {};
+            snap.forEach(doc => { phones[doc.id] = doc.data().phone; });
+            return phones;
+        }
+        async function saveParentPhones(phones) {
+            const batch = db.batch();
+            const existing = await userCol('parentPhones').get();
+            existing.forEach(doc => batch.delete(doc.ref));
+            Object.entries(phones).forEach(([id, phone]) => {
+                batch.set(userCol('parentPhones').doc(String(id)), { phone });
+            });
+            await batch.commit();
+        }
+        function getSubjectName(key) {
+            const subjects = {
+                math: 'رياضيات',
+                arabic: 'لغة عربية',
+                english: 'لغة إنجليزية',
+                science: 'علوم',
+                social: 'دراسات اجتماعية',
+                religion: 'تربية دينية',
+                computer: 'حاسب آلي'
+            };
+            return subjects[key] || key;
+        }
+
+        function getClassName(key, customClasses) {
+            // Check custom classes from schedule first
+            if (customClasses && Array.isArray(customClasses)) {
+                const found = customClasses.find(c => c.id == key || c.name == key);
+                if (found) return found.name;
+            }
+            const classes = {
+                grade1: 'الأول الابتدائي', grade2: 'الثاني الابتدائي',
+                grade3: 'الثالث الابتدائي', grade4: 'الرابع الابتدائي',
+                grade5: 'الخامس الابتدائي', grade6: 'السادس الابتدائي',
+                grade7: 'الأول الإعدادي',  grade8: 'الثاني الإعدادي',
+                grade9: 'الثالث الإعدادي'
+            };
+            return classes[key] || key;
+        }
+
+        function getTeacherName(key) {
+            const teachers = {
+                t1: 'أ . رامي ابو نور'
+            };
+            return teachers[key] || key;
+        }
+
+        function getDayName(dayIndex) {
+            const days = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+            return days[dayIndex] || '';
+        }
+
+        function getRoomName(key) {
+            return key.toUpperCase();
+        }
+
+        function formatTime(time) {
+            const [hours, minutes] = time.split(':');
+            const hour = parseInt(hours);
+            let period = 'صباحاً';
+            if (hour >= 12 && hour < 17) period = 'ظهراً';
+            else if (hour >= 17) period = 'مساءً';
+            const displayHour = hour > 12 ? hour - 12 : hour;
+            return `${displayHour}:${minutes} ${period}`;
+        }
+
+        function getAttendanceDataForSession(sessionId) {
+            // Reads from in-memory fbAttMap (populated in _startApp)
+            return window._fbAttMap ? window._fbAttMap[sessionId] : null;
+        }
+
+        let sessions = [];
+        let currentSessionId = null;
+        let nextStudentId = 1;
+
+        // ── Async initializer ──
+        async function _startApp() {
+            setFirebaseStatus('connecting', '🔌 جاري الاتصال بـ Firebase...');
+
+            // Load attendance data from Firestore into memory
+            try {
+                const attSnap = await userCol('attendanceSessions').get();
+                window._fbAttMap = {};
+                attSnap.forEach(doc => { window._fbAttMap[doc.id] = doc.data(); });
+                console.log(`✅ تم تحميل ${attSnap.size} سجل حضور`);
+            } catch(e) {
+                console.error('❌ خطأ في تحميل سجلات الحضور:', e);
+                setFirebaseStatus('error', '❌ خطأ في الصلاحيات — راجع Firebase Rules');
+            }
+
+            // Load sessions from Firestore schedule
+            await loadSessionsFromFirestore();
+
+            sessions.forEach(session => {
+                session.students.forEach(student => {
+                    if (student.id >= nextStudentId) nextStudentId = student.id + 1;
+                });
+            });
+            renderSessions();
+            updateMappingCount();
+
+            // Listen for real-time schedule changes
+            db.collection('schedule').doc('data').onSnapshot(snap => {
+                if (snap.exists) {
+                    console.log('🔄 تحديث الجدول من Firebase، عدد الحصص:', (snap.data().sessions || []).length);
+                    buildSessionsFromSchedule(snap.data());
+                    if (!currentSessionId) renderSessions();
+                    setFirebaseStatus('connected', `🔥 Firebase متصل — ${sessions.length} حصة محملة`);
+                } else {
+                    console.warn('⚠️ لا يوجد بيانات جدول في Firebase — أضف حصص من صفحة الجدول');
+                    setFirebaseStatus('warning', '⚠️ لا توجد حصص في Firebase — اذهب لصفحة جدول الحصص');
+                }
+            }, err => {
+                console.error('❌ Firebase listener error:', err);
+                setFirebaseStatus('error', '❌ خطأ في الاتصال: ' + err.message);
+            });
+        }
+
+        // Build sessions array from Firestore schedule data
+        function buildSessionsFromSchedule(data) {
+            const scheduleSessions = data.sessions || [];
+            sessions = scheduleSessions.map(session => {
+                const existingData = window._fbAttMap ? window._fbAttMap[session.id] : null;
+                return {
+                    id: session.id,
+                    subject: getSubjectName(session.subject),
+                    class: getClassName(session.class, data.classes),
+                    teacher: getTeacherName(session.teacher),
+                    day: getDayName(session.day),
+                    dayIndex: session.day,
+                    time: `${formatTime(session.startTime)} - ${formatTime(session.endTime)}`,
+                    room: getRoomName(session.room),
+                    students: existingData ? existingData.students : [],
+                    completed: existingData ? existingData.completed : false
+                };
+            });
+        }
+
+        async function loadSessionsFromFirestore() {
+            try {
+                setFirebaseStatus('connecting', '📡 جاري تحميل جدول الحصص...');
+                const snap = await db.collection('schedule').doc('data').get();
+                if (snap.exists) {
+                    const data = snap.data();
+                    const count = (data.sessions || []).length;
+                    console.log(`✅ جدول الحصص محمّل: ${count} حصة`);
+                    buildSessionsFromSchedule(data);
+                    setFirebaseStatus('connected', `🔥 Firebase متصل — ${count} حصة محملة`);
+                } else {
+                    console.warn('⚠️ لا يوجد document في schedule/data');
+                    sessions = [];
+                    setFirebaseStatus('warning', '⚠️ لا توجد حصص — اذهب لصفحة جدول الحصص وأضف حصصاً');
+                }
+            } catch(e) {
+                console.error('❌ خطأ في تحميل الجدول:', e);
+                sessions = [];
+                setFirebaseStatus('error', '❌ خطأ: ' + e.message + ' — تأكد من Firebase Rules');
+            }
+        }
+
+        function showAlert(message, type = 'success') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            const container = document.getElementById('alertContainer');
+            container.innerHTML = '';
+            container.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+
+        function renderSessions() {
+            const grid = document.getElementById('sessionsGrid');
+            grid.innerHTML = '';
+
+            if (sessions.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #666;">
+                        <p style="font-size: 18px; margin-bottom: 10px;">📅 لا توجد حصص متاحة</p>
+                        <p>يرجى إضافة حصص من صفحة جدول الحصص أولاً</p>
+                        <a href="schedule_management.html" class="btn" style="margin-top: 20px; display: inline-block;">
+                            ➕ إضافة حصص
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+
+            sessions.forEach(session => {
+                const card = document.createElement('div');
+                card.className = `session-card ${session.completed ? 'completed' : ''}`;
+                card.onclick = () => openAttendance(session.id);
+                
+                card.innerHTML = `
+                    <div class="session-header">${session.subject}</div>
+                    <div class="session-info">📚 ${session.class}</div>
+                    <div class="session-info">👨‍🏫 ${session.teacher}</div>
+                    <div class="session-info">📅 ${session.day} • ${session.time}</div>
+                    <div class="session-info">🏫 قاعة ${session.room}</div>
+                    <div class="session-info">👥 ${session.students.length} طالب</div>
+                    <span class="session-status ${session.completed ? 'completed' : 'pending'}">
+                        ${session.completed ? '✔ تم التسجيل' : '⏳ قيد الانتظار'}
+                    </span>
+                    <br><span class="session-fp-badge">🔖 يدعم الباركود</span>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        function openAttendance(sessionId) {
+            currentSessionId = sessionId;
+            const session = sessions.find(s => s.id === sessionId);
+            
+            if (!session) {
+                showAlert('لم يتم العثور على الحصة!', 'danger');
+                return;
+            }
+            
+            document.getElementById('sessionsContainer').style.display = 'none';
+            document.getElementById('reportsContainer').style.display = 'none';
+            document.getElementById('attendanceContainer').style.display = 'block';
+            document.getElementById('sessionTitle').textContent = 
+                `${session.subject} - ${session.class}`;
+            
+            renderStudents();
+            updateSummary();
+        }
+
+        function backToSessions() {
+            document.getElementById('sessionsContainer').style.display = 'block';
+            document.getElementById('attendanceContainer').style.display = 'none';
+            document.getElementById('reportsContainer').style.display = 'none';
+            document.getElementById('reportDetailsContainer').style.display = 'none';
+            currentSessionId = null;
+            renderSessions();
+        }
+
+        function showReports() {
+            document.getElementById('sessionsContainer').style.display = 'none';
+            document.getElementById('reportsContainer').style.display = 'block';
+            document.getElementById('dayFilter').value = '';
+            document.getElementById('dateFilter').value = '';
+            renderReports();
+        }
+
+        function clearFilters() {
+            document.getElementById('dayFilter').value = '';
+            document.getElementById('dateFilter').value = '';
+            renderReports();
+        }
+
+        function filterReportsByDay() {
+            // Clear date filter when using day filter
+            document.getElementById('dateFilter').value = '';
+            renderReports();
+        }
+
+        function filterReportsByDate() {
+            // Clear day filter when using date filter
+            document.getElementById('dayFilter').value = '';
+            renderReports();
+        }
+
+        async function renderReports() {
+            const grid = document.getElementById('reportsGrid');
+            const dayFilter = document.getElementById('dayFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+            const debugInfo = document.getElementById('debugInfo');
+
+            grid.innerHTML = '<p style="text-align:center;color:#888;padding:20px;">⏳ جاري التحميل...</p>';
+
+            const snap = await userCol('attendanceHistory').get();
+            const attendanceHistory = [];
+            snap.forEach(doc => attendanceHistory.push(doc.data()));
+
+            let filteredRecords = [];
+            let debugText = `<strong>معلومات التصحيح:</strong><br>`;
+
+            if (dateFilter !== '') {
+                const selectedDate = new Date(dateFilter);
+                const selectedDayIndex = selectedDate.getDay();
+                const ourDayIndex = selectedDayIndex === 0 ? 1 : selectedDayIndex === 6 ? 0 : selectedDayIndex + 1;
+                debugText += `التاريخ المختار: ${dateFilter}<br>اليوم المقابل: ${getDayName(ourDayIndex)}<br>`;
+                const scheduleSessions = JSON.parse(localStorage.getItem('scheduleSessions') || '[]');
+                const sessionsOnThisDay = scheduleSessions.filter(s => s.day === ourDayIndex);
+                debugText += `عدد الحصص المجدولة: ${sessionsOnThisDay.length}<br>عدد السجلات: ${attendanceHistory.length}<br>`;
+                sessionsOnThisDay.forEach(session => {
+                    const attendanceRecord = attendanceHistory.find(r => r.id === session.id && r.saveDate === dateFilter);
+                    if (attendanceRecord) {
+                        filteredRecords.push(attendanceRecord);
+                    } else {
+                        filteredRecords.push({
+                            id: session.id, subject: getSubjectName(session.subject),
+                            class: getClassName(session.class), teacher: getTeacherName(session.teacher),
+                            day: getDayName(session.day), dayIndex: session.day,
+                            time: `${formatTime(session.startTime)} - ${formatTime(session.endTime)}`,
+                            room: getRoomName(session.room), students: [], saveDate: dateFilter,
+                            saveTime: '--:--:--', recordId: `virtual_${session.id}_${dateFilter}`,
+                            completed: false, isVirtual: true
+                        });
+                    }
+                });
+            } else if (dayFilter !== '') {
+                debugText += `فلتر اليوم: ${getDayName(parseInt(dayFilter))}<br>`;
+                filteredRecords = attendanceHistory.filter(r => r.dayIndex !== undefined && r.dayIndex.toString() === dayFilter);
+            } else {
+                filteredRecords = attendanceHistory;
+                debugText += `عرض جميع السجلات — الإجمالي: ${attendanceHistory.length}<br>`;
+            }
+
+            grid.innerHTML = '';
+            debugInfo.innerHTML = debugText;
+            debugInfo.style.display = 'block';
+
+            if (filteredRecords.length === 0) {
+                grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:#666;"><p style="font-size:18px;margin-bottom:10px;">📋 لا توجد سجلات حضور</p><p>لم يتم تسجيل أي حضور</p></div>`;
+                return;
+            }
+
+            filteredRecords.sort((a, b) => new Date(b.saveDate + ' ' + b.saveTime) - new Date(a.saveDate + ' ' + a.saveTime));
+
+            filteredRecords.forEach(record => {
+                const presentCount = record.students.filter(s => s.status === 'present').length;
+                const absentCount  = record.students.filter(s => s.status === 'absent').length;
+                const totalCount   = record.students.length;
+                const dateParts    = record.saveDate.split('-');
+                const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                let formattedTime = '--:--';
+                if (record.saveTime && record.saveTime !== '--:--:--') {
+                    const tp = record.saveTime.split(':');
+                    const h = parseInt(tp[0]);
+                    const p = h >= 17 ? 'مساءً' : h >= 12 ? 'ظهراً' : 'صباحاً';
+                    formattedTime = `${h > 12 ? h - 12 : h}:${tp[1]} ${p}`;
+                }
+                const card = document.createElement('div');
+                card.className = record.isVirtual ? 'session-card' : 'session-card completed';
+                card.onclick = () => record.isVirtual ? openAttendance(record.id) : showReportDetails(record.recordId);
+                card.innerHTML = `
+                    <div class="session-header">${record.subject}</div>
+                    <div class="session-info">📚 ${record.class}</div>
+                    <div class="session-info">👨‍🏫 ${record.teacher}</div>
+                    <div class="session-info">📅 ${record.day} • ${record.time}</div>
+                    <div class="session-info">🏫 قاعة ${record.room}</div>
+                    <div class="session-info" style="color:#667eea;font-weight:bold;">📆 ${formattedDate}</div>
+                    ${!record.isVirtual ? `<div class="session-info" style="color:#667eea;font-weight:bold;">🕐 ${formattedTime}</div>` : ''}
+                    <div style="margin-top:15px;padding-top:15px;border-top:2px solid rgba(255,255,255,0.3);">
+                        ${record.isVirtual ?
+                            `<div class="session-info" style="color:#ff9800;font-weight:bold;">⏳ لم يتم تسجيل الحضور بعد</div>` :
+                            `<div class="session-info" style="color:#28a745;font-weight:bold;">✅ حاضر: ${presentCount}</div>
+                             <div class="session-info" style="color:#dc3545;font-weight:bold;">❌ غائب: ${absentCount}</div>
+                             <div class="session-info" style="color:#333;font-weight:bold;">👥 الإجمالي: ${totalCount}</div>`}
+                    </div>`;
+                grid.appendChild(card);
+            });
+        }
+
+        async function showReportDetails(recordId) {
+            const snap = await userCol('attendanceHistory').doc(recordId).get();
+            const record = snap.exists ? snap.data() : null;
+            
+            if (!record) return;
+            
+            document.getElementById('reportsContainer').style.display = 'none';
+            document.getElementById('reportDetailsContainer').style.display = 'block';
+            
+            // Format date
+            const dateParts = record.saveDate.split('-');
+            const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            
+            document.getElementById('reportTitle').textContent = 
+                `تقرير: ${record.subject} - ${record.class} (${formattedDate})`;
+            
+            const presentStudents = record.students.filter(s => s.status === 'present');
+            const absentStudents = record.students.filter(s => s.status === 'absent');
+            
+            document.getElementById('reportTotalCount').textContent = record.students.length;
+            document.getElementById('reportPresentCount').textContent = presentStudents.length;
+            document.getElementById('reportAbsentCount').textContent = absentStudents.length;
+            
+            // Render present students
+            const presentList = document.getElementById('presentStudentsList');
+            presentList.innerHTML = '';
+            if (presentStudents.length === 0) {
+                presentList.innerHTML = '<p style="color: #999; padding: 15px; background: #f8f9fa; border-radius: 8px;">لا يوجد طلاب حاضرون</p>';
+            } else {
+                presentStudents.forEach(student => {
+                    const item = document.createElement('div');
+                    item.className = 'student-item';
+                    item.style.background = '#d4edda';
+                    item.style.border = '2px solid #c3e6cb';
+                    
+                    const initials = student.name.split(' ').map(n => n[0]).join('');
+                    
+                    item.innerHTML = `
+                        <div class="student-info">
+                            <div class="student-avatar" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">${initials}</div>
+                            <div class="student-details">
+                                <h3>${student.name}</h3>
+                                <p style="color: #155724;">حاضر ✔</p>
+                            </div>
+                        </div>
+                    `;
+                    presentList.appendChild(item);
+                });
+            }
+            
+            // Render absent students
+            const absentList = document.getElementById('absentStudentsList');
+            absentList.innerHTML = '';
+            if (absentStudents.length === 0) {
+                absentList.innerHTML = '<p style="color: #999; padding: 15px; background: #f8f9fa; border-radius: 8px;">لا يوجد طلاب غائبون</p>';
+            } else {
+                absentStudents.forEach(student => {
+                    const item = document.createElement('div');
+                    item.className = 'student-item';
+                    item.style.background = '#f8d7da';
+                    item.style.border = '2px solid #f5c6cb';
+                    
+                    const initials = student.name.split(' ').map(n => n[0]).join('');
+                    
+                    item.innerHTML = `
+                        <div class="student-info">
+                            <div class="student-avatar" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">${initials}</div>
+                            <div class="student-details">
+                                <h3>${student.name}</h3>
+                                <p style="color: #721c24;">غائب ✗</p>
+                            </div>
+                        </div>
+                    `;
+                    absentList.appendChild(item);
+                });
+            }
+        }
+
+        function backToReports() {
+            document.getElementById('reportDetailsContainer').style.display = 'none';
+            document.getElementById('reportsContainer').style.display = 'block';
+        }
+
+        function renderStudents() {
+            const session = sessions.find(s => s.id === currentSessionId);
+            const list = document.getElementById('studentsList');
+            list.innerHTML = '';
+
+            session.students.forEach((student, idx) => {
+                const item = document.createElement('div');
+                item.className = 'student-item';
+
+                const initials = student.name.trim().split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+
+                // color per status
+                let avatarBg = 'linear-gradient(135deg,#b8860b,#ffd700)';
+                let avatarColor = '#1a0f00';
+                if (student.status === 'present') { avatarBg='linear-gradient(135deg,#15803d,#22c55e)'; avatarColor='#fff'; }
+                if (student.status === 'absent')  { avatarBg='linear-gradient(135deg,#b91c1c,#ef4444)'; avatarColor='#fff'; }
+
+                item.innerHTML = `
+                    <div class="student-info" style="flex:1;min-width:0;">
+                        <div class="student-avatar" style="background:${avatarBg};color:${avatarColor};flex-shrink:0;">${initials}</div>
+                        <div class="student-details" style="min-width:0;">
+                            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                                <h3 style="color:#111;font-weight:800;font-size:15px;margin:0;">
+                                    ${student.name}
+                                </h3>
+                                <button onclick="openEditStudent(${student.id})"
+                                        title="تعديل الاسم"
+                                        style="padding:3px 9px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Cairo',sans-serif;
+                                               background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;
+                                               box-shadow:0 2px 7px rgba(59,130,246,.4);transition:all .2s;line-height:1.4;"
+                                        onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">
+                                    ✏️
+                                </button>
+                                <button onclick="deleteStudent(${student.id})"
+                                        title="حذف الطالب"
+                                        style="padding:3px 9px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Cairo',sans-serif;
+                                               background:linear-gradient(135deg,#b91c1c,#ef4444);color:#fff;
+                                               box-shadow:0 2px 7px rgba(239,68,68,.4);transition:all .2s;line-height:1.4;"
+                                        onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">
+                                    🗑️
+                                </button>
+                            </div>
+                            <p style="color:#555;font-size:12px;margin-top:3px;">
+                                ${session.class || ''} • قاعة ${session.room || '—'}
+                                ${student.barcodeAt ? '&nbsp;<span class="badge-bc">🔖 '+student.barcodeAt+'</span>' : ''}
+                            </p>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+                        <button class="attendance-btn present ${student.status==='present'?'active':''}"
+                                onclick="markAttendance(${student.id},'present')">✔ حاضر</button>
+                        <button class="attendance-btn absent ${student.status==='absent'?'active':''}"
+                                onclick="markAttendance(${student.id},'absent')">✗ غائب</button>
+                    </div>
+                `;
+
+                list.appendChild(item);
+            });
+        }
+
+        // ── Edit student name ──────────────────────────────
+        function openEditStudent(studentId) {
+            const session = sessions.find(s => s.id === currentSessionId);
+            const student = session.students.find(s => s.id === studentId);
+            if (!student) return;
+            document.getElementById('editStudentId').value = studentId;
+            document.getElementById('editStudentName').value = student.name;
+            document.getElementById('editStudentModal').classList.add('active');
+            setTimeout(() => document.getElementById('editStudentName').focus(), 100);
+        }
+
+        async function saveEditStudent(e) {
+            e.preventDefault();
+            const studentId = parseInt(document.getElementById('editStudentId').value);
+            const newName   = document.getElementById('editStudentName').value.trim();
+            if (!newName) return;
+
+            const session = sessions.find(s => s.id === currentSessionId);
+            const student = session.students.find(s => s.id === studentId);
+            if (!student) return;
+
+            const oldName = student.name;
+            student.name  = newName;
+
+            await userCol('attendanceSessions').doc(String(session.id)).set(session);
+
+            closeModal('editStudentModal');
+            renderStudents();
+            showAlert(`✏️ تم تغيير الاسم من "${oldName}" إلى "${newName}"`);
+        }
+
+        // ── Delete student ─────────────────────────────────
+        async function deleteStudent(studentId) {
+            const session = sessions.find(s => s.id === currentSessionId);
+            const student = session.students.find(s => s.id === studentId);
+            if (!student) return;
+            if (!confirm(`هل تريد حذف الطالب "${student.name}" من هذه الحصة؟`)) return;
+
+            session.students = session.students.filter(s => s.id !== studentId);
+            await userCol('attendanceSessions').doc(String(session.id)).set(session);
+
+            renderStudents();
+            updateSummary();
+            showAlert(`🗑️ تم حذف الطالب "${student.name}" من الحصة`);
+        }
+
+        async function markAttendance(studentId, status) {
+            const session = sessions.find(s => s.id === currentSessionId);
+            const student = session.students.find(s => s.id === studentId);
+            student.status = status;
+
+            // حفظ في Firestore
+            if (!window._fbAttMap) window._fbAttMap = {};
+            window._fbAttMap[session.id] = session;
+            await userCol('attendanceSessions').doc(String(session.id)).set(session);
+
+            renderStudents();
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const session = sessions.find(s => s.id === currentSessionId);
+            const total = session.students.length;
+            const present = session.students.filter(s => s.status === 'present').length;
+            const absent = session.students.filter(s => s.status === 'absent').length;
+            
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('presentCount').textContent = present;
+            document.getElementById('absentCount').textContent = absent;
+        }
+
+        function showAddStudentModal() {
+            document.getElementById('addStudentModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function addStudentToSession(e) {
+            e.preventDefault();
+            const studentName = document.getElementById('studentName').value;
+            const session = sessions.find(s => s.id === currentSessionId);
+            const newStudent = { id: nextStudentId++, name: studentName, status: null };
+            session.students.push(newStudent);
+
+            if (!window._fbAttMap) window._fbAttMap = {};
+            window._fbAttMap[session.id] = session;
+            await userCol('attendanceSessions').doc(String(session.id)).set(session);
+
+            showAlert(`تم إضافة الطالب "${studentName}" بنجاح! ✓`);
+            closeModal('addStudentModal');
+            document.getElementById('studentName').value = '';
+            renderStudents();
+            updateSummary();
+        }
+
+        // ══════════════════════════════════════════════════
+        //  WhatsApp Notifications
+        // ══════════════════════════════════════════════════
+
+        // حفظ أرقام أولياء الأمور (Firestore)
+        async function loadParentPhones() {
+            const snap = await userCol('parentPhones').get();
+            const phones = {};
+            snap.forEach(doc => { phones[doc.id] = doc.data().phone; });
+            return phones;
+        }
+        async function saveParentPhones(phones) {
+            const batch = db.batch();
+            const existing = await userCol('parentPhones').get();
+            existing.forEach(doc => batch.delete(doc.ref));
+            Object.entries(phones).forEach(([id, phone]) => {
+                batch.set(userCol('parentPhones').doc(String(id)), { phone });
+            });
+            await batch.commit();
+        }
+
+        function showWhatsappSection() {
+            const section = document.getElementById('whatsappSection');
+            const isVisible = section.style.display !== 'none';
+            if (isVisible) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+            renderWhatsappList();
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        async function renderWhatsappList() {
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (!session) return;
+
+            const phones = await loadParentPhones();
+            const list   = document.getElementById('whatsappStudentsList');
+
+            if (session.students.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">لا يوجد طلاب في هذه الحصة</p>';
+                return;
+            }
+
+            list.innerHTML = `
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <button class="btn btn-whatsapp" style="font-size:13px;padding:9px 18px;" onclick="sendAllWhatsapp()">
+                        📤 إرسال للجميع
+                    </button>
+                    <span style="font-size:12px;color:#555;align-self:center;">* سيفتح واتساب لكل طالب له رقم محفوظ</span>
+                </div>
+                <div id="waStudentsRows"></div>
+            `;
+
+            const rowsContainer = document.getElementById('waStudentsRows');
+            session.students.forEach(student => {
+                const status   = student.status;
+                const rowClass = status === 'present' ? 'present-row' : status === 'absent' ? 'absent-row' : 'unmarked-row';
+                const statusLabel = status === 'present' ? 'حاضر ✔' : status === 'absent' ? 'غائب ✗' : 'لم يُسجَّل';
+                const statusClass = status === 'present' ? 'p' : status === 'absent' ? 'a' : 'u';
+                const savedPhone  = phones[student.id] || '';
+
+                const row = document.createElement('div');
+                row.className = `whatsapp-student-row ${rowClass}`;
+                row.id = `wa-row-${student.id}`;
+                row.innerHTML = `
+                    <span class="wa-name">${student.name}</span>
+                    <span class="wa-status ${statusClass}">${statusLabel}</span>
+                    <input type="tel"
+                           class="wa-phone-input"
+                           id="phone-${student.id}"
+                           placeholder="01xxxxxxxxx"
+                           value="${savedPhone}"
+                           onchange="savePhoneNumber(${student.id}, this.value)"
+                           dir="ltr">
+                    <button class="wa-send-btn" onclick="sendWhatsapp(${student.id})">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        إرسال
+                    </button>
+                `;
+                rowsContainer.appendChild(row);
+            });
+        }
+
+        async function savePhoneNumber(studentId, phone) {
+            const phones = await loadParentPhones();
+            if (phone.trim()) phones[studentId] = phone.trim();
+            else delete phones[studentId];
+            await saveParentPhones(phones);
+        }
+
+        function buildWhatsappMessage(student, session) {
+            const sessionName = `${session.subject} - ${session.class}`;
+            const today = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            if (student.status === 'present') {
+                return `السلام عليكم ورحمة الله وبركاته 🌟\n\nولي أمر الطالب / ${student.name}\n\nيسعدنا إخباركم بأن ابنكم/ابنتكم\n*${student.name}*\nقد حضر درس *${sessionName}*\nبتاريخ: ${today}\n\n✅ *تم حضور الدرس*\n\nنشكر حرصكم على حضور أبنائكم 🙏`;
+            } else if (student.status === 'absent') {
+                return `السلام عليكم ورحمة الله وبركاته\n\nولي أمر الطالب / ${student.name}\n\nنود إعلامكم بأن ابنكم/ابنتكم\n*${student.name}*\nلم يحضر درس *${sessionName}*\nبتاريخ: ${today}\n\n❌ *الطالب لم يحضر الدرس*\n\nنرجو متابعة انتظام الحضور للاستفادة القصوى من الدراسة 🙏`;
+            } else {
+                return `السلام عليكم ورحمة الله وبركاته\n\nولي أمر الطالب / ${student.name}\n\nنود إعلامكم بأن حضور ابنكم/ابنتكم\n*${student.name}*\nلم يتم تسجيله في درس *${sessionName}*\nبتاريخ: ${today}\n\n⚠️ *لم يتم تسجيل الحضور*\n\nنرجو التواصل معنا لمزيد من المعلومات 🙏`;
+            }
+        }
+
+        function sendWhatsapp(studentId) {
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (!session) return;
+
+            const student = session.students.find(s => s.id === studentId);
+            if (!student) return;
+
+            // احفظ الرقم من الـ input أولاً
+            const phoneInput = document.getElementById(`phone-${studentId}`);
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+
+            if (!phone) {
+                phoneInput.style.border = '2px solid #dc3545';
+                phoneInput.placeholder = 'أدخل الرقم أولاً!';
+                setTimeout(() => {
+                    phoneInput.style.border = '';
+                    phoneInput.placeholder = '01xxxxxxxxx';
+                }, 2000);
+                return;
+            }
+
+            savePhoneNumber(studentId, phone);
+
+            // تنسيق الرقم
+            let formattedPhone = phone.replace(/\D/g, '');
+            if (formattedPhone.startsWith('0')) {
+                formattedPhone = '2' + formattedPhone; // Egypt code
+            }
+
+            const message = buildWhatsappMessage(student, session);
+            const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+
+        async function sendAllWhatsapp() {
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (!session) return;
+
+            const phones = await loadParentPhones();
+            let sentCount = 0;
+
+            session.students.forEach((student, idx) => {
+                const phoneInput = document.getElementById(`phone-${student.id}`);
+                if (phoneInput && phoneInput.value.trim()) {
+                    savePhoneNumber(student.id, phoneInput.value.trim());
+                    phones[student.id] = phoneInput.value.trim();
+                }
+                if (phones[student.id]) {
+                    setTimeout(() => { sendWhatsapp(student.id); }, idx * 800);
+                    sentCount++;
+                }
+            });
+
+            if (sentCount === 0) {
+                showAlert('لا توجد أرقام محفوظة! أدخل أرقام أولياء الأمور أولاً', 'danger');
+            } else {
+                showAlert(`📤 جاري فتح واتساب لـ ${sentCount} طالب...`);
+            }
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+
+        async function saveAttendance() {
+            const session = sessions.find(s => s.id === currentSessionId);
+            const unmarked = session.students.filter(s => s.status === null).length;
+            if (unmarked > 0) {
+                if (!confirm(`هناك ${unmarked} طالب لم يتم تسجيل حضورهم. هل تريد الحفظ؟`)) return;
+            }
+
+            const now = new Date();
+            const saveDate = now.toISOString().split('T')[0];
+            const saveTime = now.toTimeString().split(' ')[0];
+            const recordId = `${session.id}_${Date.now()}`;
+
+            const attendanceRecord = {
+                ...session,
+                dayIndex: session.dayIndex,
+                saveDate, saveTime, recordId, completed: true
+            };
+
+            // حفظ في Firestore
+            await userCol('attendanceHistory').doc(recordId).set(attendanceRecord);
+
+            session.completed = true;
+            if (!window._fbAttMap) window._fbAttMap = {};
+            window._fbAttMap[session.id] = session;
+            await userCol('attendanceSessions').doc(String(session.id)).set(session);
+
+            showAlert('تم حفظ بيانات الحضور بنجاح! ✔', 'success');
+            setTimeout(() => { backToSessions(); renderSessions(); }, 1500);
+        }
+
+        // ══════════════════════════════════════════════════
+        //  انتهاء الحصة — حفظ في السجل + مسح الحضور للأسبوع الجاي
+        // ══════════════════════════════════════════════════
+        async function endSession() {
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (!session) return;
+
+            const unmarked = session.students.filter(s => s.status === null).length;
+            const confirmMsg = unmarked > 0
+                ? `تنبيه: هناك ${unmarked} طالب لم يتم تسجيل حضورهم.\nهل تريد إنهاء الحصة وحفظ السجل؟`
+                : `هل أنت متأكد من إنهاء الحصة؟\nسيتم حفظ الحضور في السجل ومسح البيانات للأسبوع القادم.`;
+            if (!confirm(confirmMsg)) return;
+
+            // ① حفظ السجل في attendanceHistory
+            const now = new Date();
+            const saveDate = now.toISOString().split('T')[0];
+            const saveTime = now.toTimeString().split(' ')[0];
+            const recordId = `${session.id}_${Date.now()}`;
+
+            const attendanceRecord = {
+                ...session,
+                dayIndex: session.dayIndex,
+                saveDate, saveTime, recordId, completed: true
+            };
+            await userCol('attendanceHistory').doc(recordId).set(attendanceRecord);
+
+            // ② مسح حضور الطلاب (إرجاعهم لـ null) وإلغاء completed
+            session.students.forEach(st => {
+                st.status = null;
+                delete st.barcodeAt;
+            });
+            session.completed = false;
+
+            // ③ حفظ الحالة الجديدة (فارغة) في attendanceSessions
+            if (!window._fbAttMap) window._fbAttMap = {};
+            window._fbAttMap[session.id] = session;
+            await userCol('attendanceSessions').doc(String(session.id)).set(session);
+
+            showAlert('✅ تم حفظ سجل الحصة وتم تصفير الحضور للأسبوع القادم!', 'success');
+            setTimeout(() => { backToSessions(); renderSessions(); }, 1800);
+        }
+
+        // ══════════════════════════════════════════════════
+        //  Session Log (Daily Class Register)
+        // ══════════════════════════════════════════════════
+
+        function showSessionLog() {
+            document.getElementById('sessionsContainer').style.display = 'none';
+            document.getElementById('reportsContainer').style.display = 'none';
+            document.getElementById('attendanceContainer').style.display = 'none';
+            document.getElementById('reportDetailsContainer').style.display = 'none';
+            document.getElementById('sessionLogContainer').style.display = 'block';
+            populateSubjectFilter();
+            renderSessionLog();
+        }
+
+        async function populateSubjectFilter() {
+            const snap = await userCol('attendanceHistory').get();
+            const subjects = new Set();
+            snap.forEach(doc => { if (doc.data().subject) subjects.add(doc.data().subject); });
+            const sel = document.getElementById('logSubjectFilter');
+            sel.innerHTML = '<option value="">جميع المواد</option>';
+            subjects.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s; opt.textContent = s;
+                sel.appendChild(opt);
+            });
+        }
+
+        function clearLogFilters() {
+            document.getElementById('logDateFrom').value = '';
+            document.getElementById('logDateTo').value = '';
+            document.getElementById('logSubjectFilter').value = '';
+            document.getElementById('logDayFilter').value = '';
+            renderSessionLog();
+        }
+
+        async function renderSessionLog() {
+            const snap = await userCol('attendanceHistory').get();
+            const history = [];
+            snap.forEach(doc => history.push(doc.data()));
+
+            const dateFrom = document.getElementById('logDateFrom').value;
+            const dateTo   = document.getElementById('logDateTo').value;
+            const subjectF = document.getElementById('logSubjectFilter').value;
+            const dayF     = document.getElementById('logDayFilter').value;
+
+            let records = history.filter(r => !r.isVirtual);
+            if (dateFrom) records = records.filter(r => r.saveDate >= dateFrom);
+            if (dateTo)   records = records.filter(r => r.saveDate <= dateTo);
+            if (subjectF) records = records.filter(r => r.subject === subjectF);
+            if (dayF)     records = records.filter(r => r.day === dayF);
+
+            // Sort newest first
+            records.sort((a,b) => {
+                const da = new Date(a.saveDate + 'T' + (a.saveTime || '00:00:00'));
+                const db = new Date(b.saveDate + 'T' + (b.saveTime || '00:00:00'));
+                return db - da;
+            });
+
+            // Stats
+            const totalSessions  = records.length;
+            const totalStudents  = records.reduce((s,r) => s + r.students.length, 0);
+            const totalPresent   = records.reduce((s,r) => s + r.students.filter(st => st.status === 'present').length, 0);
+            const totalAbsent    = records.reduce((s,r) => s + r.students.filter(st => st.status === 'absent').length, 0);
+            const avgRate        = totalStudents > 0 ? Math.round((totalPresent / totalStudents) * 100) : 0;
+
+            document.getElementById('logStats').innerHTML = `
+                <div class="log-stat-card">
+                    <div class="stat-num">${totalSessions}</div>
+                    <div class="stat-label">إجمالي الحصص</div>
+                </div>
+                <div class="log-stat-card" style="border-top-color:#28a745;">
+                    <div class="stat-num" style="color:#28a745;">${totalPresent}</div>
+                    <div class="stat-label">إجمالي الحضور</div>
+                </div>
+                <div class="log-stat-card" style="border-top-color:#dc3545;">
+                    <div class="stat-num" style="color:#dc3545;">${totalAbsent}</div>
+                    <div class="stat-label">إجمالي الغياب</div>
+                </div>
+                <div class="log-stat-card" style="border-top-color:#ffc107;">
+                    <div class="stat-num" style="color:#856404;">${avgRate}%</div>
+                    <div class="stat-label">متوسط نسبة الحضور</div>
+                    <div class="attendance-rate-bar"><div class="attendance-rate-fill" style="width:${avgRate}%"></div></div>
+                </div>
+            `;
+
+            const tbody = document.getElementById('sessionLogBody');
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="padding:50px;text-align:center;color:#aaa;font-size:16px;">📋 لا توجد سجلات مطابقة للفلتر المحدد</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = records.map((r, idx) => {
+                const present = r.students.filter(s => s.status === 'present').length;
+                const absent  = r.students.filter(s => s.status === 'absent').length;
+                const total   = r.students.length;
+                const rate    = total > 0 ? Math.round((present / total) * 100) : 0;
+                const rateColor = rate >= 80 ? '#28a745' : rate >= 50 ? '#ffc107' : '#dc3545';
+
+                // Format date
+                const dp = r.saveDate ? r.saveDate.split('-') : ['--','--','--'];
+                const dateStr = `${dp[2]}/${dp[1]}/${dp[0]}`;
+
+                // Format time
+                let timeStr = '--:--';
+                if (r.saveTime) {
+                    const tp = r.saveTime.split(':');
+                    const h = parseInt(tp[0]);
+                    const m = tp[1];
+                    const p = h >= 17 ? 'م' : h >= 12 ? 'ظ' : 'ص';
+                    timeStr = `${h > 12 ? h-12 : h}:${m} ${p}`;
+                }
+
+                const rowBg = idx % 2 === 0 ? '#ffffff' : '#fafafa';
+
+                return `
+                <tr style="background:${rowBg};">
+                    <td style="padding:12px 16px; font-weight:600; color:#333;">
+                        <span style="display:block;">${dateStr}</span>
+                        <span style="font-size:11px;color:#888;">${r.day || ''}</span>
+                    </td>
+                    <td style="padding:12px 16px;">
+                        <span style="font-weight:600;color:#667eea;">${r.subject || '--'}</span>
+                    </td>
+                    <td style="padding:12px 16px; color:#555;">${r.class || '--'}</td>
+                    <td style="padding:12px 16px; color:#555;">${r.teacher || '--'}</td>
+                    <td style="padding:12px 16px; color:#555; font-size:13px;">${r.time || '--'}<br><span style="color:#888;font-size:11px;">حُفظ: ${timeStr}</span></td>
+                    <td style="padding:12px 16px; text-align:center;">
+                        <span style="background:#d4edda;color:#155724;padding:4px 12px;border-radius:20px;font-weight:bold;font-size:13px;">${present}</span>
+                    </td>
+                    <td style="padding:12px 16px; text-align:center;">
+                        <span style="background:#f8d7da;color:#721c24;padding:4px 12px;border-radius:20px;font-weight:bold;font-size:13px;">${absent}</span>
+                    </td>
+                    <td style="padding:12px 16px; text-align:center; font-weight:bold;">${total}</td>
+                    <td style="padding:12px 16px; text-align:center;">
+                        <span style="color:${rateColor};font-weight:bold;font-size:15px;">${rate}%</span>
+                        <div class="attendance-rate-bar" style="width:80px;margin:4px auto 0;">
+                            <div class="attendance-rate-fill" style="width:${rate}%;background:${rateColor};"></div>
+                        </div>
+                    </td>
+                    <td style="padding:12px 16px; text-align:center;">
+                        <button onclick="showLogDetail('${r.recordId}')" 
+                            style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">
+                            👁 عرض
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function showLogDetail(recordId) {
+            const snap = await userCol('attendanceHistory').doc(recordId).get();
+            const r = snap.exists ? snap.data() : null;
+            if (!r) return;
+
+            const dp = r.saveDate ? r.saveDate.split('-') : ['--','--','--'];
+            const dateStr = `${dp[2]}/${dp[1]}/${dp[0]}`;
+
+            const present = r.students.filter(s => s.status === 'present');
+            const absent  = r.students.filter(s => s.status === 'absent');
+            const total   = r.students.length;
+            const rate    = total > 0 ? Math.round((present.length / total) * 100) : 0;
+
+            document.getElementById('logDetailTitle').textContent =
+                `📋 ${r.subject} — ${r.class} (${dateStr})`;
+
+            document.getElementById('logDetailContent').innerHTML = `
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+                    <div style="background:#d4edda;border-radius:10px;padding:14px;text-align:center;">
+                        <div style="font-size:24px;font-weight:bold;color:#155724;">${present.length}</div>
+                        <div style="font-size:12px;color:#155724;">حاضر ✅</div>
+                    </div>
+                    <div style="background:#f8d7da;border-radius:10px;padding:14px;text-align:center;">
+                        <div style="font-size:24px;font-weight:bold;color:#721c24;">${absent.length}</div>
+                        <div style="font-size:12px;color:#721c24;">غائب ❌</div>
+                    </div>
+                    <div style="background:#e3f2fd;border-radius:10px;padding:14px;text-align:center;">
+                        <div style="font-size:24px;font-weight:bold;color:#1565c0;">${rate}%</div>
+                        <div style="font-size:12px;color:#1565c0;">نسبة الحضور</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:8px;font-size:13px;color:#666;">
+                    👨‍🏫 ${r.teacher || '--'} &nbsp;|&nbsp; 🏫 قاعة ${r.room || '--'} &nbsp;|&nbsp; 🕐 ${r.time || '--'}
+                </div>
+
+                <h3 style="color:#28a745;margin:18px 0 10px;font-size:16px;">✅ الطلاب الحاضرون (${present.length})</h3>
+                ${present.length === 0 ? '<p style="color:#999;padding:12px;background:#f8f9fa;border-radius:8px;text-align:center;">لا يوجد طلاب حاضرون</p>' :
+                    present.map(s => {
+                        const initials = s.name.split(' ').slice(0,2).map(n => n[0]).join('');
+                        return `<div class="log-detail-student" style="background:#d4edda;">
+                            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#28a745,#20c997);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:14px;flex-shrink:0;">${initials}</div>
+                            <span style="font-weight:600;color:#155724;">${s.name}</span>
+                            ${s.barcodeAt ? `<span style="margin-right:auto;font-size:11px;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:12px;">🖐️ ${s.barcodeAt}</span>` : ''}
+                        </div>`;
+                    }).join('')}
+
+                <h3 style="color:#dc3545;margin:18px 0 10px;font-size:16px;">❌ الطلاب الغائبون (${absent.length})</h3>
+                ${absent.length === 0 ? '<p style="color:#999;padding:12px;background:#f8f9fa;border-radius:8px;text-align:center;">لا يوجد طلاب غائبون</p>' :
+                    absent.map(s => {
+                        const initials = s.name.split(' ').slice(0,2).map(n => n[0]).join('');
+                        return `<div class="log-detail-student" style="background:#f8d7da;">
+                            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#dc3545,#c82333);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:14px;flex-shrink:0;">${initials}</div>
+                            <span style="font-weight:600;color:#721c24;">${s.name}</span>
+                        </div>`;
+                    }).join('')}
+            `;
+
+            document.getElementById('sessionLogDetailModal').classList.add('active');
+        }
+
+        async function exportLogToCSV() {
+            const snap = await userCol('attendanceHistory').get();
+            const history = [];
+            snap.forEach(doc => history.push(doc.data()));
+
+            const dateFrom = document.getElementById('logDateFrom').value;
+            const dateTo   = document.getElementById('logDateTo').value;
+            const subjectF = document.getElementById('logSubjectFilter').value;
+            const dayF     = document.getElementById('logDayFilter').value;
+
+            let records = history.filter(r => !r.isVirtual);
+            if (dateFrom) records = records.filter(r => r.saveDate >= dateFrom);
+            if (dateTo)   records = records.filter(r => r.saveDate <= dateTo);
+            if (subjectF) records = records.filter(r => r.subject === subjectF);
+            if (dayF)     records = records.filter(r => r.day === dayF);
+            records.sort((a,b) => b.saveDate.localeCompare(a.saveDate));
+
+            let csv = '\uFEFF'; // BOM for Arabic
+            csv += 'التاريخ,اليوم,الحصة,الفصل,المدرس,وقت الحصة,حاضر,غائب,الإجمالي,نسبة الحضور%\n';
+            records.forEach(r => {
+                const present = r.students.filter(s => s.status === 'present').length;
+                const absent  = r.students.filter(s => s.status === 'absent').length;
+                const total   = r.students.length;
+                const rate    = total > 0 ? Math.round((present/total)*100) : 0;
+                csv += `${r.saveDate},${r.day||''},${r.subject||''},${r.class||''},${r.teacher||''},${r.time||''},${present},${absent},${total},${rate}%\n`;
+            });
+
+            const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url;
+            a.download = `سجل_الحصص_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ── Override backToSessions to also hide sessionLogContainer ──
+        const _origBackToSessions = backToSessions;
+        backToSessions = function() {
+            document.getElementById('sessionLogContainer').style.display = 'none';
+            _origBackToSessions();
+        };
+
+        // ══════════════════════════════════════════════════
+        //  Barcode USB Scanner — no bridge, no server needed
+        //  القارئ USB يشتغل كـ keyboard — يكتب الباركود + Enter
+        // ══════════════════════════════════════════════════
+
+        let bcLogRows = [];
+        let bcBuffer  = '';
+        let bcTimer   = null;
+
+        async function updateMappingCount() {
+            const map = await loadMappings();
+            const n = Object.keys(map).length;
+            const el = document.getElementById('mappingCount');
+            if (el) el.textContent = n > 0 ? `(${n} طالب مربوط)` : '(لا يوجد ربط بعد)';
+        }
+
+        // ─── Global keydown: يلتقط كل حرف من القارئ ──────
+        document.addEventListener('keydown', function(e) {
+            if (!currentSessionId) return;
+            const tag = document.activeElement ? document.activeElement.tagName : '';
+            if ((tag === 'INPUT' || tag === 'TEXTAREA') &&
+                document.activeElement.id !== 'barcodeInput') return;
+
+            if (e.key === 'Enter') {
+                const code = bcBuffer.trim();
+                bcBuffer = '';
+                clearTimeout(bcTimer);
+                if (code.length > 0) processBarcodeInput(code);
+            } else if (e.key.length === 1) {
+                bcBuffer += e.key;
+                clearTimeout(bcTimer);
+                bcTimer = setTimeout(() => {
+                    const code = bcBuffer.trim();
+                    bcBuffer = '';
+                    if (code.length > 0) processBarcodeInput(code);
+                }, 200);
+            }
+        });
+
+        // ─── Keep focus on hidden input ────────────────
+        document.addEventListener('click', function(e) {
+            if (!currentSessionId) return;
+            const tag = e.target.tagName;
+            if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'BUTTON' && tag !== 'SELECT') {
+                const bi = document.getElementById('barcodeInput');
+                if (bi) bi.focus();
+            }
+        });
+
+        // ─── Process scanned barcode ───────────────────
+        async function processBarcodeInput(code) {
+            const now = new Date();
+            const timeShort = now.toTimeString().slice(0, 5);
+            const map = await loadMappings();
+            const studentName = map[String(code)];
+
+            if (!studentName) {
+                addBcLogRow(`❓ باركود غير معروف: ${code}`, timeShort, 'notfound');
+                return;
+            }
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (!session) return;
+
+            const student = session.students.find(s =>
+                s.name.trim() === studentName.trim() ||
+                s.name.includes(studentName) ||
+                studentName.includes(s.name)
+            );
+
+            if (!student) {
+                addBcLogRow(`⚠️ ${studentName} — غير موجود في هذه الحصة`, timeShort, 'notfound');
+                return;
+            }
+            if (student.status === 'present') {
+                addBcLogRow(`🔵 ${studentName} — مسجل مسبقاً`, timeShort, 'already');
+                return;
+            }
+
+            student.status    = 'present';
+            student.barcodeAt = timeShort;
+            if (!window._fbAttMap) window._fbAttMap = {};
+            window._fbAttMap[session.id] = session;
+            userCol('attendanceSessions').doc(String(session.id)).set(session);
+            renderStudents();
+            updateSummary();
+            addBcLogRow(`✅ ${studentName}`, timeShort, 'present');
+            showAlert(`✅ تم تسجيل حضور: ${studentName}`, 'success');
+        }
+
+        function addBcLogRow(text, time, type) {
+            bcLogRows.unshift({text, time, type});
+            if (bcLogRows.length > 50) bcLogRows.pop();
+            renderBcLog();
+        }
+
+        function renderBcLog() {
+            const log = document.getElementById('bcLog');
+            if (!log) return;
+            if (bcLogRows.length === 0) {
+                log.innerHTML = '<p style="color:rgba(255,255,255,.4);text-align:center;padding:10px;">في انتظار قراءة الباركود...</p>';
+                return;
+            }
+            log.innerHTML = bcLogRows.map(r => `
+                <div class="bc-log-row ${r.type}">
+                    <span>${r.text}</span>
+                    <span style="font-size:11px;color:#888;">${r.time}</span>
+                </div>
+            `).join('');
+        }
+
+        // ─── Code Mapping Modal ────────────────────────
+        function showCodeMapModal() {
+            renderCodeMapList();
+            document.getElementById('codeMapModal').classList.add('active');
+        }
+
+        async function renderCodeMapList() {
+            const map  = await loadMappings();
+            const list = document.getElementById('codeMapList');
+            const entries = Object.entries(map);
+            if (entries.length === 0) {
+                list.innerHTML = '<p style="color:rgba(255,255,255,.4);text-align:center;padding:15px;">لا يوجد ربط بعد. أضف الباركود أدناه.</p>';
+                return;
+            }
+            list.innerHTML = `
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead><tr style="background:rgba(212,175,55,.12);">
+                        <th style="padding:8px;text-align:right;border-radius:6px 0 0 0;color:#ffd700;">باركود الكارت</th>
+                        <th style="padding:8px;text-align:right;">اسم الطالب</th>
+                        <th style="padding:8px;width:60px;border-radius:0 6px 0 0;"></th>
+                    </tr></thead>
+                    <tbody>${entries.map(([code, name]) => `
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:8px;font-weight:bold;color:#2e7d32;">${code}</td>
+                            <td style="padding:8px;">${name}</td>
+                            <td style="padding:8px;text-align:center;">
+                                <button onclick="deleteMapping('${code}')" style="background:#dc3545;color:white;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;">✕</button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>`;
+        }
+
+        async function addCodeMapping() {
+            const code = document.getElementById('codeInput').value.trim();
+            const name = document.getElementById('codeNameInput').value.trim();
+            if (!code || !name) { alert('أدخل الباركود والاسم'); return; }
+            const map = await loadMappings();
+            map[code] = name;
+            await saveMappings(map);
+            document.getElementById('codeInput').value = '';
+            document.getElementById('codeNameInput').value = '';
+            renderCodeMapList();
+            showAlert(`✅ تم ربط الباركود ${code} بالطالب: ${name}`);
+        }
+
+        async function deleteMapping(code) {
+            if (!confirm(`هل تريد حذف ربط الباركود ${code}؟`)) return;
+            const map = await loadMappings();
+            delete map[code];
+            await saveMappings(map);
+            renderCodeMapList();
+        }
+
+        async function clearAllMappings() {
+            if (!confirm('هل تريد حذف كل الباركودات؟')) return;
+            await saveMappings({});
+            renderCodeMapList();
+        }
+
+        async function importCodesFromStudents() {
+            if (!currentSessionId) { alert('افتح حصة أولاً لاستيراد طلابها'); return; }
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (!session || session.students.length === 0) { alert('لا يوجد طلاب في هذه الحصة'); return; }
+            const map = await loadMappings();
+            let added = 0;
+            session.students.forEach((st, idx) => {
+                const code = String(101 + idx);
+                if (!map[code]) { map[code] = st.name; added++; }
+            });
+            await saveMappings(map);
+            renderCodeMapList();
+            showAlert(`✅ تم استيراد ${added} طالب — راجع الباركودات وعدّلها لتطابق كروت الطلاب`);
+        }
+
+        // ─── When session opens ────────────────────────
+        const _origOpenAttendance = openAttendance;
+        openAttendance = function(sessionId) {
+            _origOpenAttendance(sessionId);
+            bcLogRows = [];
+            bcBuffer  = '';
+            renderBcLog();
+            updateMappingCount();
+            setTimeout(() => {
+                const bi = document.getElementById('barcodeInput');
+                if (bi) bi.focus();
+            }, 300);
+        };
+
+        // ── تشغيل التطبيق مباشرة ──
+        _startApp();
+    </script>
+</body>
+</html>

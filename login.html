@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - نظام إدارة السنتر</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-base:      #080808;
+            --gold:         #d4a017;
+            --gold-hi:      #f5c842;
+            --gold-soft:    #e8c96a;
+            --crimson:      #c0182a;
+            --crimson-hi:   #e8203a;
+            --crimson-soft: #ff6070;
+            --white:        #ffffff;
+            --muted:        rgba(255,255,255,0.5);
+            --border-gold:  rgba(212,160,23,0.25);
+            --card-bg:      rgba(10,6,0,0.72);
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-base);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ── Background (identical to index) ── */
+        .bg-layer { position: fixed; inset: 0; z-index: 0; }
+
+        .bg-gradient {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 75% 55% at 50% -5%,  rgba(212,160,23,.38) 0%, transparent 62%),
+                radial-gradient(ellipse 55% 45% at 85% 85%,  rgba(192,24,42,.28)  0%, transparent 55%),
+                radial-gradient(ellipse 45% 38% at 15% 75%,  rgba(212,160,23,.16) 0%, transparent 50%),
+                radial-gradient(ellipse 30% 28% at 75% 10%,  rgba(192,24,42,.12)  0%, transparent 48%),
+                linear-gradient(160deg, #0d0900 0%, #110a00 40%, #080808 70%, #0d0203 100%);
+        }
+
+        .grid-lines {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(rgba(212,160,23,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212,160,23,.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        .dot-grid {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(212,160,23,.13) 1px, transparent 1px);
+            background-size: 30px 30px;
+            mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent);
+        }
+
+        .orb {
+            position: absolute; border-radius: 50%;
+            filter: blur(80px);
+            animation: floatOrb 8s ease-in-out infinite;
+        }
+        .orb-1 { width:420px; height:420px; background:rgba(212,160,23,.22); top:-110px; left:50%; transform:translateX(-50%); animation-delay:0s; }
+        .orb-2 { width:300px; height:300px; background:rgba(192,24,42,.2);   bottom:10%; right:-50px; animation-delay:-3s; }
+        .orb-3 { width:250px; height:250px; background:rgba(212,160,23,.12); bottom:20%; left:-30px;  animation-delay:-5s; }
+
+        @keyframes floatOrb {
+            0%,100% { transform: translateY(0) translateX(0); }
+            33%      { transform: translateY(-20px) translateX(10px); }
+            66%      { transform: translateY(10px) translateX(-10px); }
+        }
+
+        .glow-line {
+            position: absolute; height: 1px; left: 0; right: 0; opacity: 0;
+            background: linear-gradient(90deg, transparent, rgba(212,160,23,.55), transparent);
+            animation: scanLine 4s ease-in-out infinite;
+        }
+        .glow-line-1 { top: 30%; animation-delay: 0s; }
+        .glow-line-2 { top: 65%; animation-delay: 2s; background: linear-gradient(90deg, transparent, rgba(192,24,42,.45), transparent); }
+
+        @keyframes scanLine {
+            0%   { opacity:0; transform:scaleX(0); }
+            50%  { opacity:1; transform:scaleX(1); }
+            100% { opacity:0; transform:scaleX(0); }
+        }
+
+        /* ── Particles ── */
+        .particles { position:fixed; inset:0; z-index:1; pointer-events:none; }
+        .particle {
+            position: absolute; border-radius: 50%;
+            animation: floatParticle linear infinite; opacity: 0;
+        }
+        @keyframes floatParticle {
+            0%   { transform:translateY(100vh); opacity:0; }
+            10%  { opacity:.6; }
+            90%  { opacity:.3; }
+            100% { transform:translateY(-10vh); opacity:0; }
+        }
+
+        /* ── Card ── */
+        .card {
+            position: relative; z-index: 10;
+            width: 100%; max-width: 450px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-gold);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+            animation: cardIn 0.7s cubic-bezier(0.22,1,0.36,1) both;
+            box-shadow:
+                0 0 60px rgba(212,160,23,.12),
+                0 0 120px rgba(192,24,42,.08),
+                0 30px 60px rgba(0,0,0,.6);
+        }
+
+        @keyframes cardIn {
+            from { opacity:0; transform:translateY(30px) scale(0.97); }
+            to   { opacity:1; transform:translateY(0) scale(1); }
+        }
+
+        /* Top glow strip */
+        .card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--crimson), var(--gold), var(--gold-hi), var(--gold), transparent);
+            box-shadow: 0 0 20px rgba(212,160,23,.5);
+        }
+
+        /* ── Header ── */
+        .header {
+            padding: 36px 32px 24px;
+            text-align: center;
+            border-bottom: 1px solid rgba(212,160,23,.1);
+        }
+
+        .logo-wrap {
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            width: 90px; height: 90px;
+            background: rgba(212,160,23,.1);
+            border: 1px solid rgba(212,160,23,.3);
+            border-radius: 20px;
+            margin-bottom: 16px;
+            animation: pulseLogo 3s ease-in-out infinite;
+            box-shadow: 0 0 30px rgba(212,160,23,.2);
+            overflow: hidden;
+            padding: 6px;
+        }
+
+        .logo-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        @keyframes pulseLogo {
+            0%,100% { box-shadow: 0 0 20px rgba(212,160,23,.15); }
+            50%      { box-shadow: 0 0 45px rgba(212,160,23,.45); }
+        }
+
+        .header h1 {
+            font-size: 21px; font-weight: 900;
+            color: var(--white);
+            margin-bottom: 6px;
+        }
+
+        .brand {
+            background: linear-gradient(135deg, var(--gold-hi) 0%, var(--gold-soft) 45%, var(--crimson-soft) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            filter: drop-shadow(0 0 14px rgba(212,160,23,.45));
+        }
+
+        .header p {
+            font-size: 13px; color: var(--muted);
+        }
+
+        /* ── Body ── */
+        .body { padding: 28px 32px 32px; }
+
+        /* ── Alerts ── */
+        .alert {
+            display: none;
+            align-items: center; gap: 10px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px; font-weight: 600;
+            margin-bottom: 20px;
+            animation: slideAlert .3s ease;
+        }
+        @keyframes slideAlert {
+            from { opacity:0; transform:translateY(-8px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .alert-error {
+            background: rgba(192,24,42,.12);
+            border: 1px solid rgba(192,24,42,.35);
+            color: var(--crimson-soft);
+        }
+        .alert-success {
+            background: rgba(212,160,23,.1);
+            border: 1px solid rgba(212,160,23,.35);
+            color: var(--gold-soft);
+        }
+
+        /* ── Form ── */
+        .form-group { margin-bottom: 20px; }
+
+        .form-group label {
+            display: block;
+            font-size: 13px; font-weight: 700;
+            color: rgba(255,255,255,.72);
+            margin-bottom: 8px;
+        }
+
+        .input-wrap { position: relative; }
+
+        .input-icon {
+            position: absolute; right: 14px; top: 50%;
+            transform: translateY(-50%);
+            font-size: 17px; pointer-events: none; z-index: 2;
+            filter: drop-shadow(0 0 4px rgba(212,160,23,.5));
+        }
+
+        .input-wrap input {
+            width: 100%;
+            padding: 14px 46px 14px 16px;
+            background: rgba(212,160,23,.05);
+            border: 1px solid rgba(212,160,23,.2);
+            border-radius: 12px;
+            color: var(--white);
+            font-size: 14px;
+            font-family: 'Cairo', sans-serif;
+            transition: all .3s; outline: none;
+        }
+
+        .input-wrap input::placeholder { color: rgba(255,255,255,.28); }
+
+        .input-wrap input:focus {
+            border-color: var(--gold);
+            background: rgba(212,160,23,.09);
+            box-shadow: 0 0 0 3px rgba(212,160,23,.1), 0 0 20px rgba(212,160,23,.08);
+        }
+
+        /* ── Remember / Forgot ── */
+        .row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 24px; font-size: 13px;
+        }
+
+        .remember {
+            display: flex; align-items: center; gap: 8px;
+            cursor: pointer; color: var(--muted);
+        }
+
+        .remember input[type="checkbox"] {
+            appearance: none; width: 16px; height: 16px;
+            border: 1px solid var(--border-gold); border-radius: 4px;
+            background: transparent; cursor: pointer;
+            position: relative; transition: all .2s;
+        }
+        .remember input[type="checkbox"]:checked {
+            background: var(--gold); border-color: var(--gold);
+        }
+        .remember input[type="checkbox"]:checked::after {
+            content: '✓'; position: absolute;
+            top: -1px; left: 2px;
+            font-size: 11px; color: #000;
+        }
+
+        .forgot {
+            color: var(--gold-soft); text-decoration: none;
+            font-weight: 600; transition: color .2s;
+        }
+        .forgot:hover { color: var(--white); }
+
+        /* ── Button ── */
+        .btn-login {
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, var(--crimson) 0%, #9b0d1e 40%, var(--gold) 100%);
+            color: white; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 900;
+            font-family: 'Cairo', sans-serif;
+            cursor: pointer; position: relative; overflow: hidden;
+            transition: all .3s;
+            box-shadow: 0 4px 24px rgba(192,24,42,.45), 0 0 40px rgba(212,160,23,.15);
+            letter-spacing: .5px;
+        }
+
+        .btn-login::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,.15), transparent);
+            opacity: 0; transition: opacity .3s;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 36px rgba(192,24,42,.65), 0 0 60px rgba(212,160,23,.22);
+        }
+        .btn-login:hover::before { opacity: 1; }
+        .btn-login:active { transform: translateY(0); }
+
+        /* Shine sweep */
+        .btn-login::after {
+            content: ''; position: absolute;
+            top: 0; left: -100%; width: 60%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
+            animation: btnShine 3s ease-in-out infinite;
+        }
+        @keyframes btnShine {
+            0%   { left: -100%; }
+            40%  { left: 150%; }
+            100% { left: 150%; }
+        }
+
+        /* ── Footer ── */
+        .footer-note {
+            text-align: center; margin-top: 20px;
+            font-size: 12px; color: rgba(255,255,255,.22);
+            font-family: 'Space Mono', monospace;
+        }
+
+        @media (max-width: 480px) {
+            .body, .header { padding-left: 20px; padding-right: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-layer">
+        <div class="bg-gradient"></div>
+        <div class="dot-grid"></div>
+        <div class="grid-lines"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="glow-line glow-line-1"></div>
+        <div class="glow-line glow-line-2"></div>
+    </div>
+
+    <div class="particles" id="particles"></div>
+
+    <div class="card">
+        <div class="header">
+            <div class="logo-wrap"><img src="logoo.png" alt="لوجو السنتر"></div>
+            <h1>سنتر <span class="brand">الجنرال</span></h1>
+            <p>مرحباً بك — سجّل دخولك للمتابعة</p>
+        </div>
+
+        <div class="body">
+            <div id="errorMsg" class="alert alert-error">
+                <span>⚠️</span><span id="errorText"></span>
+            </div>
+            <div id="successMsg" class="alert alert-success">
+                <span>✅</span><span id="successText"></span>
+            </div>
+
+            <form id="loginForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="username">اسم المستخدم أو البريد الإلكتروني</label>
+                    <div class="input-wrap">
+                        <span class="input-icon">👤</span>
+                        <input type="text" id="username" placeholder="أدخل اسم المستخدم" autocomplete="username" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">كلمة المرور</label>
+                    <div class="input-wrap">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="password" placeholder="أدخل كلمة المرور" autocomplete="current-password" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <label class="remember">
+                        <input type="checkbox" id="remember">
+                        <span>تذكرني</span>
+                    </label>
+                    <a href="#" class="forgot" id="forgotLink">نسيت كلمة المرور؟</a>
+                </div>
+
+                <button type="submit" class="btn-login" id="submitBtn">
+                    🚀 تسجيل الدخول
+                </button>
+            </form>
+
+            <p class="footer-note">© 2026 — جميع الحقوق محفوظة</p>
+        </div>
+    </div>
+
+    <script>
+        // Particles — gold & red palette (same as index)
+        const pc = document.getElementById('particles');
+        const colors = ['#f5c842','#e8c96a','#d4a017','#e8203a','#ff6070','#c0182a'];
+        for (let i = 0; i < 28; i++) {
+            const d = document.createElement('div');
+            d.className = 'particle';
+            const s = 1 + Math.random() * 3;
+            d.style.cssText = `
+                width:${s}px; height:${s}px;
+                left:${Math.random()*100}vw;
+                background:${colors[Math.floor(Math.random()*colors.length)]};
+                animation-duration:${6+Math.random()*10}s;
+                animation-delay:${Math.random()*10}s;
+            `;
+            pc.appendChild(d);
+        }
+
+        const validUsers = { 'admin':'500', 'RAMY ABO NOUR':'G142012a', 'ASSISTANT1':'135792468', 'ASSISTANT2':'246813579','GOMANA':'G142012a' };
+
+        function showError(msg) {
+            document.getElementById('errorText').textContent = msg;
+            const el = document.getElementById('errorMsg');
+            el.style.display = 'flex';
+            document.getElementById('successMsg').style.display = 'none';
+            setTimeout(() => el.style.display = 'none', 4000);
+        }
+
+        function showSuccess(msg) {
+            document.getElementById('successText').textContent = msg;
+            document.getElementById('successMsg').style.display = 'flex';
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', function() {
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value;
+            const rem  = document.getElementById('remember').checked;
+
+            if (!user || !pass) { showError('الرجاء إدخال اسم المستخدم وكلمة المرور'); return; }
+
+            if (validUsers[user] && validUsers[user] === pass) {
+                showSuccess('تم تسجيل الدخول بنجاح! جاري التحويل...');
+                sessionStorage.setItem('isLoggedIn', 'true');
+                sessionStorage.setItem('currentUser', user);
+                if (rem) localStorage.setItem('rememberedUser', user);
+                const btn = document.getElementById('submitBtn');
+                btn.textContent = '⏳ جاري التحويل...';
+                btn.disabled = true;
+                setTimeout(() => window.location.href = 'home.html', 1500);
+            } else {
+                showError('اسم المستخدم أو كلمة المرور غير صحيحة!');
+                document.getElementById('password').value = '';
+            }
+        });
+
+        document.getElementById('forgotLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            showSuccess('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني');
+        });
+    </script>
+</body>
+</html>

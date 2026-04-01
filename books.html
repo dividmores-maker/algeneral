@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حجز الكتب الدراسية - نظام إدارة السنتر</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-base:       #080808;
+            --gold:          #d4a017;
+            --gold-hi:       #f5c842;
+            --gold-soft:     #e8c96a;
+            --crimson:       #c0182a;
+            --crimson-hi:    #e8203a;
+            --crimson-soft:  #ff6070;
+            --amber-accent:  #f59e0b;
+            --red-accent:    #ef4444;
+            --cyan-accent:   #06b6d4;
+            --amber-accent:  #f59e0b;
+            --red-accent:    #ef4444;
+            --cyan-accent:   #06b6d4;
+            --white:         #ffffff;
+            --card-bg:       rgba(10,6,0,0.55);
+            --card-border:   rgba(212,160,23,0.2);
+            --text-muted:    rgba(255,255,255,0.5);
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-base);
+            min-height: 100vh;
+            color: var(--white);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* ── Background ── */
+        .bg-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .bg-gradient {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 75% 55% at 50% -5%,  rgba(212,160,23,.38) 0%, transparent 62%),
+                radial-gradient(ellipse 55% 45% at 85% 85%,  rgba(192,24,42,.28)  0%, transparent 55%),
+                radial-gradient(ellipse 45% 38% at 15% 75%,  rgba(212,160,23,.16) 0%, transparent 50%),
+                linear-gradient(160deg, #0d0900 0%, #110a00 40%, #080808 70%, #0d0203 100%);
+        }
+        .grid-lines {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(rgba(212,160,23,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212,160,23,.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .dot-grid {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(212,160,23,.13) 1px, transparent 1px);
+            background-size: 30px 30px;
+            mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black, transparent);
+        }
+        .orb { position: absolute; border-radius: 50%; filter: blur(90px); animation: floatOrb 9s ease-in-out infinite; }
+        .orb-1 { width:500px; height:500px; background:rgba(212,160,23,.22); top:-110px; left:50%; animation-delay:0s; }
+        .orb-2 { width:350px; height:350px; background:rgba(192,24,42,.2);   bottom:10%; right:-50px; animation-delay:-4s; }
+        .orb-3 { width:280px; height:280px; background:rgba(212,160,23,.12); bottom:20%; left:-30px;  animation-delay:-7s; }
+        @keyframes floatOrb {
+            0%,100% { transform:translateY(0) translateX(0); }
+            33%      { transform:translateY(-25px) translateX(12px); }
+            66%      { transform:translateY(12px) translateX(-12px); }
+        }
+        .scan-line { position:absolute; height:1px; left:0; right:0; opacity:0; background:linear-gradient(90deg,transparent,rgba(212,160,23,.55),transparent); animation:scanLine 5s ease-in-out infinite; }
+        .scan-line:nth-child(1) { top:25%; }
+        .scan-line:nth-child(2) { top:65%; animation-delay:2.5s; }
+        @keyframes scanLine { 0%{opacity:0;transform:scaleX(0)} 50%{opacity:1;transform:scaleX(1)} 100%{opacity:0;transform:scaleX(0)} }
+
+        /* ── Page ── */
+        .page { position:relative; z-index:10; max-width:1400px; margin:0 auto; padding:24px 20px 40px; }
+
+        /* ── Header ── */
+        .header {
+            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;
+            margin-bottom:28px; padding:22px 28px;
+            background:var(--card-bg); border:1px solid var(--card-border);
+            border-radius:18px; backdrop-filter:blur(14px);
+            animation:fadeDown .6s ease both;
+        }
+        .header-brand { display:flex; align-items:center; gap:14px; }
+        .header-icon {
+            width:50px; height:50px;
+            background:linear-gradient(135deg, var(--gold), var(--crimson));
+            border-radius:14px; display:flex; align-items:center; justify-content:center;
+            font-size:24px; box-shadow:0 0 20px rgba(212,160,23,.5);
+        }
+        .header-title { font-size:22px; font-weight:900; }
+        .header-sub   { font-size:13px; color:var(--text-muted); margin-top:2px; }
+        .header-nav   { display:flex; gap:10px; flex-wrap:wrap; }
+
+        .nav-btn {
+            display:inline-flex; align-items:center; gap:7px;
+            padding:10px 20px; border-radius:10px;
+            font-family:'Cairo',sans-serif; font-size:14px; font-weight:700;
+            cursor:pointer; text-decoration:none; border:1px solid transparent;
+            transition:all .25s ease;
+        }
+        .nav-btn-ghost { background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.1); color:var(--white); }
+        .nav-btn-ghost:hover { background:rgba(212,160,23,.15); border-color:var(--gold-soft); box-shadow:0 0 14px rgba(212,160,23,.3); }
+        .nav-btn-green  { background:linear-gradient(135deg,#059669,#10b981); color:var(--white); box-shadow:0 4px 16px rgba(16,185,129,.35); }
+        .nav-btn-green:hover  { transform:translateY(-2px); box-shadow:0 6px 22px rgba(16,185,129,.5); }
+        .nav-btn-cyan   { background:linear-gradient(135deg,#0891b2,var(--cyan-accent)); color:var(--white); box-shadow:0 4px 16px rgba(6,182,212,.35); }
+        .nav-btn-cyan:hover   { transform:translateY(-2px); box-shadow:0 6px 22px rgba(6,182,212,.5); }
+        .nav-btn-primary { background:linear-gradient(135deg,var(--crimson),var(--gold)); color:var(--white); box-shadow:0 4px 16px rgba(212,160,23,.4); }
+        .nav-btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 22px rgba(212,160,23,.6); }
+
+        /* ── Firebase Bar ── */
+        .firebase-bar {
+            display:flex; align-items:center; gap:10px; padding:11px 20px;
+            border-radius:12px; margin-bottom:24px; font-size:13px; font-weight:700;
+            border:1px solid; backdrop-filter:blur(10px);
+            animation:fadeDown .6s ease .1s both; transition:all .3s;
+        }
+        .firebase-bar.connected  { background:rgba(16,185,129,.12); border-color:rgba(16,185,129,.35); color:#6ee7b7; }
+        .firebase-bar.error      { background:rgba(239,68,68,.12);  border-color:rgba(239,68,68,.35);  color:#fca5a5; }
+        .firebase-bar.connecting { background:rgba(245,158,11,.1);  border-color:rgba(245,158,11,.3);  color:#fcd34d; }
+        .firebase-bar.saving     { background:rgba(59,130,246,.1);  border-color:rgba(59,130,246,.3);  color:#93c5fd; }
+        .firebase-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .firebase-dot.connected  { background:#10b981; box-shadow:0 0 8px #10b981; animation:fbPulse 2s infinite; }
+        .firebase-dot.error      { background:#ef4444; }
+        .firebase-dot.connecting { background:#f59e0b; animation:fbPulse .6s infinite; }
+        .firebase-dot.saving     { background:#3b82f6; animation:fbPulse .4s infinite; }
+        @keyframes fbPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        /* ── Alert ── */
+        #alertContainer { margin-bottom: 16px; }
+        .alert {
+            padding:14px 18px; border-radius:12px; font-weight:700; font-size:14px;
+            animation:fadeDown .4s ease both;
+        }
+        .alert-success { background:rgba(16,185,129,.15); border:1px solid rgba(16,185,129,.35); color:#6ee7b7; }
+        .alert-danger  { background:rgba(239,68,68,.15);  border:1px solid rgba(239,68,68,.35);  color:#fca5a5; }
+
+        /* ── Stats Row ── */
+        .stats-row {
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+            gap:14px; margin-bottom:20px;
+        }
+        .stat-box {
+            padding:20px; background:var(--card-bg); border:1px solid var(--card-border);
+            border-radius:14px; text-align:center; backdrop-filter:blur(10px);
+            transition:transform .25s; animation:fadeDown .6s ease both;
+        }
+        .stat-box:hover { transform:translateY(-4px); }
+        .stat-number {
+            font-size:34px; font-weight:900;
+            background:linear-gradient(135deg, var(--white), var(--gold-soft));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+            margin-bottom:6px;
+        }
+        .stat-label { font-size:12px; color:var(--text-muted); }
+
+        /* ── Content Area ── */
+        .content-card {
+            background:var(--card-bg); border:1px solid var(--card-border);
+            border-radius:18px; padding:24px; backdrop-filter:blur(12px);
+            animation:fadeDown .6s ease .2s both;
+        }
+        .content-header {
+            display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:20px; flex-wrap:wrap; gap:12px;
+        }
+        .content-header h2 { font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px; }
+
+        /* ── Filter Section ── */
+        .filter-section {
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+            gap:14px; margin-bottom:24px; padding:18px;
+            background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
+            border-radius:14px;
+        }
+        .filter-section select {
+            padding:11px 14px;
+            background:rgba(255,255,255,.07);
+            border:1px solid rgba(212,160,23,.22);
+            border-radius:10px;
+            color:var(--white);
+            font-family:'Cairo',sans-serif;
+            font-size:14px;
+            font-weight:600;
+            cursor:pointer;
+            transition:border-color .2s;
+        }
+        .filter-section select:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,160,23,.12); }
+        .filter-section select option { background:#0d0900; color:var(--white); }
+
+        /* ── Books Grid ── */
+        .books-grid {
+            display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:18px;
+        }
+        .book-card {
+            padding:20px;
+            background:rgba(255,255,255,.04);
+            border:1px solid var(--card-border);
+            border-right:3px solid var(--gold);
+            border-radius:14px;
+            backdrop-filter:blur(8px);
+            transition:all .25s ease;
+            animation:fadeDown .5s ease both;
+        }
+        .book-card:hover {
+            transform:translateY(-6px);
+            box-shadow:0 16px 40px rgba(212,160,23,.2);
+            border-color:rgba(212,160,23,.4);
+        }
+        .book-header {
+            display:flex; align-items:center; gap:14px;
+            margin-bottom:14px; padding-bottom:14px;
+            border-bottom:1px solid rgba(255,255,255,.08);
+        }
+        .book-icon { font-size:44px; filter:drop-shadow(0 0 10px rgba(212,160,23,.6)); }
+        .book-info h3 { font-size:17px; font-weight:700; color:var(--white); margin-bottom:4px; }
+        .book-info p  { font-size:12px; color:var(--text-muted); }
+
+        .book-details { margin-bottom:14px; }
+        .detail-item {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:8px 0; font-size:13px;
+            border-bottom:1px solid rgba(255,255,255,.05);
+        }
+        .detail-item:last-child { border-bottom:none; }
+        .detail-label { color:var(--text-muted); }
+        .detail-value { font-weight:700; color:var(--white); }
+
+        .book-status {
+            display:inline-block; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700;
+        }
+        .status-available   { background:rgba(16,185,129,.2);  color:#6ee7b7; border:1px solid rgba(16,185,129,.3); }
+        .status-unavailable { background:rgba(239,68,68,.2);   color:#fca5a5; border:1px solid rgba(239,68,68,.3); }
+
+        .book-actions { display:flex; gap:10px; margin-top:4px; }
+        .book-actions button { flex:1; }
+
+        .btn {
+            display:inline-flex; align-items:center; justify-content:center; gap:6px;
+            padding:10px 18px; border-radius:10px;
+            font-family:'Cairo',sans-serif; font-size:14px; font-weight:700;
+            cursor:pointer; border:none; text-decoration:none;
+            transition:all .25s ease;
+        }
+        .btn-primary { background:linear-gradient(135deg,var(--crimson),var(--gold)); color:var(--white); box-shadow:0 4px 14px rgba(192,24,42,.4); }
+        .btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(212,160,23,.5); }
+        .btn-success { background:linear-gradient(135deg,#059669,#10b981); color:var(--white); box-shadow:0 4px 14px rgba(16,185,129,.35); }
+        .btn-success:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(16,185,129,.5); }
+        .btn-cyan    { background:linear-gradient(135deg,#0891b2,var(--cyan-accent)); color:var(--white); box-shadow:0 4px 14px rgba(6,182,212,.35); }
+        .btn-cyan:hover    { transform:translateY(-2px); }
+        .btn-amber   { background:linear-gradient(135deg,#d97706,var(--amber-accent)); color:var(--white); box-shadow:0 4px 14px rgba(245,158,11,.35); }
+        .btn-amber:hover   { transform:translateY(-2px); }
+        .btn-danger  { background:linear-gradient(135deg,#dc2626,var(--red-accent)); color:var(--white); }
+        .btn-danger:hover  { transform:translateY(-2px); }
+        .btn-ghost   { background:rgba(255,255,255,.08); color:var(--white); border:1px solid rgba(255,255,255,.15); }
+        .btn-ghost:hover   { background:rgba(255,255,255,.14); }
+        .btn:disabled { opacity:.45; cursor:not-allowed; transform:none !important; }
+
+        /* ── Modals ── */
+        .modal {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,.7); backdrop-filter:blur(6px);
+            justify-content:center; align-items:center; z-index:1000;
+        }
+        .modal.active { display:flex; }
+        .modal-content {
+            background:linear-gradient(145deg, #0d0900, #080808);
+            border:1px solid var(--card-border);
+            padding:30px; border-radius:20px;
+            width:90%; max-width:520px;
+            box-shadow:0 30px 80px rgba(0,0,0,.6);
+            animation:fadeDown .35s ease both;
+        }
+        .modal-content.large { max-width:1050px; max-height:85vh; overflow-y:auto; }
+        .modal-header {
+            display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:22px; padding-bottom:16px;
+            border-bottom:1px solid rgba(212,160,23,.2);
+        }
+        .modal-header h2 { font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px; }
+        .close-btn {
+            background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
+            color:var(--text-muted); font-size:20px; width:36px; height:36px;
+            border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+            transition:all .2s;
+        }
+        .close-btn:hover { background:rgba(239,68,68,.2); color:#fca5a5; border-color:rgba(239,68,68,.3); }
+
+        .form-group { margin-bottom:18px; }
+        .form-group label { display:block; margin-bottom:7px; font-weight:700; font-size:13px; color:rgba(255,255,255,.8); }
+        .form-group input,
+        .form-group select {
+            width:100%; padding:12px 14px;
+            background:rgba(255,255,255,.07);
+            border:1px solid rgba(212,160,23,.22);
+            border-radius:10px;
+            color:var(--white);
+            font-family:'Cairo',sans-serif;
+            font-size:14px;
+            transition:border-color .2s;
+        }
+        .form-group input::placeholder { color:var(--text-muted); }
+        .form-group input:focus,
+        .form-group select:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,160,23,.12); }
+        .form-group select option { background:#1a0030; }
+
+        .total-display {
+            background:rgba(212,160,23,.1); border:1px solid rgba(212,160,23,.22);
+            padding:16px; border-radius:12px; text-align:center; margin-bottom:16px;
+        }
+        .total-display strong { color:var(--gold-soft); font-size:20px; }
+
+        .form-actions { display:flex; gap:10px; margin-top:20px; }
+        .form-actions .btn { flex:1; }
+
+        /* ── Report Table ── */
+        .report-table { width:100%; border-collapse:collapse; margin-top:16px; font-size:13px; }
+        .report-table th,
+        .report-table td { padding:11px 12px; text-align:right; border:1px solid rgba(255,255,255,.08); }
+        .report-table th {
+            background:linear-gradient(135deg,var(--crimson),var(--gold));
+            color:var(--white); font-weight:700; font-size:12px;
+        }
+        .report-table tbody tr { transition:background .2s; }
+        .report-table tbody tr:hover { background:rgba(212,160,23,.07); }
+
+        /* ── Grade Card (Reservations) ── */
+        .grade-card {
+            background:rgba(255,255,255,.04); border:1px solid rgba(212,160,23,.18);
+            border-right:3px solid var(--gold);
+            border-radius:14px; padding:18px; margin-bottom:14px;
+            cursor:pointer; transition:all .25s ease;
+        }
+        .grade-card:hover { background:rgba(212,160,23,.06); transform:translateY(-2px); }
+        .grade-card-header { display:flex; justify-content:space-between; align-items:center; }
+        .grade-card-title { font-size:18px; font-weight:700; color:var(--gold-soft); margin-bottom:8px; }
+        .grade-card-meta  { display:flex; gap:20px; font-size:13px; color:var(--text-muted); }
+        .grade-card-meta span strong { color:var(--white); }
+        .grade-arrow { font-size:18px; color:var(--gold); transition:transform .2s; }
+        .grade-details {
+            display:none; margin-top:18px; padding-top:18px;
+            border-top:1px solid rgba(255,255,255,.08);
+            overflow-x:auto;
+        }
+
+        /* ── Report Summary ── */
+        .report-summary {
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+            gap:14px; margin-top:20px; padding:18px;
+            background:rgba(255,255,255,.03); border:1px solid rgba(212,160,23,.15);
+            border-radius:14px;
+        }
+        .summary-item { text-align:center; }
+        .summary-item .value {
+            font-size:26px; font-weight:900;
+            background:linear-gradient(135deg,var(--white),var(--gold-soft));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+            margin-bottom:4px;
+        }
+        .summary-item .label { font-size:12px; color:var(--text-muted); }
+
+        /* ── Price Section ── */
+        .price-section {
+            margin-bottom:24px; padding:18px;
+            background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
+            border-radius:14px;
+        }
+        .price-section h3 { font-size:15px; font-weight:700; color:var(--gold-soft); margin-bottom:14px; }
+
+        /* ── Payment badges ── */
+        .badge-paid    { background:rgba(16,185,129,.2); color:#6ee7b7; border:1px solid rgba(16,185,129,.3); padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+        .badge-partial { background:rgba(245,158,11,.15); color:#fde68a; border:1px solid rgba(245,158,11,.3); padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+        .badge-unpaid  { background:rgba(239,68,68,.15); color:#fca5a5; border:1px solid rgba(239,68,68,.3); padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+
+        /* ── Empty ── */
+        .empty { text-align:center; color:var(--text-muted); padding:40px; font-size:14px; grid-column:1/-1; }
+
+        /* ── Animations ── */
+        @keyframes fadeDown {
+            from { opacity:0; transform:translateY(-16px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+
+        /* ── Print ── */
+        @media print {
+            body { background:white; color:#000; }
+            .bg-layer, .header, .stats-row, .filter-section, .nav-btn, .btn { display:none !important; }
+            .modal { display:block !important; position:relative; background:white; }
+            .modal-content { box-shadow:none; max-height:none; background:white; color:#000; border:none; }
+            .report-table th { background:#d4a017 !important; }
+        }
+
+        @media (max-width:600px) {
+            .header { flex-direction:column; text-align:center; }
+            .books-grid { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Background -->
+    <div class="bg-layer">
+        <div class="bg-gradient"></div>
+        <div class="dot-grid"></div>
+        <div class="grid-lines"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="scan-line"></div>
+        <div class="scan-line"></div>
+    </div>
+
+    <div class="page">
+
+        <!-- Header -->
+        <div class="header">
+            <div class="header-brand">
+                <div class="header-icon">📚</div>
+                <div>
+                    <div class="header-title">حجز الكتب الدراسية</div>
+                    <div class="header-sub">إدارة حجز الكتب للمراحل الدراسية</div>
+                </div>
+            </div>
+            <nav class="header-nav">
+                <button class="nav-btn nav-btn-cyan" onclick="showSetPricesModal()">💰 تحديد الأسعار</button>
+                <a href="dashboard.html" class="nav-btn nav-btn-ghost">📊 لوحة التحكم</a>
+                <a href="index.html"     class="nav-btn nav-btn-primary">🏠 الرئيسية</a>
+            </nav>
+        </div>
+
+        <!-- Firebase Status -->
+        <div class="firebase-bar connecting" id="firebaseStatusBar">
+            <div class="firebase-dot connecting" id="firebaseDot"></div>
+            <span id="firebaseMsg">🔌 جاري الاتصال بـ Firebase...</span>
+        </div>
+
+        <!-- Alert -->
+        <div id="alertContainer"></div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-number" id="totalBooks">0</div>
+                <div class="stat-label">إجمالي الكتب</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="availableBooks">0</div>
+                <div class="stat-label">كتب متاحة</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="reservedBooks">0</div>
+                <div class="stat-label">كتب محجوزة</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="totalReservations">0</div>
+                <div class="stat-label">إجمالي الحجوزات</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="totalRevenue">0</div>
+                <div class="stat-label">الإيرادات (ج)</div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content-card">
+            <div class="content-header">
+                <h2><span>📖</span> الكتب المتاحة</h2>
+                <button class="btn btn-success" onclick="showReservationsModal()">📋 عرض الحجوزات</button>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-section">
+                <select id="stageFilter" onchange="filterBooks()">
+                    <option value="">جميع المراحل</option>
+                    <option value="primary">الثانوية</option>
+                    <option value="preparatory">الإعدادية</option>
+                </select>
+                <select id="gradeFilter" onchange="filterBooks()">
+                    <option value="">جميع الصفوف</option>
+                    <optgroup label="المرحلة الثانوية">
+                        <option value="1">الأول الثانوي</option>
+                        <option value="2">الثاني الثانوي</option>
+                        <option value="3">الثالث الثانوي</option>
+                    </optgroup>
+                    <optgroup label="المرحلة الإعدادية">
+                        <option value="7">الأول الإعدادي</option>
+                        <option value="8">الثاني الإعدادي</option>
+                        <option value="9">الثالث الإعدادي</option>
+                    </optgroup>
+                </select>
+                <select id="subjectFilter" onchange="filterBooks()">
+                    <option value="">جميع المواد</option>
+                    <option value="math">رياضيات</option>
+                    <option value="arabic">لغة عربية</option>
+                    <option value="english">لغة إنجليزية</option>
+                    <option value="science">علوم</option>
+                    <option value="social">دراسات اجتماعية</option>
+                    <option value="religion">تربية دينية</option>
+                </select>
+            </div>
+
+            <div class="books-grid" id="booksGrid">
+                <div class="empty">⏳ جاري تحميل الكتب...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reserve Modal -->
+    <div class="modal" id="reserveModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📚 حجز كتاب</h2>
+                <button class="close-btn" onclick="closeModal('reserveModal')">&times;</button>
+            </div>
+            <form onsubmit="makeReservation(event)">
+                <input type="hidden" id="reserveBookId">
+                <div class="form-group">
+                    <label>اسم الطالب</label>
+                    <input type="text" id="studentName" placeholder="أدخل اسم الطالب" required>
+                </div>
+                <div class="form-group">
+                    <label>رقم الهاتف</label>
+                    <input type="tel" id="studentPhone" placeholder="01xxxxxxxxx" pattern="[0-9]{11}" required>
+                </div>
+                <div class="form-group">
+                    <label>عدد النسخ</label>
+                    <input type="number" id="bookQuantity" min="1" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label>المبلغ المدفوع</label>
+                    <input type="number" id="paidAmount" min="0" placeholder="اترك فارغاً للدفع الكامل">
+                </div>
+                <div class="total-display">
+                    <strong>الإجمالي: <span id="totalPrice">0</span> جنيه</strong>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success">✔ تأكيد الحجز</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('reserveModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Set Prices Modal -->
+    <div class="modal" id="setPricesModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>💰 تحديد أسعار الكتب</h2>
+                <button class="close-btn" onclick="closeModal('setPricesModal')">&times;</button>
+            </div>
+            <div id="pricesList"></div>
+            <div style="margin-top:20px;">
+                <button class="btn btn-success" style="width:100%;" onclick="savePrices()">✔ حفظ الأسعار</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reservations Modal -->
+    <div class="modal" id="reservationsModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>📋 تقرير الحجوزات</h2>
+                <button class="close-btn" onclick="closeModal('reservationsModal')">&times;</button>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:20px;">
+                <button class="btn btn-cyan" onclick="window.print()">🖨️ طباعة</button>
+            </div>
+            <div id="reservationsList"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getFirestore, doc, onSnapshot, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+        const firebaseConfig = {
+  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+  authDomain: "al-gnarl.firebaseapp.com",
+  projectId: "al-gnarl",
+  storageBucket: "al-gnarl.firebasestorage.app",
+  messagingSenderId: "288765966471",
+  appId: "1:288765966471:web:63358febfb82843c2fa022"
+};
+        const app = initializeApp(firebaseConfig);
+        const db  = getFirestore(app);
+
+        function setFbStatus(state, msg) {
+            const bar = document.getElementById('firebaseStatusBar');
+            const dot = document.getElementById('firebaseDot');
+            const txt = document.getElementById('firebaseMsg');
+            if (!bar) return;
+            bar.className = 'firebase-bar ' + state;
+            dot.className = 'firebase-dot ' + state;
+            txt.textContent = msg;
+        }
+
+        const booksDefault = [
+            { id:1, name:'لغة إنجليزية', grade:1, gradeName:'الأول الثانوي',   stage:'primary',      subject:'english', available:50, reserved:0, price:80 },
+            { id:2, name:'لغة إنجليزية', grade:2, gradeName:'الثاني الثانوي',  stage:'primary',      subject:'english', available:50, reserved:0, price:75 },
+            { id:3, name:'لغة إنجليزية', grade:3, gradeName:'الثالث الثانوي',  stage:'primary',      subject:'english', available:50, reserved:0, price:70 },
+            { id:4, name:'لغة إنجليزية', grade:7, gradeName:'الأول الإعدادي',  stage:'preparatory',  subject:'english', available:50, reserved:0, price:85 },
+            { id:5, name:'لغة إنجليزية', grade:8, gradeName:'الثاني الإعدادي', stage:'preparatory',  subject:'english', available:50, reserved:0, price:80 },
+            { id:6, name:'لغة إنجليزية', grade:9, gradeName:'الثالث الإعدادي', stage:'preparatory',  subject:'english', available:50, reserved:0, price:75 },
+        ];
+
+        let books        = JSON.parse(JSON.stringify(booksDefault));
+        let reservations = [];
+
+        async function saveData() {
+            setFbStatus('saving', '💾 جاري الحفظ...');
+            try {
+                await setDoc(doc(db, 'books', 'data'), { books, reservations });
+                setFbStatus('connected', '🔥 Firebase — تم الحفظ ✔');
+            } catch(e) {
+                setFbStatus('error', '❌ خطأ في الحفظ — ' + e.message);
+            }
+        }
+
+        async function migrateIfNeeded() {
+            const lb = localStorage.getItem('school_books_data');
+            const lr = localStorage.getItem('school_reservations_data');
+            if (!lb && !lr) return;
+            try {
+                const snap = await getDoc(doc(db, 'books', 'data'));
+                if (!snap.exists()) {
+                    await setDoc(doc(db, 'books', 'data'), {
+                        books:        lb ? JSON.parse(lb) : books,
+                        reservations: lr ? JSON.parse(lr) : []
+                    });
+                }
+                localStorage.removeItem('school_books_data');
+                localStorage.removeItem('school_reservations_data');
+            } catch(e) { console.warn('Migration error:', e); }
+        }
+
+        function startListener() {
+            onSnapshot(doc(db, 'books', 'data'), (snap) => {
+                if (snap.exists()) {
+                    books        = snap.data().books        || JSON.parse(JSON.stringify(booksDefault));
+                    reservations = snap.data().reservations || [];
+                } else {
+                    books        = JSON.parse(JSON.stringify(booksDefault));
+                    reservations = [];
+                    saveData();
+                }
+                setFbStatus('connected', '🔥 Firebase متصل — البيانات محدّثة لحظياً');
+                renderBooks();
+            }, () => setFbStatus('error', '❌ خطأ في الاتصال — تأكد من Firebase Rules'));
+        }
+
+        function showAlert(message, type = 'success') {
+            const div = document.createElement('div');
+            div.className = `alert alert-${type}`;
+            div.textContent = message;
+            const c = document.getElementById('alertContainer');
+            c.innerHTML = '';
+            c.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        function updateStats() {
+            document.getElementById('totalBooks').textContent        = books.length;
+            document.getElementById('availableBooks').textContent    = books.filter(b => b.available > 0).length;
+            document.getElementById('reservedBooks').textContent     = reservations.reduce((s, r) => s + r.quantity, 0);
+            document.getElementById('totalReservations').textContent = reservations.length;
+            document.getElementById('totalRevenue').textContent      = reservations.reduce((s, r) => s + (r.paidAmount || 0), 0).toLocaleString();
+        }
+
+        function renderBooks() {
+            const grid    = document.getElementById('booksGrid');
+            const stage   = document.getElementById('stageFilter').value;
+            const grade   = document.getElementById('gradeFilter').value;
+            const subject = document.getElementById('subjectFilter').value;
+
+            let filtered = books;
+            if (stage)   filtered = filtered.filter(b => b.stage === stage);
+            if (grade)   filtered = filtered.filter(b => b.grade === parseInt(grade));
+            if (subject) filtered = filtered.filter(b => b.subject === subject);
+
+            grid.innerHTML = '';
+            if (!filtered.length) {
+                grid.innerHTML = '<div class="empty">لا توجد كتب متاحة بهذه الفلاتر</div>';
+                updateStats(); return;
+            }
+
+            filtered.forEach((book, i) => {
+                const isAvail   = book.available > 0;
+                const statusTxt = isAvail ? `متاح (${book.available})` : 'غير متاح';
+                const statusCls = isAvail ? 'status-available' : 'status-unavailable';
+                const card      = document.createElement('div');
+                card.className  = 'book-card';
+                card.style.animationDelay = (i * 0.06) + 's';
+                card.innerHTML  = `
+                    <div class="book-header">
+                        <div class="book-icon">📖</div>
+                        <div class="book-info">
+                            <h3>${book.name}</h3>
+                            <p>${book.gradeName}</p>
+                        </div>
+                    </div>
+                    <div class="book-details">
+                        <div class="detail-item">
+                            <span class="detail-label">السعر</span>
+                            <span class="detail-value">${book.price} جنيه</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">الحالة</span>
+                            <span class="book-status ${statusCls}">${statusTxt}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">محجوز</span>
+                            <span class="detail-value">${book.reserved} نسخة</span>
+                        </div>
+                    </div>
+                    <div class="book-actions">
+                        <button class="btn ${isAvail ? 'btn-success' : 'btn-ghost'}"
+                                onclick="showReserveModal(${book.id})"
+                                ${!isAvail ? 'disabled' : ''}>
+                            ${isAvail ? '📚 حجز الآن' : '❌ غير متاح'}
+                        </button>
+                    </div>`;
+                grid.appendChild(card);
+            });
+            updateStats();
+        }
+
+        function filterBooks() { renderBooks(); }
+
+        function showSetPricesModal() {
+            const list    = document.getElementById('pricesList');
+            list.innerHTML = '';
+            const grouped = {};
+            books.forEach(b => { if (!grouped[b.gradeName]) grouped[b.gradeName] = []; grouped[b.gradeName].push(b); });
+            Object.keys(grouped).forEach(gradeName => {
+                const sec = document.createElement('div');
+                sec.className = 'price-section';
+                let html = `<h3>${gradeName}</h3>`;
+                grouped[gradeName].forEach(b => {
+                    html += `<div class="form-group"><label>${b.name}</label><input type="number" id="price_${b.id}" value="${b.price}" min="0" placeholder="السعر بالجنيه"></div>`;
+                });
+                sec.innerHTML = html;
+                list.appendChild(sec);
+            });
+            document.getElementById('setPricesModal').classList.add('active');
+        }
+
+        function savePrices() {
+            books.forEach(b => {
+                const input = document.getElementById(`price_${b.id}`);
+                if (input) { const p = parseInt(input.value); if (p > 0) b.price = p; }
+            });
+            saveData();
+            showAlert('تم حفظ الأسعار بنجاح! ✔');
+            closeModal('setPricesModal');
+            renderBooks();
+        }
+
+        function showReserveModal(bookId) {
+            document.getElementById('reserveBookId').value  = bookId;
+            document.getElementById('studentName').value   = '';
+            document.getElementById('studentPhone').value  = '';
+            document.getElementById('bookQuantity').value  = '1';
+            document.getElementById('paidAmount').value    = '';
+            updateTotalPrice();
+            document.getElementById('bookQuantity').addEventListener('input', updateTotalPrice);
+            document.getElementById('reserveModal').classList.add('active');
+        }
+
+        function updateTotalPrice() {
+            const bookId   = parseInt(document.getElementById('reserveBookId').value);
+            const quantity = parseInt(document.getElementById('bookQuantity').value) || 0;
+            const book     = books.find(b => b.id === bookId);
+            if (book) document.getElementById('totalPrice').textContent = (book.price * quantity).toLocaleString();
+        }
+
+        function makeReservation(e) {
+            e.preventDefault();
+            const bookId      = parseInt(document.getElementById('reserveBookId').value);
+            const studentName = document.getElementById('studentName').value;
+            const studentPhone= document.getElementById('studentPhone').value;
+            const quantity    = parseInt(document.getElementById('bookQuantity').value);
+            const paidAmount  = parseFloat(document.getElementById('paidAmount').value) || 0;
+            const book        = books.find(b => b.id === bookId);
+            const totalPrice  = book.price * quantity;
+
+            if (quantity > book.available) { showAlert('عدد النسخ المطلوب أكبر من المتاح!', 'danger'); return; }
+            if (paidAmount > totalPrice)   { showAlert('المبلغ المدفوع أكبر من الإجمالي!', 'danger'); return; }
+
+            book.available -= quantity;
+            book.reserved  += quantity;
+            const remaining     = totalPrice - paidAmount;
+            const paymentStatus = paidAmount === 0 ? 'not_paid' : (remaining === 0 ? 'paid' : 'partial');
+
+            reservations.push({
+                id: Date.now(), bookId, bookName: book.name, grade: book.gradeName,
+                studentName, studentPhone, quantity, price: book.price,
+                totalPrice, paidAmount, remainingAmount: remaining,
+                paymentStatus, date: new Date().toISOString(), status: 'confirmed'
+            });
+
+            saveData();
+            let msg = `تم حجز ${quantity} نسخة من كتاب ${book.name} بنجاح! ✓`;
+            if (paymentStatus === 'partial')  msg += ` — تم دفع ${paidAmount} ج - المتبقي: ${remaining} ج`;
+            if (paymentStatus === 'not_paid') msg += ` — لم يتم الدفع، المطلوب: ${totalPrice} ج`;
+            showAlert(msg);
+            closeModal('reserveModal');
+            renderBooks();
+        }
+
+        function showReservationsModal() {
+            const list = document.getElementById('reservationsList');
+            list.innerHTML = '';
+
+            if (!reservations.length) {
+                list.innerHTML = '<div class="empty">لا توجد حجوزات بعد</div>';
+                document.getElementById('reservationsModal').classList.add('active');
+                return;
+            }
+
+            const gradeGroups = {};
+            reservations.forEach(res => { if (!gradeGroups[res.grade]) gradeGroups[res.grade] = []; gradeGroups[res.grade].push(res); });
+            const sortedGrades = Object.keys(gradeGroups).sort((a, b) => {
+                const mA = a.match(/\d+/), mB = b.match(/\d+/);
+                return (!mA || !mB) ? 0 : parseInt(mA[0]) - parseInt(mB[0]);
+            });
+
+            let html = '<div style="margin-bottom:20px;">';
+            sortedGrades.forEach(grade => {
+                const gr           = gradeGroups[grade];
+                const studentCount = new Set(gr.map(r => r.studentName)).size;
+                const totalBooks   = gr.reduce((s, r) => s + r.quantity, 0);
+                const totalRev     = gr.reduce((s, r) => s + (r.paidAmount || 0), 0);
+                const gid          = grade.replace(/\s/g, '_');
+
+                html += `
+                    <div class="grade-card" onclick="toggleGradeDetails('${grade}')">
+                        <div class="grade-card-header">
+                            <div>
+                                <div class="grade-card-title">📚 ${grade}</div>
+                                <div class="grade-card-meta">
+                                    <span><strong>${studentCount}</strong> طالب</span>
+                                    <span><strong>${totalBooks}</strong> كتاب</span>
+                                    <span><strong>${totalRev.toLocaleString()}</strong> جنيه</span>
+                                </div>
+                            </div>
+                            <div class="grade-arrow" id="arrow_${gid}">▼</div>
+                        </div>
+                        <div class="grade-details" id="details_${gid}">
+                            <div style="overflow-x:auto;">
+                            <table class="report-table">
+                                <thead>
+                                    <tr><th>#</th><th>الطالب</th><th>الهاتف</th><th>الكتاب</th><th>العدد</th><th>السعر</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>حالة الدفع</th><th>التاريخ</th><th>الإجراءات</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${gr.map((res, i) => {
+                                        const date   = new Date(res.date).toLocaleDateString('ar-EG');
+                                        const badgeCls = res.paymentStatus === 'paid' ? 'badge-paid' : res.paymentStatus === 'partial' ? 'badge-partial' : 'badge-unpaid';
+                                        const badgeTxt = res.paymentStatus === 'paid' ? 'مدفوع' : res.paymentStatus === 'partial' ? 'جزئي' : 'لم يدفع';
+                                        const remColor = res.remainingAmount > 0 ? '#fca5a5' : '#6ee7b7';
+                                        return `<tr>
+                                            <td>${i+1}</td><td>${res.studentName}</td><td>${res.studentPhone}</td><td>${res.bookName}</td>
+                                            <td>${res.quantity}</td><td>${res.price} ج</td><td>${res.totalPrice} ج</td>
+                                            <td>${res.paidAmount||0} ج</td>
+                                            <td><strong style="color:${remColor}">${res.remainingAmount||0} ج</strong></td>
+                                            <td><span class="${badgeCls}">${badgeTxt}</span></td>
+                                            <td>${date}</td>
+                                            <td style="white-space:nowrap;">
+                                                ${res.remainingAmount > 0 ? `<button class="btn btn-success" style="padding:4px 10px;font-size:11px;margin-left:4px;" onclick="event.stopPropagation();payRemaining(${res.id})">💰 دفع</button>` : ''}
+                                                <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();cancelReservation(${res.id})">❌</button>
+                                            </td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+
+            const totalQty = reservations.reduce((s, r) => s + r.quantity, 0);
+            const totalRev = reservations.reduce((s, r) => s + (r.paidAmount||0), 0);
+            const totalSt  = new Set(reservations.map(r => r.studentName)).size;
+            html += `
+                <div class="report-summary">
+                    <div class="summary-item"><div class="value">${sortedGrades.length}</div><div class="label">عدد الصفوف</div></div>
+                    <div class="summary-item"><div class="value">${totalSt}</div><div class="label">إجمالي الطلاب</div></div>
+                    <div class="summary-item"><div class="value">${totalQty}</div><div class="label">إجمالي الكتب</div></div>
+                    <div class="summary-item"><div class="value">${totalRev.toLocaleString()} ج</div><div class="label">إجمالي الإيرادات</div></div>
+                </div>`;
+
+            list.innerHTML = html;
+            document.getElementById('reservationsModal').classList.add('active');
+        }
+
+        function toggleGradeDetails(grade) {
+            const gid     = grade.replace(/\s/g, '_');
+            const details = document.getElementById('details_' + gid);
+            const arrow   = document.getElementById('arrow_'   + gid);
+            if (!details) return;
+            const isHidden = details.style.display === 'none' || details.style.display === '';
+            details.style.display = isHidden ? 'block' : 'none';
+            arrow.textContent     = isHidden ? '▲' : '▼';
+        }
+
+        function cancelReservation(reservationId) {
+            if (!confirm('هل أنت متأكد من إلغاء هذا الحجز؟')) return;
+            const res  = reservations.find(r => r.id === reservationId);
+            const book = books.find(b => b.id === res.bookId);
+            book.available   += res.quantity;
+            book.reserved    -= res.quantity;
+            reservations      = reservations.filter(r => r.id !== reservationId);
+            saveData();
+            showAlert('تم إلغاء الحجز بنجاح!');
+            showReservationsModal();
+            renderBooks();
+        }
+
+        function payRemaining(reservationId) {
+            const res = reservations.find(r => r.id === reservationId);
+            if (!res) return;
+            const amount = prompt(`المبلغ المتبقي: ${res.remainingAmount} جنيه\nأدخل المبلغ المدفوع:`);
+            if (!amount) return;
+            const paidNow = parseFloat(amount);
+            if (isNaN(paidNow) || paidNow <= 0) { showAlert('الرجاء إدخال مبلغ صحيح!', 'danger'); return; }
+            if (paidNow > res.remainingAmount)   { showAlert('المبلغ أكبر من المتبقي!', 'danger'); return; }
+            res.paidAmount      += paidNow;
+            res.remainingAmount -= paidNow;
+            res.paymentStatus    = res.remainingAmount === 0 ? 'paid' : 'partial';
+            showAlert(res.remainingAmount === 0 ? 'تم دفع المبلغ بالكامل! ✓' : `تم دفع ${paidNow} جنيه - المتبقي: ${res.remainingAmount} جنيه`);
+            saveData();
+            showReservationsModal();
+            renderBooks();
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.classList.remove('active'); };
+
+        // Expose to HTML
+        window.filterBooks           = filterBooks;
+        window.showSetPricesModal    = showSetPricesModal;
+        window.savePrices            = savePrices;
+        window.showReserveModal      = showReserveModal;
+        window.updateTotalPrice      = updateTotalPrice;
+        window.makeReservation       = makeReservation;
+        window.showReservationsModal = showReservationsModal;
+        window.toggleGradeDetails    = toggleGradeDetails;
+        window.cancelReservation     = cancelReservation;
+        window.payRemaining          = payRemaining;
+        window.closeModal            = closeModal;
+
+        // Init
+        setFbStatus('connecting', '🔌 جاري الاتصال بـ Firebase...');
+        migrateIfNeeded().then(() => startListener());
+    </script>
+</body>
+</html>

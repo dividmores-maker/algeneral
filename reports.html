@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التقارير الشاملة</title>
+    <!-- SheetJS Library for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+        :root {
+            --bg-base:   #080808;
+            --gold:      #ffd700;
+            --gold-hi:   #fff7b0;
+            --gold-mid:  #f0c040;
+            --gold-dk:   #b8860b;
+            --red:       #ef4444;
+            --red-dk:    #b91c1c;
+            --border:    rgba(212,175,55,.2);
+            --border-hi: rgba(212,175,55,.45);
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-base);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        /* ═══ ANIMATED BACKGROUND ═══ */
+        .bg-wrap { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+        .bg-gradient {
+            position:absolute; inset:0;
+            background:
+                radial-gradient(ellipse 70% 55% at 50% -5%,  rgba(180,130,20,.45) 0%, transparent 65%),
+                radial-gradient(ellipse 40% 35% at 90% 85%,  rgba(220,38,38,.25)  0%, transparent 55%),
+                radial-gradient(ellipse 35% 30% at 5%  75%,  rgba(185,28,28,.2)   0%, transparent 55%),
+                radial-gradient(ellipse 30% 25% at 80% 10%,  rgba(240,192,64,.12) 0%, transparent 50%),
+                linear-gradient(160deg, #0a0800 0%, #120a00 35%, #080808 70%, #100500 100%);
+        }
+        .bg-grid {
+            position:absolute; inset:0;
+            background-image:
+                linear-gradient(rgba(212,175,55,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212,175,55,.05) 1px, transparent 1px);
+            background-size:56px 56px;
+        }
+        .bg-dots {
+            position:absolute; inset:0;
+            background-image: radial-gradient(rgba(212,175,55,.12) 1px, transparent 1px);
+            background-size:28px 28px;
+            mask-image: radial-gradient(ellipse 85% 85% at 50% 50%, black, transparent);
+        }
+        .orb { position:absolute; border-radius:50%; filter:blur(80px); animation:floatOrb var(--dur,10s) ease-in-out infinite; animation-delay:var(--delay,0s); }
+        .orb-1 { width:600px;height:600px;background:rgba(180,130,20,.28);top:-180px;left:35%;--dur:11s; }
+        .orb-2 { width:380px;height:380px;background:rgba(220,38,38,.2);bottom:0;right:-80px;--dur:9s;--delay:-4s; }
+        .orb-3 { width:300px;height:300px;background:rgba(185,28,28,.18);bottom:25%;left:-50px;--dur:13s;--delay:-7s; }
+        .orb-4 { width:200px;height:200px;background:rgba(240,192,64,.1);top:30%;right:10%;--dur:8s;--delay:-2s; }
+        @keyframes floatOrb { 0%,100%{transform:translate(0,0) scale(1);} 33%{transform:translate(12px,-22px) scale(1.04);} 66%{transform:translate(-10px,12px) scale(.97);} }
+        .scan { position:absolute;left:0;right:0;height:1px; background:linear-gradient(90deg,transparent,rgba(212,175,55,.6) 50%,transparent); animation:scanAnim var(--dur,6s) ease-in-out infinite; animation-delay:var(--delay,0s); opacity:0; }
+        .scan-1{top:28%;--dur:7s;} .scan-2{top:68%;--dur:9s;--delay:-4.5s;}
+        @keyframes scanAnim { 0%{opacity:0;transform:scaleX(0);} 15%{opacity:1;} 85%{opacity:1;} 100%{opacity:0;transform:scaleX(1);} }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-print {
+            background: #28a745;
+        }
+
+        .btn-excel {
+            background: #217346;
+            font-weight: bold;
+        }
+
+        .content {
+            background: rgba(255,255,255,.04);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 30px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 40px rgba(0,0,0,.4);
+        }
+
+        .report-title {
+            text-align: center;
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .report-date {
+            text-align: center;
+            color: #999;
+            margin-bottom: 40px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-box .number {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-box .label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding-bottom: 10px;
+        }
+
+        .section h2 {
+            color: var(--gold);
+            font-size: 22px;
+            font-weight: 900;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(212,175,55,.3);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .data-table th,
+        .data-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .data-table th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        .data-table tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .data-table tbody tr:hover {
+            background: #e9ecef;
+        }
+
+        .total-row {
+            background: #ffc107 !important;
+            font-weight: bold;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .data-label {
+            color: #666;
+        }
+
+        .data-value {
+            color: #333;
+            font-weight: bold;
+        }
+
+        .progress-item {
+            margin-bottom: 20px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            background: #f0f0f0;
+            border-radius: 10px;
+            height: 25px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            transition: width 0.3s ease;
+        }
+
+        .progress-fill.green {
+            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+        }
+
+        .progress-fill.red {
+            background: linear-gradient(90deg, #dc3545 0%, #c82333 100%);
+        }
+
+        @media print {
+            .header .btn { display: none; }
+            body { background: white; color: #000; }
+            .bg-wrap { display: none; }
+            .header, .content { background: white !important; border: 1px solid #ddd !important; color: #000 !important; }
+            .data-table th { background: #667eea !important; }
+            .stat-box { background: #f8f9fa !important; border: 1px solid #ddd !important; }
+            .report-title, .header h1, .section h2 { -webkit-text-fill-color: #333 !important; color: #333 !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-wrap">
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-dots"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+    <div class="scan scan-1"></div>
+    <div class="scan scan-2"></div>
+</div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📊 التقارير الشاملة</h1>
+            <div>
+                <button class="btn btn-excel" onclick="exportToExcel()">📥 تصدير Excel</button>
+                <button class="btn btn-print" onclick="window.print()">🖨️ طباعة</button>
+                <a href="index.html" class="btn btn-warning">🏠 الرئيسية</a>
+            </div>
+        </div>
+
+        <div class="content">
+            <h1 class="report-title">التقرير الشامل</h1>
+            <p class="report-date" id="reportDate"></p>
+
+            <!-- Overall Stats -->
+            <div class="stats-grid" id="overallStats"></div>
+
+            <!-- Students Section -->
+            <div class="section">
+                <h2>👨‍🎓 الطلاب</h2>
+                <table class="data-table" id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>م</th>
+                            <th>اسم الطالب</th>
+                            <th>الفصل</th>
+                            <th>الاشتراك المطلوب</th>
+                            <th>المدفوع</th>
+                            <th>المتبقي</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Teachers Section -->
+            <div class="section">
+                <h2>👨‍🏫 المدرسين</h2>
+                <table class="data-table" id="teachersTable">
+                    <thead>
+                        <tr>
+                            <th>م</th>
+                            <th>اسم المدرس</th>
+                            <th>التليفون</th>
+                            <th>المادة</th>
+                            <th>الراتب</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teachersTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Schedule Section -->
+            <div class="section">
+                <h2>📅 الجدول</h2>
+                <div id="scheduleData"></div>
+            </div>
+
+            <!-- Attendance Section -->
+            <div class="section">
+                <h2>✅ الحضور</h2>
+                <table class="data-table" id="attendanceTable">
+                    <thead>
+                        <tr>
+                            <th>م</th>
+                            <th>اسم الطالب</th>
+                            <th>الفصل</th>
+                            <th>عدد مرات الحضور</th>
+                            <th>عدد مرات الغياب</th>
+                            <th>نسبة الحضور</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Finance Section -->
+            <div class="section">
+                <h2>💰 المالية</h2>
+                <div id="financeData"></div>
+                <table class="data-table" id="financeTable" style="margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th>البند</th>
+                            <th>المبلغ (جنيه)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="financeTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAZCGljrXbTP38-MZwzsxOZ8HK34Fykk8o",
+            authDomain: "senter-4e169.firebaseapp.com",
+            projectId: "senter-4e169",
+            storageBucket: "senter-4e169.firebasestorage.app",
+            messagingSenderId: "235178743750",
+            appId: "1:235178743750:web:e4419cfea51a404f2e44c7"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db  = getFirestore(app);
+
+        // ── Set date ──
+        document.getElementById('reportDate').textContent = new Date().toLocaleDateString('ar-EG');
+
+        // ── Load all data from Firebase ──
+        async function loadAndRender() {
+            try {
+                const [
+                    teachersSnap,
+                    scheduleSnap,
+                    attendanceSnap,
+                    paymentsSnap,
+                    pricesSnap
+                ] = await Promise.all([
+                    getDoc(doc(db, 'teachers', 'data')),
+                    getDoc(doc(db, 'schedule', 'data')),
+                    getDoc(doc(db, 'dashboard', 'attendanceSessions')),
+                    getDoc(doc(db, 'finance', 'payments')),
+                    getDoc(doc(db, 'finance', 'prices'))
+                ]);
+
+                const teachers          = teachersSnap.exists()   ? (teachersSnap.data().teachers     || []) : [];
+                const scheduleSessions  = scheduleSnap.exists()   ? (scheduleSnap.data().sessions      || []) : [];
+                const attendanceSessions = attendanceSnap.exists() ? (attendanceSnap.data().data        || []) : [];
+                const studentPayments   = paymentsSnap.exists()   ? (paymentsSnap.data().payments      || {}) : {};
+                const subscriptionPrices = pricesSnap.exists()    ? (pricesSnap.data().prices          || {}) : {};
+
+                renderReport(teachers, scheduleSessions, attendanceSessions, studentPayments, subscriptionPrices);
+            } catch(e) {
+                console.error('Error loading data:', e);
+                document.getElementById('overallStats').innerHTML = `<p style="color:#f87171;text-align:center;grid-column:1/-1">❌ خطأ في تحميل البيانات — تأكد من Firebase Rules</p>`;
+            }
+        }
+
+        function renderReport(teachers, scheduleSessions, attendanceSessions, studentPayments, subscriptionPrices) {
+
+            // ── Build students from attendance sessions ──
+            const studentsMap = new Map();
+            attendanceSessions.forEach(session => {
+                if (session.students) {
+                    session.students.forEach(student => {
+                        studentsMap.set(student.id, { id: student.id, name: student.name, class: session.class });
+                    });
+                }
+            });
+            const students = Array.from(studentsMap.values());
+
+            // ── Calculate stats ──
+            const activeTeachers = teachers.filter(t => t.active);
+            const totalSalaries  = activeTeachers.reduce((sum, t) => sum + (t.salary || 0), 0);
+
+            let totalPresent = 0, totalAbsent = 0;
+            attendanceSessions.forEach(session => {
+                if (session.completed && session.students) {
+                    session.students.forEach(s => {
+                        if (s.status === 'present') totalPresent++;
+                        if (s.status === 'absent')  totalAbsent++;
+                    });
+                }
+            });
+
+            let totalRevenue = 0, totalRemaining = 0;
+            students.forEach(student => {
+                const payment = studentPayments[student.id] || {};
+                const price   = subscriptionPrices[student.id] || subscriptionPrices[student.class] || 0;
+                const paid    = payment.paid || 0;
+                totalRevenue   += paid;
+                totalRemaining += (price - paid);
+            });
+
+            const netProfit      = totalRevenue - totalSalaries;
+            const attendanceRate = totalPresent + totalAbsent > 0
+                ? Math.round((totalPresent / (totalPresent + totalAbsent)) * 100) : 0;
+
+            // ── Overall Stats ──
+            document.getElementById('overallStats').innerHTML = `
+                <div class="stat-box"><div class="number">${students.length}</div><div class="label">الطلاب</div></div>
+                <div class="stat-box"><div class="number">${activeTeachers.length}</div><div class="label">المدرسين</div></div>
+                <div class="stat-box"><div class="number">${scheduleSessions.length}</div><div class="label">الحصص</div></div>
+                <div class="stat-box"><div class="number">${attendanceRate}%</div><div class="label">نسبة الحضور</div></div>
+                <div class="stat-box"><div class="number">${totalRevenue.toLocaleString()}</div><div class="label">الإيرادات (ج)</div></div>
+                <div class="stat-box"><div class="number" style="color:${netProfit>=0?'#ffd700':'#f87171'}">${netProfit.toLocaleString()}</div><div class="label">صافي الربح (ج)</div></div>
+            `;
+
+            // ── Students Table ──
+            let studentsHTML = '';
+            let totalPaid = 0, totalRemainingAmount = 0, totalSubscription = 0;
+            students.forEach((student, index) => {
+                const payment   = studentPayments[student.id] || {};
+                const price     = subscriptionPrices[student.id] || subscriptionPrices[student.class] || 0;
+                const paid      = payment.paid || 0;
+                const remaining = price - paid;
+                totalSubscription    += price;
+                totalPaid            += paid;
+                totalRemainingAmount += remaining;
+                studentsHTML += `
+                    <tr>
+                        <td>${index+1}</td>
+                        <td>${student.name}</td>
+                        <td>${student.class}</td>
+                        <td>${price.toLocaleString()}</td>
+                        <td style="color:#4ade80">${paid.toLocaleString()}</td>
+                        <td style="color:${remaining>0?'#f87171':'#4ade80'}">${remaining.toLocaleString()}</td>
+                    </tr>`;
+            });
+            studentsHTML += `
+                <tr class="total-row">
+                    <td colspan="3">الإجمالي</td>
+                    <td>${totalSubscription.toLocaleString()}</td>
+                    <td>${totalPaid.toLocaleString()}</td>
+                    <td>${totalRemainingAmount.toLocaleString()}</td>
+                </tr>`;
+            document.getElementById('studentsTableBody').innerHTML = studentsHTML || '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
+
+            // ── Teachers Table ──
+            let teachersHTML = '';
+            let totalSalary = 0;
+            teachers.forEach((teacher, index) => {
+                const salary = teacher.salary || 0;
+                if (teacher.active) totalSalary += salary;
+                teachersHTML += `
+                    <tr>
+                        <td>${index+1}</td>
+                        <td>${teacher.name}</td>
+                        <td>${teacher.phone || '-'}</td>
+                        <td>${teacher.subject || (teacher.subjects ? teacher.subjects.join(', ') : '-')}</td>
+                        <td>${salary.toLocaleString()}</td>
+                        <td style="color:${teacher.active?'#4ade80':'#f87171'}">${teacher.active?'نشط':'غير نشط'}</td>
+                    </tr>`;
+            });
+            teachersHTML += `
+                <tr class="total-row">
+                    <td colspan="4">إجمالي الرواتب (المدرسين النشطين)</td>
+                    <td colspan="2">${totalSalary.toLocaleString()}</td>
+                </tr>`;
+            document.getElementById('teachersTableBody').innerHTML = teachersHTML || '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
+
+            // ── Schedule Section ──
+            const days = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
+            const byDay = {};
+            scheduleSessions.forEach(s => { const d = days[s.day]; byDay[d] = (byDay[d]||0)+1; });
+            let scheduleHTML = '';
+            days.forEach(day => {
+                const count      = byDay[day] || 0;
+                const percentage = scheduleSessions.length > 0 ? Math.round((count/scheduleSessions.length)*100) : 0;
+                scheduleHTML += `
+                    <div class="progress-item" style="color:rgba(255,255,255,.8);">
+                        <div class="progress-header"><span style="color:rgba(255,255,255,.75);">${day}</span><span style="color:var(--gold);">${count} حصة</span></div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width:${percentage}%">${percentage}%</div>
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('scheduleData').innerHTML = scheduleHTML || '<p style="text-align:center;color:rgba(255,255,255,.4)">لا توجد بيانات</p>';
+
+            // ── Attendance Table ──
+            const attendanceStats = new Map();
+            attendanceSessions.forEach(session => {
+                if (session.completed && session.students) {
+                    session.students.forEach(student => {
+                        if (!attendanceStats.has(student.id)) {
+                            attendanceStats.set(student.id, { name:student.name, class:session.class, present:0, absent:0 });
+                        }
+                        const stats = attendanceStats.get(student.id);
+                        if (student.status === 'present') stats.present++;
+                        if (student.status === 'absent')  stats.absent++;
+                    });
+                }
+            });
+
+            let attendanceHTML = '';
+            let idx = 1, totalPresentCount = 0, totalAbsentCount = 0;
+            attendanceStats.forEach((stats) => {
+                const total      = stats.present + stats.absent;
+                const percentage = total > 0 ? Math.round((stats.present/total)*100) : 0;
+                totalPresentCount += stats.present;
+                totalAbsentCount  += stats.absent;
+                attendanceHTML += `
+                    <tr>
+                        <td>${idx++}</td>
+                        <td>${stats.name}</td>
+                        <td>${stats.class}</td>
+                        <td style="color:#4ade80">${stats.present}</td>
+                        <td style="color:#f87171">${stats.absent}</td>
+                        <td><strong>${percentage}%</strong></td>
+                    </tr>`;
+            });
+            const overallAttendanceRate = totalPresentCount + totalAbsentCount > 0
+                ? Math.round((totalPresentCount/(totalPresentCount+totalAbsentCount))*100) : 0;
+            attendanceHTML += `
+                <tr class="total-row">
+                    <td colspan="3">الإجمالي</td>
+                    <td>${totalPresentCount}</td>
+                    <td>${totalAbsentCount}</td>
+                    <td>${overallAttendanceRate}%</td>
+                </tr>`;
+            document.getElementById('attendanceTableBody').innerHTML = attendanceHTML || '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
+
+            // ── Finance Section ──
+            document.getElementById('financeData').innerHTML = `
+                <div class="data-row"><span class="data-label">الإيرادات</span><span class="data-value" style="color:#28a745">+${totalRevenue.toLocaleString()} ج</span></div>
+                <div class="data-row"><span class="data-label">المصروفات (رواتب)</span><span class="data-value" style="color:#dc3545">-${totalSalaries.toLocaleString()} ج</span></div>
+                <div class="data-row" style="background:linear-gradient(135deg,rgba(180,130,20,.25),rgba(212,175,55,.12));border:1px solid rgba(212,175,55,.4);">
+                    <span class="data-label" style="color:rgba(255,255,255,.7);">صافي الربح</span>
+                    <span class="data-value" style="color:#ffd700;font-size:17px;">${netProfit>=0?'+':''}${netProfit.toLocaleString()} ج</span>
+                </div>`;
+            document.getElementById('financeTableBody').innerHTML = `
+                <tr><td>إجمالي الإيرادات (اشتراكات الطلاب)</td><td style="color:#4ade80;font-weight:bold">+${totalRevenue.toLocaleString()}</td></tr>
+                <tr><td>إجمالي المصروفات (رواتب المدرسين)</td><td style="color:#f87171;font-weight:bold">-${totalSalaries.toLocaleString()}</td></tr>
+                <tr><td>المبلغ المتبقي من الطلاب</td><td style="color:#ffd700;font-weight:bold">${totalRemainingAmount.toLocaleString()}</td></tr>
+                <tr class="total-row"><td>صافي الربح / الخسارة</td><td style="font-weight:bold;font-size:18px">${netProfit>=0?'+':''}${netProfit.toLocaleString()}</td></tr>`;
+
+            // ── Excel Export ──
+            window.exportToExcel = function() {
+                const wb = XLSX.utils.book_new();
+
+                // Sheet 1: الملخص العام
+                const ws1 = XLSX.utils.aoa_to_sheet([
+                    ['التقرير الشامل'],
+                    ['التاريخ: ' + new Date().toLocaleDateString('ar-EG')],
+                    [],
+                    ['البيان', 'القيمة'],
+                    ['عدد الطلاب', students.length],
+                    ['عدد المدرسين النشطين', activeTeachers.length],
+                    ['عدد الحصص', scheduleSessions.length],
+                    ['نسبة الحضور', attendanceRate + '%'],
+                    ['إجمالي الإيرادات', totalRevenue + ' ج'],
+                    ['إجمالي المصروفات', totalSalaries + ' ج'],
+                    ['صافي الربح/الخسارة', netProfit + ' ج']
+                ]);
+                XLSX.utils.book_append_sheet(wb, ws1, 'الملخص العام');
+
+                // Sheet 2: كشف الطلاب
+                const studentsData = [['م','اسم الطالب','الفصل','الاشتراك المطلوب','المدفوع','المتبقي']];
+                students.forEach((student, i) => {
+                    const payment   = studentPayments[student.id] || {};
+                    const price     = subscriptionPrices[student.id] || subscriptionPrices[student.class] || 0;
+                    const paid      = payment.paid || 0;
+                    studentsData.push([i+1, student.name, student.class, price, paid, price-paid]);
+                });
+                studentsData.push(['الإجمالي','','',totalSubscription,totalPaid,totalRemainingAmount]);
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(studentsData), 'كشف الطلاب');
+
+                // Sheet 3: كشف المدرسين
+                const teachersData = [
+                    ['كشف مرتبات المدرسين'],
+                    ['كشف مجمع لمرتبات شهر ' + new Date().toLocaleDateString('ar-EG',{month:'long',year:'numeric'})],
+                    [],
+                    ['م','اسم المدرس','التليفون','المادة','الراتب','التوقيع']
+                ];
+                activeTeachers.forEach((teacher, i) => {
+                    teachersData.push([i+1, teacher.name, teacher.phone||'', teacher.subjects?teacher.subjects.join(', '):(teacher.subject||''), teacher.salary||0, '']);
+                });
+                for (let i = activeTeachers.length; i < 12; i++) teachersData.push([i+1,'','','','','']);
+                teachersData.push(['إجمالي مرتبات المدرسين','','','',totalSalary,'']);
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(teachersData), 'كشف المدرسين');
+
+                // Sheet 4: الحضور والغياب
+                const attData = [['م','اسم الطالب','الفصل','عدد مرات الحضور','عدد مرات الغياب','نسبة الحضور']];
+                let ai = 1;
+                attendanceStats.forEach(stats => {
+                    const total = stats.present + stats.absent;
+                    attData.push([ai++, stats.name, stats.class, stats.present, stats.absent, (total>0?Math.round((stats.present/total)*100):0)+'%']);
+                });
+                attData.push(['الإجمالي','','',totalPresentCount,totalAbsentCount,overallAttendanceRate+'%']);
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(attData), 'الحضور والغياب');
+
+                // Sheet 5: التقرير المالي
+                const finData = [
+                    ['البند','المبلغ (جنيه)','ملاحظات'],
+                    ['الإيرادات (اشتراكات الطلاب)', totalRevenue, 'إجمالي المدفوعات'],
+                    ['المصروفات (رواتب المدرسين)', totalSalaries, 'إجمالي الرواتب'],
+                    ['المبلغ المتبقي من الطلاب', totalRemainingAmount, ''],
+                    [],
+                    ['صافي الربح / الخسارة', netProfit, netProfit>=0?'ربح':'خسارة']
+                ];
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(finData), 'التقرير المالي');
+
+                // Sheet 6: توزيع الحصص
+                const schData = [['اليوم','عدد الحصص','النسبة المئوية']];
+                days.forEach(day => {
+                    const count = byDay[day]||0;
+                    schData.push([day, count, (scheduleSessions.length>0?Math.round((count/scheduleSessions.length)*100):0)+'%']);
+                });
+                schData.push(['الإجمالي', scheduleSessions.length, '100%']);
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(schData), 'توزيع الحصص');
+
+                XLSX.writeFile(wb, 'تقرير_شامل_' + new Date().toLocaleDateString('ar-EG').replace(/\//g,'-') + '.xlsx');
+                alert('✅ تم تصدير التقرير إلى Excel بنجاح!');
+            };
+        }
+
+        loadAndRender();
+    </script>
+</body>
+</html>

@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المالية ودفع الاشتراكات</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-base:      #080808;
+            --gold:         #d4a017;
+            --gold-hi:      #f5c842;
+            --gold-soft:    #e8c96a;
+            --crimson:      #c0182a;
+            --crimson-hi:   #e8203a;
+            --crimson-soft: #ff6070;
+            --white:        #ffffff;
+            --glass-border: rgba(212,160,23,.22);
+            --card-bg:      rgba(10,6,0,.65);
+        }
+        body { font-family:'Cairo',sans-serif; background:var(--bg-base); min-height:100vh; padding:20px; position:relative; }
+
+        /* ── Background ── */
+        .bg-layer { position:fixed; inset:0; z-index:0; pointer-events:none; }
+        .bg-gradient { position:absolute; inset:0;
+            background: radial-gradient(ellipse 75% 55% at 50% -5%, rgba(212,160,23,.38) 0%, transparent 62%),
+                        radial-gradient(ellipse 55% 45% at 85% 85%, rgba(192,24,42,.28) 0%, transparent 55%),
+                        radial-gradient(ellipse 45% 38% at 15% 75%, rgba(212,160,23,.16) 0%, transparent 50%),
+                        linear-gradient(160deg, #0d0900 0%, #110a00 40%, #080808 70%, #0d0203 100%); }
+        .grid-lines { position:absolute; inset:0;
+            background-image: linear-gradient(rgba(212,160,23,.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(212,160,23,.05) 1px, transparent 1px);
+            background-size:60px 60px; }
+        .dot-grid { position:absolute; inset:0;
+            background-image: radial-gradient(rgba(212,160,23,.13) 1px, transparent 1px);
+            background-size:30px 30px;
+            mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent); }
+        .orb { position:absolute; border-radius:50%; filter:blur(80px); animation:floatOrb 8s ease-in-out infinite; }
+        .orb-1 { width:420px; height:420px; background:rgba(212,160,23,.22); top:-110px; left:50%; transform:translateX(-50%); }
+        .orb-2 { width:300px; height:300px; background:rgba(192,24,42,.2); bottom:10%; right:-50px; animation-delay:-3s; }
+        .orb-3 { width:250px; height:250px; background:rgba(212,160,23,.12); bottom:20%; left:-30px; animation-delay:-5s; }
+        @keyframes floatOrb { 0%,100%{transform:translateY(0)} 33%{transform:translateY(-20px)} 66%{transform:translateY(10px)} }
+        .particles { position:fixed; inset:0; z-index:1; pointer-events:none; }
+        .particle { position:absolute; border-radius:50%; animation:floatParticle linear infinite; opacity:0; }
+        @keyframes floatParticle { 0%{transform:translateY(100vh);opacity:0} 10%{opacity:.5} 90%{opacity:.3} 100%{transform:translateY(-10vh) translateX(30px);opacity:0} }
+
+        /* ── Layout ── */
+        .page-wrapper { position:relative; z-index:10; max-width:1600px; margin:0 auto; }
+
+        /* ── Header ── */
+        .header { background:var(--card-bg); border:1px solid var(--glass-border); backdrop-filter:blur(16px);
+            padding:20px 26px; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,.5);
+            margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+        .header h1 { font-size:24px; font-weight:900;
+            background:linear-gradient(135deg,var(--gold-hi),var(--gold-soft),var(--crimson-soft));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .header p { font-size:13px; color:rgba(255,255,255,.5); margin-top:3px; }
+
+        /* ── Firebase Bar ── */
+        .firebase-bar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:10px;
+            margin-bottom:18px; font-size:13px; font-weight:700; transition:all .3s; backdrop-filter:blur(8px); }
+        .firebase-bar.connected  { background:rgba(34,197,94,.12);  color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+        .firebase-bar.error      { background:rgba(239,68,68,.12);   color:#f87171; border:1px solid rgba(239,68,68,.3); }
+        .firebase-bar.connecting { background:rgba(212,160,23,.1);   color:var(--gold-soft); border:1px solid rgba(212,160,23,.3); }
+        .firebase-bar.saving     { background:rgba(192,24,42,.1);    color:var(--crimson-soft); border:1px solid rgba(192,24,42,.3); }
+        .firebase-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .firebase-dot.connected  { background:#4ade80; box-shadow:0 0 8px #4ade80; animation:fbBlink 2s infinite; }
+        .firebase-dot.error      { background:#f87171; }
+        .firebase-dot.connecting { background:var(--gold-hi); animation:fbBlink .6s infinite; }
+        .firebase-dot.saving     { background:var(--crimson-soft); animation:fbBlink .4s infinite; }
+        @keyframes fbBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        /* ── Month Selector Bar ── */
+        .month-bar { background:var(--card-bg); border:1px solid var(--glass-border); backdrop-filter:blur(12px);
+            padding:14px 20px; border-radius:14px; margin-bottom:18px;
+            display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:space-between; }
+        .month-bar-left { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+        .month-label { font-size:16px; font-weight:900; color:var(--gold-soft); }
+        .month-badge { font-size:12px; padding:4px 12px; border-radius:20px;
+            background:rgba(212,160,23,.15); border:1px solid rgba(212,160,23,.3); color:var(--gold-soft); }
+        .month-select { background:rgba(255,255,255,.06); border:1px solid rgba(212,160,23,.3);
+            border-radius:8px; padding:8px 14px; font-size:13px; font-family:'Cairo',sans-serif;
+            color:white; cursor:pointer; outline:none; }
+        .month-select option { background:#0d0800; }
+
+        /* ── Stats ── */
+        .stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:18px; }
+        .stat-box { background:var(--card-bg); border:1px solid var(--glass-border); backdrop-filter:blur(12px);
+            padding:18px 20px; border-radius:14px; text-align:center; }
+        .stat-box.success { border-color:rgba(34,197,94,.3); }
+        .stat-box.warning { border-color:rgba(245,158,11,.3); }
+        .stat-box.danger  { border-color:rgba(239,68,68,.3); }
+        .stat-box .number { font-size:26px; font-weight:900; font-family:'Space Mono',monospace;
+            background:linear-gradient(135deg,var(--gold-hi),var(--gold-soft));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .stat-box.success .number { background:linear-gradient(135deg,#4ade80,#22c55e); -webkit-background-clip:text; background-clip:text; }
+        .stat-box.warning .number { background:linear-gradient(135deg,#fbbf24,#f59e0b); -webkit-background-clip:text; background-clip:text; }
+        .stat-box.danger  .number { background:linear-gradient(135deg,#f87171,#ef4444); -webkit-background-clip:text; background-clip:text; }
+        .stat-box .label { font-size:12px; color:rgba(255,255,255,.5); margin-top:5px; }
+
+        /* ── Table Container ── */
+        .students-container { background:var(--card-bg); border:1px solid var(--glass-border);
+            backdrop-filter:blur(16px); padding:22px; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,.4); }
+        .students-container h2 { font-size:18px; font-weight:900; color:var(--gold-soft); }
+        .search-box { margin-bottom:16px; }
+        .search-box input { width:100%; padding:11px 16px; background:rgba(255,255,255,.05);
+            border:1px solid rgba(212,160,23,.22); border-radius:10px; font-size:14px;
+            font-family:'Cairo',sans-serif; color:white; outline:none; }
+        .search-box input:focus { border-color:var(--gold); }
+        .search-box input::placeholder { color:rgba(255,255,255,.3); }
+
+        .students-table { width:100%; border-collapse:collapse; }
+        .students-table thead { background:linear-gradient(135deg,rgba(160,120,16,.7),rgba(212,160,23,.5)); }
+        .students-table th { padding:12px 14px; text-align:center; font-size:13px; font-weight:900; color:#0d0800; }
+        .students-table td { padding:10px 14px; border-bottom:1px solid rgba(212,160,23,.07); text-align:center; font-size:14px; color:rgba(255,255,255,.85); }
+        .students-table tbody tr:hover td { background:rgba(212,160,23,.06); }
+
+        /* ── Status Badges ── */
+        .status-badge { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700; }
+        .status-badge.paid    { background:rgba(34,197,94,.15);  color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+        .status-badge.pending { background:rgba(245,158,11,.15); color:#fbbf24; border:1px solid rgba(245,158,11,.3); }
+        .status-badge.overdue { background:rgba(239,68,68,.15);  color:#f87171; border:1px solid rgba(239,68,68,.3); }
+
+        /* ── Action Buttons ── */
+        .action-btn { padding:6px 12px; border-radius:7px; border:none; font-size:12px;
+            font-family:'Cairo',sans-serif; font-weight:700; cursor:pointer; transition:all .2s; margin:2px; }
+        .action-btn.pay     { background:rgba(16,185,129,.2); color:#34d399; border:1px solid rgba(16,185,129,.3); }
+        .action-btn.pay:hover { background:rgba(16,185,129,.35); }
+        .action-btn.view    { background:rgba(212,160,23,.15); color:var(--gold-soft); border:1px solid rgba(212,160,23,.3); }
+        .action-btn.view:hover { background:rgba(212,160,23,.28); }
+        .action-btn.message { background:rgba(37,211,102,.15); color:#4ade80; border:1px solid rgba(37,211,102,.3); }
+        .action-btn.message:hover { background:rgba(37,211,102,.3); }
+
+        /* ── Buttons ── */
+        .btn { background:linear-gradient(135deg,#a07810,var(--gold)); color:#0d0800;
+            padding:10px 20px; border:none; border-radius:10px; font-size:14px;
+            font-family:'Cairo',sans-serif; font-weight:900; cursor:pointer; transition:all .3s;
+            box-shadow:0 4px 15px rgba(212,160,23,.3); text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+        .btn:hover { transform:translateY(-2px); filter:brightness(1.1); }
+        .btn-secondary { background:rgba(255,255,255,.07); color:rgba(255,255,255,.8); border:1px solid rgba(255,255,255,.12); box-shadow:none; }
+        .btn-secondary:hover { background:rgba(255,255,255,.13); }
+        .btn-success { background:linear-gradient(135deg,#16a34a,#22c55e); color:white; box-shadow:0 4px 15px rgba(22,163,74,.3); }
+        .btn-danger  { background:linear-gradient(135deg,var(--crimson),var(--crimson-hi)); color:white; box-shadow:0 4px 15px rgba(192,24,42,.3); }
+        .btn-warning { background:linear-gradient(135deg,var(--gold),var(--gold-hi)); color:#0d0800; }
+        .btn-whatsapp { background:linear-gradient(135deg,#16a34a,#25d366); color:white; }
+        .btn-history { background:linear-gradient(135deg,#4f46e5,#6366f1); color:white; box-shadow:0 4px 15px rgba(99,102,241,.3); }
+
+        /* ── Alert ── */
+        .alert { padding:12px 16px; border-radius:10px; margin-bottom:16px; font-weight:700; font-size:14px; }
+        .alert-success { background:rgba(34,197,94,.15); color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+        .alert-danger  { background:rgba(192,24,42,.15); color:var(--crimson-soft); border:1px solid rgba(192,24,42,.3); }
+
+        /* ── Modal ── */
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,.78); backdrop-filter:blur(6px); justify-content:center; align-items:center; z-index:1000; }
+        .modal.active { display:flex; }
+        .modal-content { background:#0d0800; border:1px solid rgba(212,160,23,.28);
+            box-shadow:0 20px 60px rgba(0,0,0,.7); padding:28px; border-radius:16px;
+            width:90%; max-width:620px; max-height:90vh; overflow-y:auto; }
+        .modal-header { display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid rgba(212,160,23,.18); }
+        .modal-header h2 { font-size:18px; font-weight:900; color:var(--gold-soft); }
+        .close-btn { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+            border-radius:8px; font-size:20px; cursor:pointer; color:rgba(255,255,255,.5);
+            width:34px; height:34px; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+        .close-btn:hover { background:rgba(192,24,42,.2); color:#f87171; }
+        .form-group { margin-bottom:16px; }
+        .form-group label { display:block; margin-bottom:6px; font-weight:700; color:rgba(255,255,255,.8); font-size:13px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width:100%; padding:11px 14px; background:rgba(255,255,255,.05);
+            border:1px solid rgba(212,160,23,.22); border-radius:10px; font-size:14px;
+            font-family:'Cairo',sans-serif; color:white; transition:border-color .2s; outline:none; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--gold); }
+        .form-group select option { background:#0d0800; }
+        .form-group textarea { resize:vertical; min-height:80px; }
+
+        /* ── Payment Summary in modal ── */
+        .payment-summary { background:rgba(255,255,255,.04); border:1px solid rgba(212,160,23,.18);
+            padding:14px; border-radius:10px; margin-bottom:16px; }
+        .payment-summary .item { display:flex; justify-content:space-between;
+            padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:14px; color:rgba(255,255,255,.75); }
+        .payment-summary .item:last-child { border-bottom:none; }
+        .payment-summary .item span:last-child { font-weight:700; color:var(--gold-soft); }
+
+        /* ── Payment History items ── */
+        .payment-item { background:rgba(255,255,255,.04); border:1px solid rgba(212,160,23,.15);
+            border-radius:10px; padding:12px 16px; margin-bottom:10px; font-size:13px; }
+        .payment-item .date { color:rgba(255,255,255,.35); font-size:11px; margin-top:6px; }
+
+        /* ── History Modal ── */
+        .history-month-card { background:rgba(255,255,255,.04); border:1px solid rgba(212,160,23,.2);
+            border-radius:12px; padding:16px; margin-bottom:14px; }
+        .history-month-title { font-size:15px; font-weight:900; color:var(--gold-soft); margin-bottom:10px; cursor:pointer;
+            display:flex; justify-content:space-between; align-items:center; }
+        .history-month-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+        .history-mini-stat { background:rgba(255,255,255,.05); border-radius:8px; padding:8px; text-align:center; }
+        .history-mini-stat .val { font-size:16px; font-weight:900; color:var(--gold-hi); }
+        .history-mini-stat .lbl { font-size:10px; color:rgba(255,255,255,.4); margin-top:2px; }
+        .history-students-list { display:none; }
+        .history-students-list.open { display:block; }
+        .history-student-row { display:flex; justify-content:space-between; align-items:center;
+            padding:7px 10px; border-radius:8px; margin-bottom:5px; font-size:13px; }
+        .history-student-row.paid-row { background:rgba(34,197,94,.08); }
+        .history-student-row.unpaid-row { background:rgba(239,68,68,.08); }
+
+        /* ── Reset Warning ── */
+        .reset-warning { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3);
+            border-radius:10px; padding:14px; margin-bottom:16px; font-size:13px; color:#f87171; line-height:1.6; }
+
+        .msg-preview { background:rgba(255,255,255,.04); border:1px solid rgba(212,160,23,.18);
+            border-radius:10px; padding:14px; margin-bottom:16px; font-size:13px; color:rgba(255,255,255,.75);
+            white-space:pre-wrap; line-height:1.8; max-height:200px; overflow-y:auto; direction:rtl; }
+        .phone-row { display:flex; gap:10px; }
+        .phone-row input { flex:1; }
+
+        @media (max-width:600px) {
+            .stats-row { grid-template-columns:repeat(2,1fr); }
+            .history-month-stats { grid-template-columns:repeat(2,1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-layer">
+    <div class="bg-gradient"></div>
+    <div class="grid-lines"></div>
+    <div class="dot-grid"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+<div class="particles" id="particles"></div>
+
+<div class="page-wrapper">
+
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h1>💰 المالية ودفع الاشتراكات</h1>
+            <p>إدارة المدفوعات الشهرية والسجل التاريخي</p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-history" onclick="showHistoryModal()">📅 سجل الشهور</button>
+            <button class="btn" onclick="showSetPricesModal()">💰 أسعار الاشتراكات</button>
+            <a href="home.html" class="btn btn-warning">🏠 الرئيسية</a>
+        </div>
+    </div>
+
+    <div id="alertContainer"></div>
+
+    <!-- Firebase Status -->
+    <div class="firebase-bar connecting" id="firebaseStatusBar">
+        <div class="firebase-dot connecting" id="firebaseDot"></div>
+        <span id="firebaseMsg">🔌 جاري الاتصال بـ Firebase...</span>
+    </div>
+
+    <!-- Month Bar -->
+    <div class="month-bar">
+        <div class="month-bar-left">
+            <div class="month-label" id="currentMonthLabel">—</div>
+            <div class="month-badge" id="currentMonthBadge">الشهر الحالي</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:13px;color:rgba(255,255,255,.5);">آخر تصفير:</span>
+            <span style="font-size:13px;font-weight:700;color:var(--gold-soft);" id="lastResetLabel">لم يتم بعد</span>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-box success">
+            <div class="number" id="totalRevenue">0</div>
+            <div class="label">إجمالي الإيرادات (جنيه)</div>
+        </div>
+        <div class="stat-box">
+            <div class="number" id="totalStudents">0</div>
+            <div class="label">إجمالي الطلاب</div>
+        </div>
+        <div class="stat-box success">
+            <div class="number" id="paidStudents">0</div>
+            <div class="label">طالب دفع ✅</div>
+        </div>
+        <div class="stat-box warning">
+            <div class="number" id="pendingStudents">0</div>
+            <div class="label">دفع جزئي ⚠️</div>
+        </div>
+        <div class="stat-box danger">
+            <div class="number" id="overdueStudents">0</div>
+            <div class="label">لم يدفع ❌</div>
+        </div>
+    </div>
+
+    <!-- Students Table -->
+    <div class="students-container">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+            <h2>📋 قائمة طلاب الشهر الحالي</h2>
+        </div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 البحث عن طالب..." onkeyup="filterStudents()">
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="students-table">
+                <thead>
+                    <tr>
+                        <th>اسم الطالب</th>
+                        <th>الفصل</th>
+                        <th>سعر الاشتراك</th>
+                        <th>المدفوع</th>
+                        <th>المتبقي</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div><!-- /page-wrapper -->
+
+<!-- ══ Payment Modal ══ -->
+<div class="modal" id="paymentModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>💰 تسجيل دفعة</h2>
+            <button class="close-btn" onclick="closeModal('paymentModal')">&times;</button>
+        </div>
+        <div class="payment-summary">
+            <div class="item"><span>اسم الطالب:</span><span id="paymentStudentName">-</span></div>
+            <div class="item"><span>الفصل:</span><span id="paymentStudentClass">-</span></div>
+            <div class="item"><span>سعر الاشتراك:</span><span id="paymentSubscriptionPrice">0 جنيه</span></div>
+            <div class="item"><span>المدفوع سابقاً:</span><span id="paymentPaidAmount">0 جنيه</span></div>
+            <div class="item"><span>المتبقي:</span><span id="paymentRemainingAmount">0 جنيه</span></div>
+        </div>
+        <form onsubmit="processPayment(event)">
+            <input type="hidden" id="paymentStudentId">
+            <div class="form-group">
+                <label>المبلغ المدفوع</label>
+                <input type="number" id="paymentAmount" placeholder="أدخل المبلغ" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>طريقة الدفع</label>
+                <select id="paymentMethod" required>
+                    <option value="">اختر طريقة الدفع</option>
+                    <option value="cash">نقدي</option>
+                    <option value="card">بطاقة</option>
+                    <option value="transfer">تحويل بنكي</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>ملاحظات</label>
+                <textarea id="paymentNotes" placeholder="ملاحظات إضافية (اختياري)" rows="2"></textarea>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:18px;">
+                <button type="submit" class="btn btn-success" style="flex:1;">✓ تأكيد الدفع</button>
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('paymentModal')">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ Student Details Modal ══ -->
+<div class="modal" id="detailsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📊 تفاصيل الطالب</h2>
+            <button class="close-btn" onclick="closeModal('detailsModal')">&times;</button>
+        </div>
+        <div id="studentDetailsContent"></div>
+    </div>
+</div>
+
+<!-- ══ Set Prices Modal ══ -->
+<div class="modal" id="setPricesModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>💰 تحديد أسعار الاشتراكات</h2>
+            <button class="close-btn" onclick="closeModal('setPricesModal')">&times;</button>
+        </div>
+        <div style="margin-bottom:18px;">
+            <div class="form-group">
+                <label>تطبيق سعر موحد على الجميع</label>
+                <div style="display:flex;gap:10px;">
+                    <input type="number" id="bulkPrice" placeholder="السعر الموحد" min="0">
+                    <button class="btn btn-success" onclick="applyBulkPrice()">✓ تطبيق</button>
+                </div>
+            </div>
+        </div>
+        <div id="pricesList"></div>
+        <div style="margin-top:18px;">
+            <button class="btn btn-success" style="width:100%;" onclick="savePrices()">✓ حفظ الأسعار</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ History Modal ══ -->
+<div class="modal" id="historyModal">
+    <div class="modal-content" style="max-width:750px;">
+        <div class="modal-header">
+            <h2>📅 سجل الشهور السابقة</h2>
+            <button class="close-btn" onclick="closeModal('historyModal')">&times;</button>
+        </div>
+        <div id="historyContent">
+            <p style="text-align:center;color:rgba(255,255,255,.4);padding:30px;">جاري التحميل...</p>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Message Modal ══ -->
+<div class="modal" id="messageModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📱 رسالة لولي الأمر</h2>
+            <button class="close-btn" onclick="closeModal('messageModal')">&times;</button>
+        </div>
+        <div class="msg-preview" id="messagePreview"></div>
+        <div class="form-group">
+            <label>✏️ تعديل الرسالة</label>
+            <textarea id="messageText" rows="6" style="font-size:13px;line-height:1.8;direction:rtl;"></textarea>
+        </div>
+        <div class="form-group">
+            <label>📞 رقم هاتف ولي الأمر</label>
+            <div class="phone-row">
+                <input type="tel" id="parentPhone" placeholder="مثال: 01012345678" dir="ltr">
+                <button class="btn btn-whatsapp" onclick="sendWhatsApp()">📲 واتساب</button>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:10px;">
+            <button class="btn" style="flex:1;" onclick="copyMessage()">📋 نسخ</button>
+            <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('messageModal')">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const particlesEl = document.getElementById('particles');
+    for (let i = 0; i < 25; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random() * 100 + 'vw';
+        p.style.animationDuration = (6 + Math.random() * 10) + 's';
+        p.style.animationDelay = (Math.random() * 10) + 's';
+        const sz = (1 + Math.random() * 3) + 'px';
+        p.style.width = p.style.height = sz;
+        const colors = ['#f5c842','#e8c96a','#d4a017','#e8203a','#ff6070','#c0182a'];
+        p.style.background = colors[Math.floor(Math.random() * colors.length)];
+        particlesEl.appendChild(p);
+    }
+</script>
+
+<script type="module">
+    import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, doc, collection, onSnapshot, setDoc, getDoc, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+        authDomain: "al-gnarl.firebaseapp.com",
+        projectId: "al-gnarl",
+        storageBucket: "al-gnarl.firebasestorage.app",
+        messagingSenderId: "288765966471",
+        appId: "1:288765966471:web:63358febfb82843c2fa022"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    const DEFAULT_PRICE = 500;
+
+    // ── Helpers ──
+    function currentMonthKey() {
+        const n = new Date();
+        return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+    }
+    function monthKeyToLabel(key) {
+        const [y, m] = key.split('-');
+        const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+        return `${months[parseInt(m)-1]} ${y}`;
+    }
+    function setFbStatus(state, msg) {
+        const bar = document.getElementById('firebaseStatusBar');
+        const dot = document.getElementById('firebaseDot');
+        const txt = document.getElementById('firebaseMsg');
+        if (!bar) return;
+        bar.className = 'firebase-bar ' + state;
+        dot.className = 'firebase-dot ' + state;
+        txt.textContent = msg;
+    }
+    function showAlert(message, type='success') {
+        const div = document.createElement('div');
+        div.className = `alert alert-${type}`;
+        div.textContent = message;
+        const c = document.getElementById('alertContainer');
+        c.innerHTML = '';
+        c.appendChild(div);
+        setTimeout(() => div.remove(), 3500);
+    }
+
+    // ── State ──
+    let rawStudents  = [];   // من students/data
+    let monthData    = {};   // بيانات الشهر الحالي { studentId: {paid, history, subscriptionPrice} }
+    let students     = [];   // قائمة مدمجة للعرض
+    let metaData     = {};   // { lastReset, prices:{id->price} }
+
+    // ── Firebase paths ──
+    // finance/meta          → { lastReset, prices }
+    // finance/months/{YYYY-MM} → { students: { id: {paid, history, subscriptionPrice} } }
+
+    const metaRef = doc(db, 'finance', 'meta');
+
+    function monthRef(key) {
+        return doc(db, 'finance', 'month-' + key);
+    }
+
+    // ── Save current month data ──
+    async function saveMonthData() {
+        setFbStatus('saving', '💾 جاري الحفظ...');
+        try {
+            await setDoc(monthRef(currentMonthKey()), { students: monthData });
+            setFbStatus('connected', '🔥 Firebase — تم الحفظ ✔');
+        } catch(e) {
+            setFbStatus('error', '❌ خطأ في الحفظ: ' + e.message);
+        }
+    }
+
+    // ── Save meta (prices) ──
+    async function saveMeta() {
+        try { await setDoc(metaRef, metaData, { merge: true }); } catch(e) { console.error(e); }
+    }
+
+    // ── Build display list ──
+    function buildStudentsList() {
+        students = rawStudents.map(s => {
+            const md = monthData[s.id] || {};
+            const price = (metaData.prices && metaData.prices[s.id]) ?? DEFAULT_PRICE;
+            return {
+                id: s.id,
+                name: s.name,
+                class: s.class || '—',
+                phone: s.phone || '',
+                subscriptionPrice: price,
+                paid: md.paid || 0,
+                paymentHistory: md.history || []
+            };
+        });
+    }
+
+    // ── Auto reset check: run on load ──
+    async function checkAndReset() {
+        const key  = currentMonthKey();
+        const snap = await getDoc(metaRef);
+        metaData   = snap.exists() ? snap.data() : {};
+        const lastReset = metaData.lastReset || '';
+
+        // لو الشهر الحالي مختلف عن آخر تصفير → صفّر
+        if (lastReset !== key) {
+            // احفظ الشهر المنتهي في سجله (لو فيه بيانات)
+            const oldSnap = await getDoc(monthRef(lastReset || key));
+            // ابدأ شهر جديد فاضي
+            monthData = {};
+            await setDoc(monthRef(key), { students: {} });
+            // حدّث meta
+            metaData.lastReset = key;
+            await saveMeta();
+        }
+    }
+
+    // ── Render ──
+    function getPaymentStatus(s) {
+        if (s.paid >= s.subscriptionPrice && s.subscriptionPrice > 0) return 'paid';
+        if (s.paid > 0) return 'pending';
+        return 'overdue';
+    }
+
+    function updateStats() {
+        const total   = students.reduce((sum, s) => sum + s.paid, 0);
+        const paid    = students.filter(s => getPaymentStatus(s) === 'paid').length;
+        const pending = students.filter(s => getPaymentStatus(s) === 'pending').length;
+        const overdue = students.filter(s => getPaymentStatus(s) === 'overdue').length;
+        document.getElementById('totalRevenue').textContent    = total.toLocaleString();
+        document.getElementById('totalStudents').textContent   = students.length;
+        document.getElementById('paidStudents').textContent    = paid;
+        document.getElementById('pendingStudents').textContent = pending;
+        document.getElementById('overdueStudents').textContent = overdue;
+    }
+
+    function renderStudents() {
+        const tbody = document.getElementById('studentsTableBody');
+        tbody.innerHTML = '';
+        if (students.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:rgba(255,255,255,.4);">
+                <p style="font-size:18px;margin-bottom:8px;">👥 لا يوجد طلاب</p>
+                <p>أضف طلاباً من صفحة الطلاب أولاً</p></td></tr>`;
+            updateStats(); return;
+        }
+        students.forEach(s => {
+            const rem    = s.subscriptionPrice - s.paid;
+            const status = getPaymentStatus(s);
+            const stText = status === 'paid' ? 'مدفوع' : status === 'pending' ? 'جزئي' : 'لم يدفع';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${s.name}</td>
+                <td>${s.class}</td>
+                <td>${s.subscriptionPrice} ج</td>
+                <td>${s.paid} ج</td>
+                <td>${rem > 0 ? rem : 0} ج</td>
+                <td><span class="status-badge ${status}">${stText}</span></td>
+                <td>
+                    ${rem > 0 ? `<button class="action-btn pay" onclick="showPaymentModal('${s.id}')">💰 دفع</button>` : ''}
+                    <button class="action-btn view" onclick="showStudentDetails('${s.id}')">👁️ عرض</button>
+                    <button class="action-btn message" onclick="showMessageModal('${s.id}')">📱 رسالة</button>
+                </td>`;
+            tbody.appendChild(row);
+        });
+        updateStats();
+    }
+
+    function filterStudents() {
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        document.querySelectorAll('#studentsTableBody tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+        });
+    }
+
+    // ── Payment Modal ──
+    function showPaymentModal(studentId) {
+        const s = students.find(x => x.id === studentId);
+        if (!s) return;
+        const rem = s.subscriptionPrice - s.paid;
+        document.getElementById('paymentStudentId').value               = s.id;
+        document.getElementById('paymentStudentName').textContent       = s.name;
+        document.getElementById('paymentStudentClass').textContent      = s.class;
+        document.getElementById('paymentSubscriptionPrice').textContent = s.subscriptionPrice + ' جنيه';
+        document.getElementById('paymentPaidAmount').textContent        = s.paid + ' جنيه';
+        document.getElementById('paymentRemainingAmount').textContent   = rem + ' جنيه';
+        document.getElementById('paymentAmount').value = rem;
+        document.getElementById('paymentAmount').max   = rem;
+        document.getElementById('paymentModal').classList.add('active');
+    }
+
+    function processPayment(e) {
+        e.preventDefault();
+        const id     = document.getElementById('paymentStudentId').value;
+        const amount = parseInt(document.getElementById('paymentAmount').value);
+        const method = document.getElementById('paymentMethod').value;
+        const notes  = document.getElementById('paymentNotes').value;
+        const s      = students.find(x => x.id === id);
+        if (!s) return;
+        if (amount > (s.subscriptionPrice - s.paid)) {
+            showAlert('المبلغ أكبر من المتبقي!', 'danger'); return;
+        }
+        if (!monthData[id]) monthData[id] = { paid: 0, history: [] };
+        monthData[id].paid = (monthData[id].paid || 0) + amount;
+        monthData[id].history = monthData[id].history || [];
+        monthData[id].history.push({ date: new Date().toISOString(), amount, method, notes });
+        saveMonthData();
+        showAlert(`✅ تم تسجيل دفعة ${amount} جنيه بنجاح`);
+        closeModal('paymentModal');
+        buildStudentsList();
+        renderStudents();
+    }
+
+    // ── Student Details ──
+    function showStudentDetails(studentId) {
+        const s = students.find(x => x.id === studentId);
+        if (!s) return;
+        const rem = s.subscriptionPrice - s.paid;
+        let content = `
+            <div class="payment-summary">
+                <div class="item"><span>الاسم:</span><span>${s.name}</span></div>
+                <div class="item"><span>الفصل:</span><span>${s.class}</span></div>
+                <div class="item"><span>سعر الاشتراك:</span><span>${s.subscriptionPrice} جنيه</span></div>
+                <div class="item"><span>المدفوع:</span><span>${s.paid} جنيه</span></div>
+                <div class="item"><span>المتبقي:</span><span>${rem > 0 ? rem : 0} جنيه</span></div>
+            </div>
+            <div style="margin-top:16px;">
+                <h3 style="color:var(--gold-soft);margin-bottom:12px;font-size:15px;">💳 دفعات هذا الشهر</h3>`;
+        if (s.paymentHistory && s.paymentHistory.length > 0) {
+            s.paymentHistory.forEach(p => {
+                const date = new Date(p.date).toLocaleDateString('ar-EG');
+                const mt   = p.method === 'cash' ? 'نقدي' : p.method === 'card' ? 'بطاقة' : 'تحويل';
+                content += `<div class="payment-item">
+                    <div><strong>المبلغ:</strong> ${p.amount} جنيه — <strong>الطريقة:</strong> ${mt}</div>
+                    ${p.notes ? `<div style="color:rgba(255,255,255,.5);margin-top:4px;">${p.notes}</div>` : ''}
+                    <div class="date">📅 ${date}</div></div>`;
+            });
+        } else {
+            content += '<p style="text-align:center;color:rgba(255,255,255,.35);padding:20px;">لا توجد دفعات هذا الشهر</p>';
+        }
+        content += '</div>';
+        document.getElementById('studentDetailsContent').innerHTML = content;
+        document.getElementById('detailsModal').classList.add('active');
+    }
+
+    // ── Set Prices ──
+    function showSetPricesModal() {
+        let html = '<div style="max-height:380px;overflow-y:auto;">';
+        students.forEach(s => {
+            html += `<div class="form-group">
+                <label>${s.name} (${s.class})</label>
+                <input type="number" id="price_${s.id}" value="${s.subscriptionPrice}" min="0">
+            </div>`;
+        });
+        html += '</div>';
+        document.getElementById('pricesList').innerHTML = html;
+        document.getElementById('setPricesModal').classList.add('active');
+    }
+
+    function applyBulkPrice() {
+        const p = document.getElementById('bulkPrice').value;
+        if (!p || p <= 0) { showAlert('يرجى إدخال سعر صحيح!', 'danger'); return; }
+        students.forEach(s => {
+            const inp = document.getElementById(`price_${s.id}`);
+            if (inp) inp.value = p;
+        });
+        showAlert('تم تطبيق السعر الموحد!');
+    }
+
+    function savePrices() {
+        if (!metaData.prices) metaData.prices = {};
+        let hasError = false;
+        students.forEach(s => {
+            const price = parseInt(document.getElementById(`price_${s.id}`)?.value);
+            if (!price || price < 0) { hasError = true; return; }
+            metaData.prices[s.id] = price;
+        });
+        if (hasError) { showAlert('يرجى إدخال أسعار صحيحة!', 'danger'); return; }
+        saveMeta();
+        showAlert('✅ تم حفظ الأسعار بنجاح');
+        closeModal('setPricesModal');
+        buildStudentsList();
+        renderStudents();
+    }
+
+    // ── History Modal ──
+    async function showHistoryModal() {
+        document.getElementById('historyModal').classList.add('active');
+        const content = document.getElementById('historyContent');
+        content.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,.4);padding:30px;">⏳ جاري تحميل السجل...</p>';
+
+        try {
+            // بنجيب كل docs من finance collection ونفلتر اللي بتبدأ بـ month-
+            const financeCol = collection(db, 'finance');
+            const snap = await getDocs(financeCol);
+
+            // فلتر docs اللي اسمها بيبدأ بـ month- بس
+            const months = [];
+            snap.forEach(d => {
+                if (d.id.startsWith('month-')) {
+                    const key = d.id.replace('month-', '');
+                    months.push({ key, data: d.data() });
+                }
+            });
+
+            if (months.length === 0) {
+                content.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,.4);padding:30px;">لا يوجد سجلات سابقة بعد</p>';
+                return;
+            }
+
+            // رتب الشهور من الأحدث للأقدم
+            months.sort((a, b) => b.key.localeCompare(a.key));
+
+            let html = '';
+            months.forEach((m, idx) => {
+                const label    = monthKeyToLabel(m.key);
+                const isCurrent = m.key === currentMonthKey();
+                const studs    = m.data.students || {};
+                const studentList = rawStudents.map(rs => {
+                    const pd = studs[rs.id] || {};
+                    const price = (metaData.prices && metaData.prices[rs.id]) ?? DEFAULT_PRICE;
+                    return { id: rs.id, name: rs.name, class: rs.class, paid: pd.paid || 0, price };
+                });
+                const totalPaid   = studentList.reduce((s, x) => s + x.paid, 0);
+                const paidCount   = studentList.filter(x => x.paid >= x.price && x.price > 0).length;
+                const unpaidCount = studentList.filter(x => x.paid === 0).length;
+
+                html += `
+                <div class="history-month-card">
+                    <div class="history-month-title" onclick="toggleMonthDetails('month_${idx}')">
+                        <span>${isCurrent ? '🟢 ' : '📅 '}${label}</span>
+                        <span style="font-size:12px;color:rgba(255,255,255,.5);">اضغط للتفاصيل ▼</span>
+                    </div>
+                    <div class="history-month-stats">
+                        <div class="history-mini-stat">
+                            <div class="val">${totalPaid.toLocaleString()} ج</div>
+                            <div class="lbl">إجمالي الإيرادات</div>
+                        </div>
+                        <div class="history-mini-stat">
+                            <div class="val" style="color:#4ade80;">${paidCount}</div>
+                            <div class="lbl">دفعوا ✅</div>
+                        </div>
+                        <div class="history-mini-stat">
+                            <div class="val" style="color:#f87171;">${unpaidCount}</div>
+                            <div class="lbl">لم يدفعوا ❌</div>
+                        </div>
+                    </div>
+                    <div class="history-students-list" id="month_${idx}">
+                        ${studentList.map(st => `
+                            <div class="history-student-row ${st.paid >= st.price && st.price > 0 ? 'paid-row' : 'unpaid-row'}">
+                                <span>${st.name} <small style="color:rgba(255,255,255,.4);">(${st.class})</small></span>
+                                <span style="font-weight:700;color:${st.paid >= st.price && st.price > 0 ? '#4ade80' : st.paid > 0 ? '#fbbf24' : '#f87171'};">
+                                    ${st.paid > 0 ? st.paid + ' ج ✅' : '❌ لم يدفع'}
+                                </span>
+                            </div>`).join('')}
+                    </div>
+                </div>`;
+            });
+            content.innerHTML = html;
+        } catch(e) {
+            content.innerHTML = `<p style="color:#f87171;padding:20px;">❌ خطأ في التحميل: ${e.message}</p>`;
+        }
+    }
+
+    function toggleMonthDetails(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('open');
+    }
+
+    // ── Message ──
+    function buildMessage(s) {
+        const rem = s.subscriptionPrice - s.paid;
+        const status = getPaymentStatus(s);
+        const today  = new Date().toLocaleDateString('ar-EG');
+        let statusLine = status === 'paid'    ? '✅ تم سداد الاشتراك بالكامل — شكراً!'
+                       : status === 'pending' ? `⚠️ سداد جزئي — المتبقي ${rem} جنيه`
+                       :                        '❌ لم يتم سداد الاشتراك بعد';
+        return `السلام عليكم ورحمة الله،\n\nولي أمر الطالب / ${s.name}\n\n👤 الطالب: ${s.name}\n📚 الفصل: ${s.class}\n💰 سعر الاشتراك: ${s.subscriptionPrice} جنيه\n✔️ المدفوع: ${s.paid} جنيه\n🔴 المتبقي: ${rem > 0 ? rem : 0} جنيه\n${statusLine}\n\n📅 ${today}\n\n${rem > 0 ? 'نرجو منكم سرعة سداد المبلغ المتبقي.\n' : ''}مع خالص الشكر 🌟`;
+    }
+
+    function showMessageModal(studentId) {
+        const s = students.find(x => x.id === studentId);
+        if (!s) return;
+        const msg = buildMessage(s);
+        document.getElementById('messagePreview').textContent = msg;
+        document.getElementById('messageText').value = msg;
+        document.getElementById('parentPhone').value = s.phone || '';
+        document.getElementById('messageModal').classList.add('active');
+    }
+
+    function sendWhatsApp() {
+        const text  = document.getElementById('messageText').value.trim();
+        let phone   = document.getElementById('parentPhone').value.trim().replace(/\D/g, '');
+        if (phone.startsWith('0')) phone = '2' + phone;
+        const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+    }
+
+    function copyMessage() {
+        navigator.clipboard.writeText(document.getElementById('messageText').value)
+            .then(() => showAlert('✅ تم النسخ!'))
+            .catch(() => showAlert('تعذّر النسخ', 'danger'));
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    window.onclick = e => { if (e.target.classList.contains('modal')) e.target.classList.remove('active'); };
+
+    // ── Expose to HTML ──
+    window.showPaymentModal   = showPaymentModal;
+    window.processPayment     = processPayment;
+    window.showStudentDetails = showStudentDetails;
+    window.showSetPricesModal = showSetPricesModal;
+    window.applyBulkPrice     = applyBulkPrice;
+    window.savePrices         = savePrices;
+    window.filterStudents     = filterStudents;
+    window.closeModal         = closeModal;
+    window.showMessageModal   = showMessageModal;
+    window.sendWhatsApp       = sendWhatsApp;
+    window.copyMessage        = copyMessage;
+    window.showHistoryModal   = showHistoryModal;
+    window.toggleMonthDetails = toggleMonthDetails;
+
+    // ── Init ──
+    setFbStatus('connecting', '🔌 جاري الاتصال...');
+
+    async function init() {
+        try {
+            await checkAndReset();
+
+            // Label الشهر الحالي
+            const key = currentMonthKey();
+            document.getElementById('currentMonthLabel').textContent = monthKeyToLabel(key);
+            document.getElementById('lastResetLabel').textContent = monthKeyToLabel(metaData.lastReset || key);
+
+            // Listener الطلاب
+            onSnapshot(doc(db, 'students', 'data'), snap => {
+                rawStudents = snap.exists() ? (snap.data().students || []) : [];
+                buildStudentsList();
+                renderStudents();
+                setFbStatus('connected', '🔥 Firebase متصل — البيانات محدّثة لحظياً');
+            }, err => { setFbStatus('error', '❌ خطأ: ' + err.message); });
+
+            // Listener الشهر الحالي
+            onSnapshot(monthRef(key), snap => {
+                monthData = snap.exists() ? (snap.data().students || {}) : {};
+                buildStudentsList();
+                renderStudents();
+            }, err => console.error('month listener:', err));
+
+            // Listener الأسعار
+            onSnapshot(metaRef, snap => {
+                metaData = snap.exists() ? snap.data() : {};
+                buildStudentsList();
+                renderStudents();
+            }, err => console.error('meta listener:', err));
+
+        } catch(e) {
+            setFbStatus('error', '❌ خطأ في الاتصال: ' + e.message);
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>

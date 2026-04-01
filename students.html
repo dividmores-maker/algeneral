@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الطلاب - نظام إدارة السنتر التعليمي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-base:      #080808;
+            --gold:         #d4a017;
+            --gold-hi:      #f5c842;
+            --gold-soft:    #e8c96a;
+            --gold-dim:     #a07810;
+            --crimson:      #c0182a;
+            --crimson-hi:   #e8203a;
+            --crimson-soft: #ff6070;
+            --white:        #ffffff;
+            --white-80:     rgba(255,255,255,.8);
+            --white-50:     rgba(255,255,255,.5);
+            --white-20:     rgba(255,255,255,.2);
+            --white-08:     rgba(255,255,255,.08);
+            --card-bg:      rgba(12,8,0,.7);
+            --glass-border: rgba(212,160,23,.18);
+            --border-hi:    rgba(212,160,23,.38);
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-base);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* ── Background ── */
+        .bg-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .bg-gradient {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 75% 55% at 50% -5%,  rgba(212,160,23,.35) 0%, transparent 62%),
+                radial-gradient(ellipse 50% 42% at 88% 85%,  rgba(192,24,42,.26)  0%, transparent 55%),
+                radial-gradient(ellipse 42% 36% at 10% 75%,  rgba(212,160,23,.16) 0%, transparent 52%),
+                radial-gradient(ellipse 28% 24% at 78% 12%,  rgba(192,24,42,.12)  0%, transparent 48%),
+                linear-gradient(160deg, #0d0900 0%, #100a00 35%, #080808 65%, #0d0203 100%);
+        }
+        .orb { position: absolute; border-radius: 50%; filter: blur(80px); animation: floatOrb 8s ease-in-out infinite; }
+        .orb-1 { width:420px; height:420px; background:rgba(212,160,23,.18); top:-110px; left:50%; transform:translateX(-50%); animation-delay:0s; }
+        .orb-2 { width:300px; height:300px; background:rgba(192,24,42,.2);   bottom:10%; right:-50px; animation-delay:-3s; }
+        .orb-3 { width:250px; height:250px; background:rgba(212,160,23,.12); bottom:20%; left:-30px;  animation-delay:-5s; }
+        @keyframes floatOrb { 0%,100%{transform:translateY(0) translateX(0);} 33%{transform:translateY(-20px) translateX(10px);} 66%{transform:translateY(10px) translateX(-10px);} }
+        .grid-lines {
+            position: absolute; inset: 0;
+            background-image: linear-gradient(rgba(212,160,23,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(212,160,23,.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .dot-grid {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(212,160,23,.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent);
+        }
+        .particles { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+        .particle  { position: absolute; border-radius: 50%; animation: floatParticle linear infinite; opacity: 0; }
+        @keyframes floatParticle { 0%{transform:translateY(100vh);opacity:0;} 10%{opacity:.5;} 90%{opacity:.25;} 100%{transform:translateY(-10vh) translateX(30px);opacity:0;} }
+
+        /* ── Layout ── */
+        .container { position: relative; z-index: 10; max-width: 1400px; margin: 0 auto; }
+
+        /* ── Navbar ── */
+        .navbar {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(16px);
+            padding: 18px 28px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(212,160,23,.08);
+            animation: fadeSlideDown .6s ease both;
+        }
+        .logo {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 22px; font-weight: 900;
+            background: linear-gradient(135deg, var(--gold-hi), var(--gold-soft), var(--crimson-soft));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            filter: drop-shadow(0 0 10px rgba(212,160,23,.4));
+        }
+        .back-btn {
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+            color: #0d0800; border: none; padding: 10px 22px; border-radius: 10px;
+            cursor: pointer; font-size: 15px; font-family: 'Cairo', sans-serif; font-weight: 900;
+            text-decoration: none; display: inline-block; transition: all .3s;
+            box-shadow: 0 4px 15px rgba(212,160,23,.3);
+        }
+        .back-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(212,160,23,.55); filter: brightness(1.1); }
+
+        /* ── Firebase Status ── */
+        .firebase-bar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 11px 18px; border-radius: 12px; margin-bottom: 20px;
+            font-size: 13px; font-weight: 700; transition: all .3s;
+            backdrop-filter: blur(8px);
+            animation: fadeSlideDown .6s ease .1s both;
+        }
+        .firebase-bar.connected  { background:rgba(34,197,94,.12);  color:#4ade80; border:1px solid rgba(34,197,94,.3); }
+        .firebase-bar.error      { background:rgba(239,68,68,.12);  color:#f87171; border:1px solid rgba(239,68,68,.3); }
+        .firebase-bar.connecting { background:rgba(212,160,23,.1);  color:var(--gold-soft); border:1px solid rgba(212,160,23,.3); }
+        .firebase-bar.saving     { background:rgba(192,24,42,.1);   color:var(--crimson-soft); border:1px solid rgba(192,24,42,.3); }
+        .firebase-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .firebase-dot.connected  { background:#4ade80; box-shadow:0 0 8px #4ade80; animation:fbBlink 2s infinite; }
+        .firebase-dot.error      { background:#f87171; }
+        .firebase-dot.connecting { background:var(--gold-hi); box-shadow:0 0 8px var(--gold-hi); animation:fbBlink .6s infinite; }
+        .firebase-dot.saving     { background:var(--crimson-soft); box-shadow:0 0 8px var(--crimson-soft); animation:fbBlink .4s infinite; }
+        @keyframes fbBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        /* ── Main Content ── */
+        .main-content {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(16px);
+            padding: 28px; border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(212,160,23,.06);
+            animation: fadeSlideDown .6s ease .15s both;
+        }
+        .page-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 28px; padding-bottom: 18px;
+            border-bottom: 1px solid rgba(212,160,23,.18);
+            flex-wrap: wrap; gap: 12px;
+        }
+        .page-header h1 {
+            font-size: 28px; font-weight: 900;
+            background: linear-gradient(135deg, var(--gold-hi), var(--gold-soft), var(--crimson-soft));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            filter: drop-shadow(0 0 12px rgba(212,160,23,.4));
+        }
+
+        /* ── Buttons ── */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+            color: #0d0800; border: none; padding: 11px 22px; border-radius: 10px;
+            cursor: pointer; font-size: 15px; font-family: 'Cairo', sans-serif; font-weight: 900;
+            transition: all .3s; box-shadow: 0 4px 15px rgba(212,160,23,.3);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(212,160,23,.55); filter: brightness(1.1); }
+
+        .add-student-btn {
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold-hi));
+            color: #0d0800; border: none; padding: 11px 24px; border-radius: 10px;
+            cursor: pointer; font-size: 15px; font-family: 'Cairo', sans-serif; font-weight: 900;
+            transition: all .3s; box-shadow: 0 4px 15px rgba(212,160,23,.35);
+        }
+        .add-student-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(212,160,23,.6); filter: brightness(1.1); }
+
+        .print-btn {
+            background: linear-gradient(135deg, var(--crimson), var(--crimson-hi));
+            color: white; border: none; padding: 11px 22px; border-radius: 10px;
+            cursor: pointer; font-size: 15px; font-family: 'Cairo', sans-serif; font-weight: 700;
+            transition: all .3s; box-shadow: 0 4px 15px rgba(192,24,42,.4);
+        }
+        .print-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(192,24,42,.65); }
+
+        /* ── Stats ── */
+        .stats-cards {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px; margin-bottom: 28px;
+        }
+        .stat-card {
+            background: rgba(160,120,16,.1);
+            border: 1px solid rgba(212,160,23,.22);
+            backdrop-filter: blur(8px);
+            padding: 22px; border-radius: 14px; text-align: center;
+            transition: transform .3s ease, box-shadow .3s ease;
+        }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(212,160,23,.2); border-color: rgba(212,160,23,.38); }
+        .stat-card .number {
+            font-size: 34px; font-weight: 900; margin-bottom: 6px;
+            background: linear-gradient(135deg, var(--gold-hi), var(--gold-soft));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            filter: drop-shadow(0 0 10px rgba(212,160,23,.5));
+            font-family: 'Space Mono', monospace;
+        }
+        .stat-card .label { font-size: 14px; color: rgba(255,255,255,.5); }
+
+        /* ── Search & Filter ── */
+        .search-filter {
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px; margin-bottom: 22px;
+        }
+        .search-filter input, .search-filter select {
+            padding: 12px 14px;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(212,160,23,.2);
+            border-radius: 10px; font-size: 14px;
+            font-family: 'Cairo', sans-serif; color: var(--white);
+            outline: none; transition: border-color .2s, box-shadow .2s;
+        }
+        .search-filter input::placeholder { color: rgba(255,255,255,.35); }
+        .search-filter input:focus, .search-filter select:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(212,160,23,.15);
+        }
+        .search-filter select option { background: #0d0800; color: white; }
+
+        /* ── Table ── */
+        .students-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .students-table th {
+            background: linear-gradient(135deg, rgba(160,120,16,.65), rgba(212,160,23,.45));
+            color: #0d0800; padding: 14px 16px;
+            text-align: right; font-weight: 900; font-size: 14px;
+            border-bottom: 1px solid rgba(212,160,23,.3);
+        }
+        .students-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(212,160,23,.08);
+            color: rgba(255,255,255,.75); font-size: 14px;
+            vertical-align: middle;
+        }
+        .students-table tr:hover td { background: rgba(212,160,23,.06); }
+
+        .action-btns { display: flex; gap: 7px; }
+
+        .edit-btn {
+            padding: 6px 14px; border: none; border-radius: 7px;
+            cursor: pointer; font-size: 13px; font-family: 'Cairo', sans-serif; font-weight: 700;
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold)); color: #0d0800;
+            transition: transform .2s; box-shadow: 0 2px 8px rgba(212,160,23,.3);
+        }
+        .edit-btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+
+        .delete-btn {
+            padding: 6px 14px; border: none; border-radius: 7px;
+            cursor: pointer; font-size: 13px; font-family: 'Cairo', sans-serif; font-weight: 700;
+            background: linear-gradient(135deg, var(--crimson), var(--crimson-hi)); color: white;
+            transition: transform .2s; box-shadow: 0 2px 8px rgba(192,24,42,.35);
+        }
+        .delete-btn:hover { transform: scale(1.05); }
+
+        .photo-btn {
+            padding: 6px 12px; border: none; border-radius: 7px;
+            cursor: pointer; font-size: 13px; font-family: 'Cairo', sans-serif; font-weight: 700;
+            background: rgba(212,160,23,.15); color: var(--gold-soft);
+            border: 1px solid rgba(212,160,23,.3);
+            transition: transform .2s;
+        }
+        .photo-btn:hover { transform: scale(1.05); background: rgba(212,160,23,.25); }
+
+        /* ── Thumbnail ── */
+        .student-thumb { width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid rgba(212,160,23,.5); vertical-align:middle; }
+        .student-thumb-placeholder {
+            width:36px; height:36px; border-radius:50%;
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+            display:inline-flex; align-items:center; justify-content:center;
+            color:#0d0800; font-size:15px; vertical-align:middle;
+        }
+
+        /* ── Empty State ── */
+        .empty-state { text-align:center; padding:60px 20px; color:rgba(255,255,255,.4); }
+        .empty-state .icon { font-size:70px; margin-bottom:16px; }
+        .empty-state h3 { font-size:20px; color:rgba(255,255,255,.6); margin-bottom:8px; }
+        .empty-state p { font-size:14px; }
+
+        /* ── Modal ── */
+        .modal {
+            display: none; position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,.78); backdrop-filter: blur(6px);
+            justify-content: center; align-items: flex-start; overflow-y: auto;
+        }
+        .modal.open { display: flex; }
+        .modal-content {
+            background: #0d0800;
+            border: 1px solid rgba(212,160,23,.28);
+            box-shadow: 0 20px 60px rgba(0,0,0,.7), 0 0 40px rgba(212,160,23,.1);
+            margin: 2% auto; padding: 36px; border-radius: 18px;
+            width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto;
+        }
+        .close {
+            color: rgba(255,255,255,.4); float: left; font-size: 30px;
+            font-weight: bold; cursor: pointer; transition: color .2s;
+            background: rgba(255,255,255,.06); border-radius: 8px;
+            width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+            line-height: 1;
+        }
+        .close:hover { color: #f87171; background: rgba(192,24,42,.2); }
+        .modal-header { text-align: center; margin-bottom: 24px; clear: both; padding-top: 10px; }
+        .modal-header h2 {
+            font-size: 22px; font-weight: 900;
+            background: linear-gradient(135deg, var(--gold-hi), var(--gold-soft));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+
+        /* ── Form ── */
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 700; color: rgba(255,255,255,.8); font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 12px 14px;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(212,160,23,.22);
+            border-radius: 10px; font-size: 14px; font-family: 'Cairo', sans-serif;
+            color: var(--white); transition: border-color .2s, box-shadow .2s; outline: none;
+        }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255,255,255,.3); }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212,160,23,.15);
+        }
+        .form-group select option { background: #0d0800; color: white; }
+        .form-group input[readonly] { color: rgba(255,255,255,.5); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        #subjectsCheckboxes {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            padding: 14px; border: 1px solid rgba(212,160,23,.22); border-radius: 10px;
+            background: rgba(255,255,255,.03);
+        }
+        #subjectsCheckboxes label {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+            padding: 7px 10px; border-radius: 8px;
+            border: 1px solid rgba(212,160,23,.12);
+            background: rgba(212,160,23,.06); color: rgba(255,255,255,.75);
+            font-size: 13px; font-weight: 700; transition: all .2s; margin: 0;
+        }
+        #subjectsCheckboxes label:hover { background: rgba(212,160,23,.15); border-color: rgba(212,160,23,.3); }
+        #subjectsCheckboxes input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--gold); }
+
+        .submit-btn {
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold-hi));
+            color: #0d0800; border: none; padding: 14px 40px; border-radius: 10px;
+            font-size: 16px; font-family: 'Cairo', sans-serif; font-weight: 900;
+            cursor: pointer; width: 100%; margin-top: 20px;
+            transition: all .3s; box-shadow: 0 4px 20px rgba(212,160,23,.4);
+        }
+        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 26px rgba(212,160,23,.6); filter: brightness(1.1); }
+
+        /* ── Cards Modal ── */
+        .cards-toolbar {
+            display: flex; gap: 12px; align-items: center;
+            margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .cards-filter-select {
+            padding: 9px 14px;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(212,160,23,.22);
+            border-radius: 10px; font-size: 14px; font-family: 'Cairo', sans-serif;
+            color: var(--white); outline: none;
+        }
+        .cards-filter-select option { background: #0d0800; }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 16px;
+        }
+
+        /* ── Student Card (Barcode Card) ── */
+        .student-card {
+            border: 2px solid rgba(212,160,23,.4);
+            border-radius: 14px; overflow: hidden;
+            background: #100900;
+            box-shadow: 0 4px 16px rgba(0,0,0,.5);
+            page-break-inside: avoid; display: flex; flex-direction: column;
+        }
+        .card-header {
+            background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+            color: #0d0800; padding: 8px 12px;
+            display: flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: 900; letter-spacing: 1px;
+        }
+        .card-header-logo { font-size: 15px; }
+        .card-body { padding: 10px 12px; display: flex; gap: 10px; align-items: center; }
+        .card-photo { width:60px; height:70px; border-radius:8px; object-fit:cover; border:2px solid rgba(212,160,23,.4); flex-shrink:0; }
+        .card-photo-placeholder {
+            width:60px; height:70px; border-radius:8px;
+            background: linear-gradient(135deg, rgba(160,120,16,.3), rgba(212,160,23,.2));
+            display:flex; align-items:center; justify-content:center;
+            font-size:28px; flex-shrink:0; border:2px dashed rgba(212,160,23,.3);
+        }
+        .card-info { flex: 1; min-width: 0; }
+        .card-name { font-size:13px; font-weight:700; color:var(--gold-soft); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .card-class { font-size:10px; color:rgba(255,255,255,.5); margin-bottom:6px; }
+        .card-barcode-img { width:100%; max-height:44px; filter: invert(1) sepia(1) saturate(2) hue-rotate(0deg); }
+        .card-code { font-size:9px; color:rgba(255,255,255,.4); text-align:center; margin-top:2px; font-family:monospace; letter-spacing:1px; }
+        .card-footer { background: rgba(212,160,23,.08); text-align:center; padding:4px; font-size:9px; color:rgba(212,160,23,.6); border-top:1px solid rgba(212,160,23,.15); }
+
+        /* ── Animation ── */
+        @keyframes fadeSlideDown { from{opacity:0;transform:translateY(-16px);} to{opacity:1;transform:translateY(0);} }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,.02); }
+        ::-webkit-scrollbar-thumb { background: rgba(212,160,23,.35); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(212,160,23,.6); }
+
+        /* ── Print ── */
+        @media print {
+            body * { visibility: hidden; }
+            #cardsModal, #cardsModal * { visibility: visible; }
+            #cardsModal { position: absolute; left: 0; top: 0; width: 100%; }
+            .cards-toolbar, #cardsCloseBtn { display: none !important; }
+            #cardsModal .modal-content { box-shadow: none; max-width: 100%; padding: 10px; background: white; }
+            .student-card { border-color: #8a6000; background: white; }
+            .card-name { color: #8a6000; }
+            .card-barcode-img { filter: none; }
+            .cards-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+
+            /* Navbar */
+            .navbar { padding: 12px 14px; border-radius: 12px; margin-bottom: 12px; }
+            .logo { font-size: 17px; }
+            .back-btn { padding: 8px 14px; font-size: 13px; }
+
+            /* Firebase bar */
+            .firebase-bar { padding: 9px 12px; font-size: 12px; margin-bottom: 12px; }
+
+            /* Main content */
+            .main-content { padding: 14px; border-radius: 14px; }
+            .page-header { margin-bottom: 18px; padding-bottom: 14px; }
+            .page-header h1 { font-size: 19px; }
+            .page-header > div { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+            .print-btn, .add-student-btn { width: 100%; font-size: 14px; padding: 11px 16px; }
+
+            /* Stats */
+            .stats-cards { grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
+            .stat-card { padding: 14px 8px; border-radius: 10px; }
+            .stat-card .number { font-size: 24px; }
+            .stat-card .label { font-size: 11px; }
+
+            /* Search/Filter */
+            .search-filter { grid-template-columns: 1fr; gap: 8px; margin-bottom: 14px; }
+
+            /* Table → mobile cards */
+            .students-table thead { display: none; }
+            .students-table, .students-table tbody, .students-table tr { display: block; width: 100%; }
+            .students-table tr {
+                background: rgba(255,255,255,.03);
+                border: 1px solid rgba(212,160,23,.15);
+                border-radius: 12px; padding: 12px 14px;
+                margin-bottom: 10px; position: relative;
+            }
+            .students-table tr:hover td { background: transparent; }
+            .students-table td {
+                display: flex; align-items: center; justify-content: space-between;
+                padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.05);
+                font-size: 13px; text-align: right;
+            }
+            .students-table td:last-child { border-bottom: none; padding-top: 10px; }
+            .students-table td::before {
+                content: attr(data-label);
+                font-weight: 700; color: var(--gold-soft);
+                font-size: 12px; min-width: 80px; flex-shrink: 0;
+            }
+            .action-btns { flex-wrap: wrap; justify-content: flex-end; gap: 6px; width: 100%; }
+            .action-btns::before { display: none; }
+            .edit-btn, .delete-btn, .photo-btn { padding: 7px 12px; font-size: 12px; }
+
+            /* Modal */
+            .modal-content { margin: 0; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; padding: 20px 16px; }
+            .modal { align-items: flex-start; }
+            .form-row { grid-template-columns: 1fr; }
+            #subjectsCheckboxes { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+            #subjectsCheckboxes label { font-size: 12px; padding: 6px 8px; }
+            .submit-btn { padding: 13px; font-size: 15px; }
+
+            /* Cards modal */
+            .cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .cards-toolbar { gap: 8px; }
+            .cards-filter-select { font-size: 13px; padding: 8px 10px; }
+        }
+
+        @media (max-width: 380px) {
+            .stats-cards { grid-template-columns: 1fr 1fr; }
+            .cards-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Background -->
+    <div class="bg-layer">
+        <div class="bg-gradient"></div>
+        <div class="dot-grid"></div>
+        <div class="grid-lines"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="logo">🎓 إدارة الطلاب</div>
+            <a href="home.html" class="back-btn">← العودة للصفحة الرئيسية</a>
+        </nav>
+
+        <!-- Firebase Status -->
+        <div class="firebase-bar connecting" id="firebaseStatusBar">
+            <div class="firebase-dot connecting" id="firebaseDot"></div>
+            <span id="firebaseMsg">🔌 جاري الاتصال بـ Firebase...</span>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="page-header">
+                <h1>👨‍🎓 إدارة بيانات الطلاب</h1>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="print-btn" onclick="openCardsModal()">🖨️ طباعة كروت الباركود</button>
+                    <button class="add-student-btn" onclick="openAddModal()">➕ إضافة طالب جديد</button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="number" id="totalStudentsCount">0</div>
+                    <div class="label">إجمالي الطلاب</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="classesCount">0</div>
+                    <div class="label">عدد الفصول</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="subjectsCount">0</div>
+                    <div class="label">عدد المواد</div>
+                </div>
+            </div>
+
+            <!-- Search & Filter -->
+            <div class="search-filter">
+                <input type="text" id="searchInput" placeholder="🔍 البحث بالاسم أو رقم الهاتف..." oninput="filterStudents()">
+                <select id="classFilter" onchange="filterStudents()">
+                    <option value="">جميع الفصول</option>
+                    <option value="الصف الأول الابتدائي">الصف الأول الابتدائي</option>
+                    <option value="الصف الثاني الابتدائي">الصف الثاني الابتدائي</option>
+                    <option value="الصف الثالث الابتدائي">الصف الثالث الابتدائي</option>
+                    <option value="الصف الرابع الابتدائي">الصف الرابع الابتدائي</option>
+                    <option value="الصف الخامس الابتدائي">الصف الخامس الابتدائي</option>
+                    <option value="الصف السادس الابتدائي">الصف السادس الابتدائي</option>
+                    <option value="الصف الأول الإعدادي">الصف الأول الإعدادي</option>
+                    <option value="الصف الثاني الإعدادي">الصف الثاني الإعدادي</option>
+                    <option value="الصف الثالث الإعدادي">الصف الثالث الإعدادي</option>
+                    <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
+                    <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
+                    <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+                </select>
+                <select id="subjectFilter" onchange="filterStudents()">
+                    <option value="">جميع المواد</option>
+                    <option value="math">رياضيات</option>
+                    <option value="science">علوم</option>
+                    <option value="arabic">عربي</option>
+                    <option value="english">إنجليزي</option>
+                    <option value="studies">دراسات</option>
+                </select>
+            </div>
+
+            <!-- Table -->
+            <div id="studentsTableContainer">
+                <table class="students-table">
+                    <thead>
+                        <tr>
+                            <th>الصورة / الاسم</th>
+                            <th>الصف الدراسي</th>
+                            <th>المواد</th>
+                            <th>تاريخ الميلاد</th>
+                            <th>السن</th>
+                            <th>رقم الهاتف</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody"></tbody>
+                </table>
+                <div id="emptyState" class="empty-state" style="display:none;">
+                    <div class="icon">👨‍🎓</div>
+                    <h3>لا توجد بيانات طلاب</h3>
+                    <p>ابدأ بإضافة طالب جديد</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Student Modal -->
+    <div id="studentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="modal-header">
+                <h2 id="modalTitle">➕ إضافة طالب جديد</h2>
+            </div>
+            <form id="studentForm" onsubmit="saveStudent(event)">
+                <div class="form-group">
+                    <label>الاسم الكامل *</label>
+                    <input type="text" id="studentName" required placeholder="أدخل الاسم الكامل">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>الصف الدراسي *</label>
+                        <select id="studentClass" required>
+                            <option value="">اختر الصف</option>
+                            <optgroup label="المرحلة الابتدائية">
+                                <option value="الصف الأول الابتدائي">الصف الأول الابتدائي</option>
+                                <option value="الصف الثاني الابتدائي">الصف الثاني الابتدائي</option>
+                                <option value="الصف الثالث الابتدائي">الصف الثالث الابتدائي</option>
+                                <option value="الصف الرابع الابتدائي">الصف الرابع الابتدائي</option>
+                                <option value="الصف الخامس الابتدائي">الصف الخامس الابتدائي</option>
+                                <option value="الصف السادس الابتدائي">الصف السادس الابتدائي</option>
+                            </optgroup>
+                            <optgroup label="المرحلة الإعدادية">
+                                <option value="الصف الأول الإعدادي">الصف الأول الإعدادي</option>
+                                <option value="الصف الثاني الإعدادي">الصف الثاني الإعدادي</option>
+                                <option value="الصف الثالث الإعدادي">الصف الثالث الإعدادي</option>
+                            </optgroup>
+                            <optgroup label="المرحلة الثانوية">
+                                <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
+                                <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
+                                <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>المواد * (يمكن اختيار أكثر من مادة)</label>
+                        <div id="subjectsCheckboxes">
+                            <label><input type="checkbox" name="subjects" value="math"><span>📐 رياضيات</span></label>
+                            <label><input type="checkbox" name="subjects" value="science"><span>🔬 علوم</span></label>
+                            <label><input type="checkbox" name="subjects" value="arabic"><span>📝 عربي</span></label>
+                            <label><input type="checkbox" name="subjects" value="english"><span>🔤 إنجليزي</span></label>
+                            <label><input type="checkbox" name="subjects" value="studies"><span>🌍 دراسات</span></label>
+                        </div>
+                        <small id="subjectsError" style="color:#f87171;display:none;margin-top:5px;">يجب اختيار مادة واحدة على الأقل</small>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>تاريخ الميلاد *</label>
+                        <input type="date" id="studentBirthdate" required onchange="calculateAge()">
+                    </div>
+                    <div class="form-group">
+                        <label>السن</label>
+                        <input type="text" id="studentAge" readonly placeholder="يتم حسابه تلقائياً">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>رقم الهاتف *</label>
+                    <input type="tel" id="studentPhone" required placeholder="01xxxxxxxxx" pattern="[0-9]{11}">
+                </div>
+                <div class="form-group">
+                    <label>عنوان السكن</label>
+                    <textarea id="studentAddress" rows="3" placeholder="أدخل العنوان"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>ملاحظات</label>
+                    <textarea id="studentNotes" rows="3" placeholder="أي ملاحظات إضافية"></textarea>
+                </div>
+                <input type="hidden" id="studentId">
+                <button type="submit" class="submit-btn">💾 حفظ البيانات</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="photoFileInput" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
+
+    <!-- Print Cards Modal -->
+    <div id="cardsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="cardsCloseBtn" onclick="closeCardsModal()">&times;</span>
+            <div class="modal-header">
+                <h2>🖨️ كروت باركود الطلاب</h2>
+            </div>
+            <div class="cards-toolbar">
+                <select class="cards-filter-select" id="cardsClassFilter" onchange="renderCards()">
+                    <option value="">جميع الفصول</option>
+                    <option value="الصف الأول الابتدائي">الصف الأول الابتدائي</option>
+                    <option value="الصف الثاني الابتدائي">الصف الثاني الابتدائي</option>
+                    <option value="الصف الثالث الابتدائي">الصف الثالث الابتدائي</option>
+                    <option value="الصف الرابع الابتدائي">الصف الرابع الابتدائي</option>
+                    <option value="الصف الخامس الابتدائي">الصف الخامس الابتدائي</option>
+                    <option value="الصف السادس الابتدائي">الصف السادس الابتدائي</option>
+                    <option value="الصف الأول الإعدادي">الصف الأول الإعدادي</option>
+                    <option value="الصف الثاني الإعدادي">الصف الثاني الإعدادي</option>
+                    <option value="الصف الثالث الإعدادي">الصف الثالث الإعدادي</option>
+                    <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
+                    <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
+                    <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+                </select>
+                <button class="print-btn" style="padding:9px 18px;font-size:14px;" onclick="window.print()">🖨️ طباعة</button>
+                <span id="cardsCount" style="color:rgba(212,160,23,.8);font-size:13px;align-self:center;font-weight:700;"></span>
+            </div>
+            <div class="cards-grid" id="cardsGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        // ── Particles — gold & red ──
+        const particlesContainer = document.getElementById('particles');
+        const pColors = ['#f5c842','#e8c96a','#d4a017','#e8203a','#ff6070','#c0182a'];
+        for (let i = 0; i < 25; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.style.left = Math.random() * 100 + 'vw';
+            p.style.animationDuration = (6 + Math.random() * 10) + 's';
+            p.style.animationDelay    = (Math.random() * 10) + 's';
+            const size = (1 + Math.random() * 3) + 'px';
+            p.style.width = p.style.height = size;
+            p.style.background = pColors[Math.floor(Math.random() * pColors.length)];
+            particlesContainer.appendChild(p);
+        }
+
+        // ── Firebase ──
+        const firebaseConfig = {
+  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+  authDomain: "al-gnarl.firebaseapp.com",
+  projectId: "al-gnarl",
+  storageBucket: "al-gnarl.firebasestorage.app",
+  messagingSenderId: "288765966471",
+  appId: "1:288765966471:web:63358febfb82843c2fa022"
+};
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function setFbStatus(state, msg) {
+            const bar = document.getElementById('firebaseStatusBar');
+            const dot = document.getElementById('firebaseDot');
+            const txt = document.getElementById('firebaseMsg');
+            if (!bar) return;
+            bar.className = 'firebase-bar ' + state;
+            dot.className = 'firebase-dot ' + state;
+            txt.textContent = msg;
+        }
+
+        // ── State ──
+        let students = [];
+        let editingStudentId = null;
+
+        // ── Save ──
+        async function saveToFirestore() {
+            setFbStatus('saving', '💾 جاري الحفظ على Firebase...');
+            try {
+                await db.collection('students').doc('data').set({ students });
+                setFbStatus('connected', '🔥 Firebase — تم الحفظ ✔');
+            } catch(e) {
+                console.error('Save error:', e);
+                setFbStatus('error', '❌ خطأ في الحفظ — ' + e.message);
+            }
+        }
+
+        // ── Listener ──
+        function startListener() {
+            db.collection('students').doc('data').onSnapshot((snap) => {
+                students = snap.exists ? (snap.data().students || []) : [];
+                setFbStatus('connected', '🔥 Firebase متصل — البيانات محدّثة لحظياً');
+                displayStudents();
+                updateStats();
+            }, (err) => {
+                console.error('Listener error:', err);
+                setFbStatus('error', '❌ خطأ في الاتصال — تأكد من Firebase Rules');
+            });
+        }
+
+        // ── Helpers ──
+        function getSubjectName(subject) {
+            const subjects = { 'math':'رياضيات','science':'علوم','arabic':'عربي','english':'إنجليزي','studies':'دراسات' };
+            return subjects[subject] || subject;
+        }
+        function getSubjectsDisplay(subjectsArray) {
+            if (!subjectsArray || !Array.isArray(subjectsArray)) return '-';
+            return subjectsArray.map(s => getSubjectName(s)).join(', ');
+        }
+        function calculateAge() {
+            const birthdate = document.getElementById('studentBirthdate').value;
+            if (birthdate) {
+                const today = new Date(), birth = new Date(birthdate);
+                let age = today.getFullYear() - birth.getFullYear();
+                const m = today.getMonth() - birth.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                document.getElementById('studentAge').value = age + ' سنة';
+            }
+        }
+
+        // ── Display ──
+        function displayStudents(list) {
+            const data = list || students;
+            const tbody = document.getElementById('studentsTableBody');
+            const emptyState = document.getElementById('emptyState');
+            if (data.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            emptyState.style.display = 'none';
+            tbody.innerHTML = data.map(student => `
+                <tr>
+                    <td data-label="الاسم">
+                        ${student.photo
+                            ? `<img src="${student.photo}" class="student-thumb" style="margin-left:8px;">`
+                            : `<span class="student-thumb-placeholder">👤</span>`}
+                        <strong style="vertical-align:middle;margin-right:6px;color:rgba(255,255,255,0.85);">${student.name}</strong>
+                    </td>
+                    <td data-label="الصف">${student.class}</td>
+                    <td data-label="المواد">${getSubjectsDisplay(student.subjects)}</td>
+                    <td data-label="الميلاد">${new Date(student.birthdate).toLocaleDateString('ar-EG')}</td>
+                    <td data-label="السن">${student.age}</td>
+                    <td data-label="الهاتف">${student.phone}</td>
+                    <td class="action-btns">
+                        <button class="photo-btn" onclick="triggerPhotoUpload('${student.id}')" title="رفع صورة">📸</button>
+                        <button class="edit-btn" onclick="editStudent('${student.id}')">✏️ تعديل</button>
+                        <button class="delete-btn" onclick="deleteStudent('${student.id}')">🗑️ حذف</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('totalStudentsCount').textContent = students.length;
+            const uniqueClasses = [...new Set(students.map(s => s.class))];
+            document.getElementById('classesCount').textContent = uniqueClasses.length;
+            const allSubjects = new Set();
+            students.forEach(s => { if (s.subjects) s.subjects.forEach(sub => allSubjects.add(sub)); });
+            document.getElementById('subjectsCount').textContent = allSubjects.size;
+        }
+
+        // ── Modal ──
+        function openAddModal() {
+            editingStudentId = null;
+            document.getElementById('modalTitle').textContent = '➕ إضافة طالب جديد';
+            document.getElementById('studentForm').reset();
+            document.getElementById('studentAge').value = '';
+            document.querySelectorAll('input[name="subjects"]').forEach(cb => cb.checked = false);
+            document.getElementById('subjectsError').style.display = 'none';
+            document.getElementById('studentModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function editStudent(id) {
+            const student = students.find(s => s.id === id);
+            if (!student) return;
+            editingStudentId = id;
+            document.getElementById('modalTitle').textContent       = '✏️ تعديل بيانات الطالب';
+            document.getElementById('studentId').value              = student.id;
+            document.getElementById('studentName').value            = student.name;
+            document.getElementById('studentClass').value           = student.class;
+            document.getElementById('studentBirthdate').value       = student.birthdate;
+            document.getElementById('studentAge').value             = student.age;
+            document.getElementById('studentPhone').value           = student.phone;
+            document.getElementById('studentAddress').value         = student.address || '';
+            document.getElementById('studentNotes').value           = student.notes || '';
+            document.querySelectorAll('input[name="subjects"]').forEach(cb => {
+                cb.checked = student.subjects && student.subjects.includes(cb.value);
+            });
+            document.getElementById('studentModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('studentModal').classList.remove('open');
+            document.body.style.overflow = 'auto';
+            document.getElementById('studentForm').reset();
+            document.querySelectorAll('input[name="subjects"]').forEach(cb => cb.checked = false);
+            document.getElementById('subjectsError').style.display = 'none';
+            editingStudentId = null;
+        }
+
+        function saveStudent(event) {
+            event.preventDefault();
+            const selectedSubjects = Array.from(document.querySelectorAll('input[name="subjects"]:checked')).map(cb => cb.value);
+            if (selectedSubjects.length === 0) {
+                document.getElementById('subjectsError').style.display = 'block';
+                return;
+            }
+            document.getElementById('subjectsError').style.display = 'none';
+            const student = {
+                id:        editingStudentId || Date.now().toString(),
+                name:      document.getElementById('studentName').value,
+                class:     document.getElementById('studentClass').value,
+                subjects:  selectedSubjects,
+                birthdate: document.getElementById('studentBirthdate').value,
+                age:       document.getElementById('studentAge').value,
+                phone:     document.getElementById('studentPhone').value,
+                address:   document.getElementById('studentAddress').value,
+                notes:     document.getElementById('studentNotes').value,
+                createdAt: editingStudentId ? students.find(s => s.id === editingStudentId)?.createdAt : new Date().toISOString()
+            };
+            if (editingStudentId) {
+                const index = students.findIndex(s => s.id === editingStudentId);
+                students[index] = student;
+            } else {
+                students.push(student);
+            }
+            saveToFirestore();
+            closeModal();
+            alert(editingStudentId ? 'تم تحديث بيانات الطالب بنجاح ✅' : 'تم إضافة الطالب بنجاح ✅');
+        }
+
+        function deleteStudent(id) {
+            if (confirm('هل أنت متأكد من حذف هذا الطالب؟')) {
+                students = students.filter(s => s.id !== id);
+                saveToFirestore();
+                alert('تم حذف الطالب بنجاح ✅');
+            }
+        }
+
+        function filterStudents() {
+            const searchTerm    = document.getElementById('searchInput').value.toLowerCase();
+            const classFilter   = document.getElementById('classFilter').value;
+            const subjectFilter = document.getElementById('subjectFilter').value;
+            const filtered = students.filter(student => {
+                const matchesSearch  = student.name.toLowerCase().includes(searchTerm) || student.phone.includes(searchTerm);
+                const matchesClass   = !classFilter   || student.class === classFilter;
+                const matchesSubject = !subjectFilter  || (student.subjects && student.subjects.includes(subjectFilter));
+                return matchesSearch && matchesClass && matchesSubject;
+            });
+            displayStudents(filtered);
+        }
+
+        // ── Cards ──
+        function openCardsModal() {
+            document.getElementById('cardsModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            renderCards();
+        }
+        function closeCardsModal() {
+            document.getElementById('cardsModal').classList.remove('open');
+            document.body.style.overflow = 'auto';
+        }
+
+        function renderCards() {
+            const classFilter = document.getElementById('cardsClassFilter').value;
+            const grid = document.getElementById('cardsGrid');
+            const filtered = classFilter ? students.filter(s => s.class === classFilter) : students;
+            document.getElementById('cardsCount').textContent = `${filtered.length} طالب`;
+            if (filtered.length === 0) {
+                grid.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,0.4);padding:40px;grid-column:1/-1;">لا يوجد طلاب</p>';
+                return;
+            }
+            grid.innerHTML = filtered.map(st => `
+                <div class="student-card">
+                    <div class="card-header">
+                        <span class="card-header-logo">🎓</span>
+                        <span>AL GENERAL</span>
+                    </div>
+                    <div class="card-body">
+                        ${st.photo ? `<img src="${st.photo}" class="card-photo" />` : `<div class="card-photo-placeholder">👤</div>`}
+                        <div class="card-info">
+                            <div class="card-name">${st.name}</div>
+                            <div class="card-class">${st.class}</div>
+                            <svg id="bc-${st.id}" class="card-barcode-img"></svg>
+                            <div class="card-code">${st.id}</div>
+                        </div>
+                    </div>
+                    <div class="card-footer">AL GENERAL © 2026</div>
+                </div>
+            `).join('');
+            setTimeout(() => {
+                filtered.forEach(st => {
+                    try {
+                        JsBarcode(`#bc-${st.id}`, String(st.id), { format:'CODE128', width:1.4, height:40, displayValue:false, margin:2, background:'transparent', lineColor:'#f5c842' });
+                    } catch(e) { console.warn('Barcode error for', st.id, e); }
+                });
+            }, 50);
+        }
+
+        // ── Photo Upload ──
+        let _uploadingStudentId = null;
+        function triggerPhotoUpload(studentId) {
+            _uploadingStudentId = studentId;
+            document.getElementById('photoFileInput').click();
+        }
+        function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file || !_uploadingStudentId) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64 = e.target.result;
+                const idx = students.findIndex(s => s.id === _uploadingStudentId);
+                if (idx === -1) return;
+                students[idx].photo = base64;
+                await saveToFirestore();
+                displayStudents();
+                if (document.getElementById('cardsModal').classList.contains('open')) renderCards();
+                event.target.value = '';
+                _uploadingStudentId = null;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        window.onclick = function(event) {
+            if (event.target === document.getElementById('studentModal')) closeModal();
+            if (event.target === document.getElementById('cardsModal')) closeCardsModal();
+        };
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') { closeModal(); closeCardsModal(); }
+        });
+
+        // ── Init ──
+        setFbStatus('connecting', '🔌 جاري الاتصال بـ Firebase...');
+        startListener();
+    </script>
+</body>
+</html>
