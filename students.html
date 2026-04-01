@@ -559,7 +559,8 @@
                     <option value="science">علوم</option>
                     <option value="arabic">عربي</option>
                     <option value="english">إنجليزي</option>
-                    <option value="studies">دراسات</option>
+                    <option value="history">تاريخ</option>
+                    <option value="geography">جغرافيا</option>
                 </select>
             </div>
 
@@ -632,7 +633,8 @@
                             <label><input type="checkbox" name="subjects" value="science"><span>🔬 علوم</span></label>
                             <label><input type="checkbox" name="subjects" value="arabic"><span>📝 عربي</span></label>
                             <label><input type="checkbox" name="subjects" value="english"><span>🔤 إنجليزي</span></label>
-                            <label><input type="checkbox" name="subjects" value="studies"><span>🌍 دراسات</span></label>
+                            <label><input type="checkbox" name="subjects" value="history"><span>📜 تاريخ</span></label>
+                            <label><input type="checkbox" name="subjects" value="geography"><span>🗺️ جغرافيا</span></label>
                         </div>
                         <small id="subjectsError" style="color:#f87171;display:none;margin-top:5px;">يجب اختيار مادة واحدة على الأقل</small>
                     </div>
@@ -767,7 +769,7 @@
 
         // ── Helpers ──
         function getSubjectName(subject) {
-            const subjects = { 'math':'رياضيات','science':'علوم','arabic':'عربي','english':'إنجليزي','studies':'دراسات' };
+            const subjects = { 'math':'رياضيات','science':'علوم','arabic':'عربي','english':'إنجليزي','history':'تاريخ','geography':'جغرافيا','studies':'دراسات' };
             return subjects[subject] || subject;
         }
         function getSubjectsDisplay(subjectsArray) {
