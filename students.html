@@ -572,6 +572,7 @@
                             <th>الصورة / الاسم</th>
                             <th>الصف الدراسي</th>
                             <th>المواد</th>
+                            <th>المدرس</th>
                             <th>تاريخ الميلاد</th>
                             <th>السن</th>
                             <th>رقم الهاتف</th>
@@ -652,6 +653,12 @@
                 <div class="form-group">
                     <label>رقم الهاتف *</label>
                     <input type="tel" id="studentPhone" required placeholder="01xxxxxxxxx" pattern="[0-9]{11}">
+                </div>
+                <div class="form-group">
+                    <label>👨‍🏫 المدرس المسؤول</label>
+                    <select id="studentTeacher">
+                        <option value="">⏳ جاري تحميل المدرسين...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>عنوان السكن</label>
@@ -808,6 +815,7 @@
                     </td>
                     <td data-label="الصف">${student.class}</td>
                     <td data-label="المواد">${getSubjectsDisplay(student.subjects)}</td>
+                    <td data-label="المدرس"><span style="color:var(--gold-soft);font-weight:700;">${student.teacher || '—'}</span></td>
                     <td data-label="الميلاد">${new Date(student.birthdate).toLocaleDateString('ar-EG')}</td>
                     <td data-label="السن">${student.age}</td>
                     <td data-label="الهاتف">${student.phone}</td>
@@ -829,6 +837,30 @@
             document.getElementById('subjectsCount').textContent = allSubjects.size;
         }
 
+        // ── Load Teachers from Firebase ──
+        async function loadTeachersIntoSelect() {
+            const select = document.getElementById('studentTeacher');
+            try {
+                const snap = await db.collection('teachers').doc('data').get();
+                const teachersList = snap.exists ? (snap.data().teachers || []) : [];
+                select.innerHTML = '<option value="">— اختر المدرس —</option>';
+                teachersList.filter(t => t.active !== false).forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.name;
+                    opt.textContent = t.name;
+                    select.appendChild(opt);
+                });
+                // Apply pending value if coming from editStudent
+                if (select.dataset.pendingValue) {
+                    select.value = select.dataset.pendingValue;
+                    delete select.dataset.pendingValue;
+                }
+            } catch(e) {
+                select.innerHTML = '<option value="">⚠️ تعذّر تحميل المدرسين</option>';
+                console.error('Load teachers error:', e);
+            }
+        }
+
         // ── Modal ──
         function openAddModal() {
             editingStudentId = null;
@@ -837,6 +869,7 @@
             document.getElementById('studentAge').value = '';
             document.querySelectorAll('input[name="subjects"]').forEach(cb => cb.checked = false);
             document.getElementById('subjectsError').style.display = 'none';
+            loadTeachersIntoSelect();
             document.getElementById('studentModal').classList.add('open');
             document.body.style.overflow = 'hidden';
         }
@@ -854,9 +887,18 @@
             document.getElementById('studentPhone').value           = student.phone;
             document.getElementById('studentAddress').value         = student.address || '';
             document.getElementById('studentNotes').value           = student.notes || '';
+            // Set teacher after dropdown is populated
+            const teacherSelect = document.getElementById('studentTeacher');
+            if (student.teacher) {
+                // Try to set immediately; if options not loaded yet, store for later
+                const opt = Array.from(teacherSelect.options).find(o => o.value === student.teacher);
+                if (opt) teacherSelect.value = student.teacher;
+                else teacherSelect.dataset.pendingValue = student.teacher;
+            }
             document.querySelectorAll('input[name="subjects"]').forEach(cb => {
                 cb.checked = student.subjects && student.subjects.includes(cb.value);
             });
+            loadTeachersIntoSelect();
             document.getElementById('studentModal').classList.add('open');
             document.body.style.overflow = 'hidden';
         }
@@ -883,6 +925,7 @@
                 name:      document.getElementById('studentName').value,
                 class:     document.getElementById('studentClass').value,
                 subjects:  selectedSubjects,
+                teacher:   document.getElementById('studentTeacher').value,
                 birthdate: document.getElementById('studentBirthdate').value,
                 age:       document.getElementById('studentAge').value,
                 phone:     document.getElementById('studentPhone').value,
