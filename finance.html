@@ -131,6 +131,10 @@
         .action-btn.view:hover { background:rgba(212,160,23,.28); }
         .action-btn.message { background:rgba(37,211,102,.15); color:#4ade80; border:1px solid rgba(37,211,102,.3); }
         .action-btn.message:hover { background:rgba(37,211,102,.3); }
+        .action-btn.edit-pay  { background:rgba(212,160,23,.15); color:var(--gold-soft); border:1px solid rgba(212,160,23,.3); }
+        .action-btn.edit-pay:hover { background:rgba(212,160,23,.3); }
+        .action-btn.del-pay   { background:rgba(239,68,68,.15); color:#f87171; border:1px solid rgba(239,68,68,.3); }
+        .action-btn.del-pay:hover { background:rgba(239,68,68,.3); }
 
         /* ── Buttons ── */
         .btn { background:linear-gradient(135deg,#a07810,var(--gold)); color:#0d0800;
@@ -676,13 +680,21 @@
             <div style="margin-top:16px;">
                 <h3 style="color:var(--gold-soft);margin-bottom:12px;font-size:15px;">💳 دفعات هذا الشهر</h3>`;
         if (s.paymentHistory && s.paymentHistory.length > 0) {
-            s.paymentHistory.forEach(p => {
+            s.paymentHistory.forEach((p, idx) => {
                 const date = new Date(p.date).toLocaleDateString('ar-EG');
                 const mt   = p.method === 'cash' ? 'نقدي' : p.method === 'card' ? 'بطاقة' : 'تحويل';
                 content += `<div class="payment-item">
-                    <div><strong>المبلغ:</strong> ${p.amount} جنيه — <strong>الطريقة:</strong> ${mt}</div>
-                    ${p.notes ? `<div style="color:rgba(255,255,255,.5);margin-top:4px;">${p.notes}</div>` : ''}
-                    <div class="date">📅 ${date}</div></div>`;
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                        <div>
+                            <div><strong>المبلغ:</strong> ${p.amount} جنيه — <strong>الطريقة:</strong> ${mt}</div>
+                            ${p.notes ? `<div style="color:rgba(255,255,255,.5);margin-top:4px;">${p.notes}</div>` : ''}
+                            <div class="date">📅 ${date}</div>
+                        </div>
+                        <div style="display:flex;gap:4px;flex-shrink:0;">
+                            <button class="action-btn edit-pay" onclick="editPayment('${s.id}',${idx})">✏️ تعديل</button>
+                            <button class="action-btn del-pay"  onclick="deletePayment('${s.id}',${idx})">🗑️ حذف</button>
+                        </div>
+                    </div></div>`;
             });
         } else {
             content += '<p style="text-align:center;color:rgba(255,255,255,.35);padding:20px;">لا توجد دفعات هذا الشهر</p>';
@@ -816,6 +828,49 @@
         if (el) el.classList.toggle('open');
     }
 
+    // ── Edit / Delete Payment ──
+    function editPayment(studentId, payIdx) {
+        const s = students.find(x => x.id === studentId);
+        if (!s || !s.paymentHistory[payIdx]) return;
+        const p = s.paymentHistory[payIdx];
+        const newAmt = prompt(`تعديل المبلغ الحالي (${p.amount} جنيه):\nأدخل المبلغ الجديد:`, p.amount);
+        if (newAmt === null) return; // ألغى
+        const parsed = parseInt(newAmt);
+        if (isNaN(parsed) || parsed < 0) { showAlert('يرجى إدخال مبلغ صحيح!', 'danger'); return; }
+
+        // احسب الفرق وحدّث الإجمالي
+        const diff = parsed - p.amount;
+        if (!monthData[studentId]) monthData[studentId] = { paid: 0, history: [] };
+        monthData[studentId].paid = (monthData[studentId].paid || 0) + diff;
+        monthData[studentId].history[payIdx].amount = parsed;
+
+        saveMonthData();
+        buildStudentsList();
+        renderStudents();
+        showAlert(`✅ تم تعديل المبلغ إلى ${parsed} جنيه`);
+        closeModal('detailsModal');
+        // أعد فتح التفاصيل
+        setTimeout(() => showStudentDetails(studentId), 300);
+    }
+
+    function deletePayment(studentId, payIdx) {
+        const s = students.find(x => x.id === studentId);
+        if (!s || !s.paymentHistory[payIdx]) return;
+        const p = s.paymentHistory[payIdx];
+        if (!confirm(`هل تريد حذف دفعة ${p.amount} جنيه؟`)) return;
+
+        if (!monthData[studentId]) return;
+        monthData[studentId].paid = Math.max(0, (monthData[studentId].paid || 0) - p.amount);
+        monthData[studentId].history.splice(payIdx, 1);
+
+        saveMonthData();
+        buildStudentsList();
+        renderStudents();
+        showAlert(`🗑️ تم حذف الدفعة بنجاح`);
+        closeModal('detailsModal');
+        setTimeout(() => showStudentDetails(studentId), 300);
+    }
+
     // ── Message ──
     function buildMessage(s) {
         const rem = s.subscriptionPrice - s.paid;
@@ -868,6 +923,8 @@
     window.copyMessage        = copyMessage;
     window.showHistoryModal   = showHistoryModal;
     window.toggleMonthDetails = toggleMonthDetails;
+    window.editPayment        = editPayment;
+    window.deletePayment      = deletePayment;
 
     // ── Init ──
     setFbStatus('connecting', '🔌 جاري الاتصال...');
