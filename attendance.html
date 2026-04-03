@@ -806,6 +806,7 @@
                             <th style="padding:14px 16px; text-align:center; font-weight:600;">👥 الإجمالي</th>
                             <th style="padding:14px 16px; text-align:center; font-weight:600;">نسبة الحضور</th>
                             <th style="padding:14px 16px; text-align:center; font-weight:600;">التفاصيل</th>
+                            <th style="padding:14px 16px; text-align:center; font-weight:600;">⚙️ إجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="sessionLogBody">
@@ -981,6 +982,23 @@
             <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
                 <button class="btn btn-secondary" style="font-size:13px;" onclick="importCodesFromStudents()">📥 استيراد أسماء الطلاب الحاليين</button>
                 <button class="btn" style="font-size:13px;background:#dc3545;" onclick="clearAllMappings()">🗑️ حذف الكل</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Session Log Modal -->
+    <div class="modal" id="editLogModal">
+        <div class="modal-content" style="max-width:600px; max-height:88vh; overflow-y:auto;">
+            <div class="modal-header">
+                <h2 id="editLogTitle" style="font-size:16px;color:#ffd700;">✏️ تعديل الحصة</h2>
+                <button class="close-btn" onclick="closeModal('editLogModal')">&times;</button>
+            </div>
+            <input type="hidden" id="editLogRecordId">
+            <p style="color:rgba(255,255,255,.5);font-size:13px;margin-bottom:14px;">عدّل حضور أو غياب كل طالب ثم اضغط حفظ.</p>
+            <div id="editLogStudentsList" style="max-height:420px;overflow-y:auto;"></div>
+            <div style="display:flex;gap:10px;margin-top:18px;">
+                <button class="btn btn-success" style="flex:1;" onclick="saveEditLog()">💾 حفظ التعديلات</button>
+                <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('editLogModal')">إلغاء</button>
             </div>
         </div>
     </div>
@@ -2000,7 +2018,7 @@
 
             const tbody = document.getElementById('sessionLogBody');
             if (records.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" style="padding:50px;text-align:center;color:#aaa;font-size:16px;">📋 لا توجد سجلات مطابقة للفلتر المحدد</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" style="padding:50px;text-align:center;color:#aaa;font-size:16px;">📋 لا توجد سجلات مطابقة للفلتر المحدد</td></tr>`;
                 return;
             }
 
@@ -2056,6 +2074,16 @@
                         <button onclick="showLogDetail('${r.recordId}')" 
                             style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">
                             👁 عرض
+                        </button>
+                    </td>
+                    <td style="padding:12px 16px; text-align:center; white-space:nowrap;">
+                        <button onclick="editSessionLog('${r.recordId}')"
+                            style="background:linear-gradient(135deg,#b8860b,#ffd700);color:#0d0800;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;margin:2px;">
+                            ✏️ تعديل
+                        </button>
+                        <button onclick="deleteSessionLog('${r.recordId}','${(r.subject||'').replace(/'/g,"\\'")} - ${(r.class||'').replace(/'/g,"\\'")}')"
+                            style="background:linear-gradient(135deg,#b91c1c,#ef4444);color:white;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;margin:2px;">
+                            🗑️ حذف
                         </button>
                     </td>
                 </tr>`;
@@ -2121,6 +2149,98 @@
             `;
 
             document.getElementById('sessionLogDetailModal').classList.add('active');
+        }
+
+        // ── Edit Session Log ──────────────────────────────
+        async function editSessionLog(recordId) {
+            const snap = await userCol('attendanceHistory').doc(recordId).get();
+            const r = snap.exists ? snap.data() : null;
+            if (!r) return;
+
+            const dp = r.saveDate ? r.saveDate.split('-') : ['--','--','--'];
+            const dateStr = `${dp[2]}/${dp[1]}/${dp[0]}`;
+
+            document.getElementById('editLogTitle').textContent =
+                `✏️ تعديل: ${r.subject} — ${r.class} (${dateStr})`;
+            document.getElementById('editLogRecordId').value = recordId;
+
+            // بناء قائمة الطلاب مع أزرار الحضور/الغياب
+            const list = document.getElementById('editLogStudentsList');
+            list.innerHTML = r.students.map((s, idx) => {
+                const isPresent = s.status === 'present';
+                const isAbsent  = s.status === 'absent';
+                return `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-radius:10px;margin-bottom:8px;background:${isPresent ? '#d4edda' : isAbsent ? '#f8d7da' : 'rgba(255,255,255,.07)'};" id="editrow_${idx}">
+                    <span style="font-weight:700;color:${isPresent ? '#155724' : isAbsent ? '#721c24' : '#ccc'};font-size:14px;">${s.name}</span>
+                    <div style="display:flex;gap:6px;">
+                        <button onclick="setEditStatus(${idx},'present')"
+                            style="padding:6px 14px;border:2px solid ${isPresent ? '#28a745' : '#ccc'};border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;font-family:'Cairo',sans-serif;background:${isPresent ? '#28a745' : 'rgba(255,255,255,.06)'};color:${isPresent ? '#fff' : '#888'};">
+                            ✔ حاضر
+                        </button>
+                        <button onclick="setEditStatus(${idx},'absent')"
+                            style="padding:6px 14px;border:2px solid ${isAbsent ? '#dc3545' : '#ccc'};border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;font-family:'Cairo',sans-serif;background:${isAbsent ? '#dc3545' : 'rgba(255,255,255,.06)'};color:${isAbsent ? '#fff' : '#888'};">
+                            ✗ غائب
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // احفظ بيانات الطلاب مؤقتاً للتعديل
+            window._editLogStudents = r.students.map(s => ({...s}));
+
+            document.getElementById('editLogModal').classList.add('active');
+        }
+
+        function setEditStatus(idx, status) {
+            if (!window._editLogStudents) return;
+            window._editLogStudents[idx].status = status;
+            const row = document.getElementById(`editrow_${idx}`);
+            const name = window._editLogStudents[idx].name;
+            const isPresent = status === 'present';
+            const isAbsent  = status === 'absent';
+            row.style.background = isPresent ? '#d4edda' : '#f8d7da';
+            row.querySelector('span').style.color = isPresent ? '#155724' : '#721c24';
+            // أعد رسم الأزرار
+            row.innerHTML = `
+                <span style="font-weight:700;color:${isPresent ? '#155724' : '#721c24'};font-size:14px;">${name}</span>
+                <div style="display:flex;gap:6px;">
+                    <button onclick="setEditStatus(${idx},'present')"
+                        style="padding:6px 14px;border:2px solid ${isPresent ? '#28a745' : '#ccc'};border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;font-family:'Cairo',sans-serif;background:${isPresent ? '#28a745' : 'rgba(255,255,255,.06)'};color:${isPresent ? '#fff' : '#888'};">
+                        ✔ حاضر
+                    </button>
+                    <button onclick="setEditStatus(${idx},'absent')"
+                        style="padding:6px 14px;border:2px solid ${isAbsent ? '#dc3545' : '#ccc'};border-radius:8px;cursor:pointer;font-size:12px;font-weight:bold;font-family:'Cairo',sans-serif;background:${isAbsent ? '#dc3545' : 'rgba(255,255,255,.06)'};color:${isAbsent ? '#fff' : '#888'};">
+                        ✗ غائب
+                    </button>
+                </div>`;
+        }
+
+        async function saveEditLog() {
+            const recordId = document.getElementById('editLogRecordId').value;
+            if (!recordId || !window._editLogStudents) return;
+            try {
+                await userCol('attendanceHistory').doc(recordId).update({
+                    students: window._editLogStudents
+                });
+                closeModal('editLogModal');
+                showAlert('✅ تم حفظ التعديلات بنجاح');
+                renderSessionLog();
+            } catch(e) {
+                showAlert('❌ فشل الحفظ: ' + e.message, 'danger');
+            }
+        }
+
+        // ── Delete Session Log ────────────────────────────
+        async function deleteSessionLog(recordId, label) {
+            if (!confirm(`هل تريد حذف سجل الحصة:\n"${label}"؟\nهذا الإجراء لا يمكن التراجع عنه!`)) return;
+            try {
+                await userCol('attendanceHistory').doc(recordId).delete();
+                showAlert('🗑️ تم حذف السجل بنجاح');
+                renderSessionLog();
+                populateSubjectFilter();
+            } catch(e) {
+                showAlert('❌ فشل الحذف: ' + e.message, 'danger');
+            }
         }
 
         async function exportLogToCSV() {
