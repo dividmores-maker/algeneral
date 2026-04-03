@@ -426,6 +426,7 @@
                 </div>
             </div>
             <nav class="header-nav">
+                <button class="nav-btn nav-btn-green" onclick="showAddBookModal()">➕ إضافة كتاب</button>
                 <button class="nav-btn nav-btn-cyan" onclick="showSetPricesModal()">💰 تحديد الأسعار</button>
                 <a href="dashboard.html" class="nav-btn nav-btn-ghost">📊 لوحة التحكم</a>
                 <a href="index.html"     class="nav-btn nav-btn-primary">🏠 الرئيسية</a>
@@ -478,6 +479,7 @@
                     <option value="">جميع المراحل</option>
                     <option value="primary">الثانوية</option>
                     <option value="preparatory">الإعدادية</option>
+                    <option value="elementary">الابتدائية</option>
                 </select>
                 <select id="gradeFilter" onchange="filterBooks()">
                     <option value="">جميع الصفوف</option>
@@ -491,6 +493,14 @@
                         <option value="8">الثاني الإعدادي</option>
                         <option value="9">الثالث الإعدادي</option>
                     </optgroup>
+                    <optgroup label="المرحلة الابتدائية">
+                        <option value="10">الأول الابتدائي</option>
+                        <option value="11">الثاني الابتدائي</option>
+                        <option value="12">الثالث الابتدائي</option>
+                        <option value="13">الرابع الابتدائي</option>
+                        <option value="14">الخامس الابتدائي</option>
+                        <option value="15">السادس الابتدائي</option>
+                    </optgroup>
                 </select>
                 <select id="subjectFilter" onchange="filterBooks()">
                     <option value="">جميع المواد</option>
@@ -500,6 +510,8 @@
                     <option value="science">علوم</option>
                     <option value="social">دراسات اجتماعية</option>
                     <option value="religion">تربية دينية</option>
+                    <option value="history">تاريخ</option>
+                    <option value="geography">جغرافيا</option>
                 </select>
             </div>
 
@@ -570,6 +582,111 @@
                 <button class="btn btn-cyan" onclick="window.print()">🖨️ طباعة</button>
             </div>
             <div id="reservationsList"></div>
+        </div>
+    </div>
+
+    <!-- Add Book Modal -->
+    <div class="modal" id="addBookModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ إضافة كتاب جديد</h2>
+                <button class="close-btn" onclick="closeModal('addBookModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>اسم الكتاب</label>
+                <input type="text" id="newBookName" placeholder="مثال: لغة عربية">
+            </div>
+            <div class="form-group">
+                <label>المرحلة الدراسية</label>
+                <select id="newBookStage" onchange="updateNewBookGrades()">
+                    <option value="primary">الثانوية</option>
+                    <option value="preparatory">الإعدادية</option>
+                    <option value="elementary">الابتدائية</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>الصف</label>
+                <select id="newBookGrade"></select>
+            </div>
+            <div class="form-group">
+                <label>المادة</label>
+                <select id="newBookSubject">
+                    <option value="math">رياضيات</option>
+                    <option value="arabic">لغة عربية</option>
+                    <option value="english">لغة إنجليزية</option>
+                    <option value="science">علوم</option>
+                    <option value="social">دراسات اجتماعية</option>
+                    <option value="religion">تربية دينية</option>
+                    <option value="history">تاريخ</option>
+                    <option value="geography">جغرافيا</option>
+                    <option value="other">أخرى</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>عدد النسخ المتاحة</label>
+                <input type="number" id="newBookAvailable" min="1" value="50">
+            </div>
+            <div class="form-group">
+                <label>السعر (جنيه)</label>
+                <input type="number" id="newBookPrice" min="0" value="0">
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-success" onclick="addBook()">✔ إضافة الكتاب</button>
+                <button class="btn btn-ghost" onclick="closeModal('addBookModal')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Book Modal -->
+    <div class="modal" id="editBookModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ تعديل بيانات الكتاب</h2>
+                <button class="close-btn" onclick="closeModal('editBookModal')">&times;</button>
+            </div>
+            <input type="hidden" id="editBookId">
+            <div class="form-group">
+                <label>اسم الكتاب</label>
+                <input type="text" id="editBookName">
+            </div>
+            <div class="form-group">
+                <label>المرحلة الدراسية</label>
+                <select id="editBookStage" onchange="updateEditBookGrades()">
+                    <option value="primary">الثانوية</option>
+                    <option value="preparatory">الإعدادية</option>
+                    <option value="elementary">الابتدائية</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>الصف</label>
+                <select id="editBookGrade"></select>
+            </div>
+            <div class="form-group">
+                <label>المادة</label>
+                <select id="editBookSubject">
+                    <option value="math">رياضيات</option>
+                    <option value="arabic">لغة عربية</option>
+                    <option value="english">لغة إنجليزية</option>
+                    <option value="science">علوم</option>
+                    <option value="social">دراسات اجتماعية</option>
+                    <option value="religion">تربية دينية</option>
+                    <option value="history">تاريخ</option>
+                    <option value="geography">جغرافيا</option>
+                    <option value="other">أخرى</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>عدد النسخ المتاحة</label>
+                <input type="number" id="editBookAvailable" min="0">
+            </div>
+            <div class="form-group">
+                <label>السعر (جنيه)</label>
+                <input type="number" id="editBookPrice" min="0">
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-success" onclick="saveEditBook()">✔ حفظ التعديلات</button>
+                <button class="btn btn-ghost" onclick="closeModal('editBookModal')">إلغاء</button>
+            </div>
         </div>
     </div>
 
@@ -722,6 +839,8 @@
                                 ${!isAvail ? 'disabled' : ''}>
                             ${isAvail ? '📚 حجز الآن' : '❌ غير متاح'}
                         </button>
+                        <button class="btn btn-amber" onclick="showEditBookModal(${book.id})" title="تعديل">✏️</button>
+                        <button class="btn btn-danger" onclick="deleteBook(${book.id})" title="حذف">🗑️</button>
                     </div>`;
                 grid.appendChild(card);
             });
@@ -941,6 +1060,111 @@
 
         window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.classList.remove('active'); };
 
+        // ── Grade options helper ──
+        const gradeOptions = {
+            primary:      [{val:1, label:'الأول الثانوي'}, {val:2, label:'الثاني الثانوي'}, {val:3, label:'الثالث الثانوي'}],
+            preparatory:  [{val:7, label:'الأول الإعدادي'}, {val:8, label:'الثاني الإعدادي'}, {val:9, label:'الثالث الإعدادي'}],
+            elementary:   [{val:10, label:'الأول الابتدائي'}, {val:11, label:'الثاني الابتدائي'}, {val:12, label:'الثالث الابتدائي'}, {val:13, label:'الرابع الابتدائي'}, {val:14, label:'الخامس الابتدائي'}, {val:15, label:'السادس الابتدائي'}]
+        };
+
+        function populateGradeSelect(selectId, stage, selectedVal) {
+            const sel = document.getElementById(selectId);
+            sel.innerHTML = '';
+            gradeOptions[stage].forEach(g => {
+                const o = document.createElement('option');
+                o.value = g.val; o.textContent = g.label;
+                if (g.val === selectedVal) o.selected = true;
+                sel.appendChild(o);
+            });
+        }
+
+        function updateNewBookGrades() {
+            populateGradeSelect('newBookGrade', document.getElementById('newBookStage').value, null);
+        }
+
+        function updateEditBookGrades() {
+            populateGradeSelect('editBookGrade', document.getElementById('editBookStage').value, null);
+        }
+
+        function showAddBookModal() {
+            document.getElementById('newBookName').value = '';
+            document.getElementById('newBookStage').value = 'primary';
+            populateGradeSelect('newBookGrade', 'primary', null);
+            document.getElementById('newBookSubject').value = 'arabic';
+            document.getElementById('newBookAvailable').value = '50';
+            document.getElementById('newBookPrice').value = '0';
+            document.getElementById('addBookModal').classList.add('active');
+        }
+
+        function addBook() {
+            const name      = document.getElementById('newBookName').value.trim();
+            const stage     = document.getElementById('newBookStage').value;
+            const gradeEl   = document.getElementById('newBookGrade');
+            const grade     = parseInt(gradeEl.value);
+            const gradeName = gradeEl.options[gradeEl.selectedIndex].text;
+            const subject   = document.getElementById('newBookSubject').value;
+            const available = parseInt(document.getElementById('newBookAvailable').value) || 0;
+            const price     = parseInt(document.getElementById('newBookPrice').value) || 0;
+
+            if (!name) { showAlert('الرجاء إدخال اسم الكتاب!', 'danger'); return; }
+
+            const newId = books.length ? Math.max(...books.map(b => b.id)) + 1 : 1;
+            books.push({ id:newId, name, grade, gradeName, stage, subject, available, reserved:0, price });
+            saveData();
+            showAlert(`تم إضافة كتاب "${name}" بنجاح! ✔`);
+            closeModal('addBookModal');
+            renderBooks();
+        }
+
+        function showEditBookModal(bookId) {
+            const book = books.find(b => b.id === bookId);
+            if (!book) return;
+            document.getElementById('editBookId').value        = bookId;
+            document.getElementById('editBookName').value      = book.name;
+            document.getElementById('editBookStage').value     = book.stage;
+            populateGradeSelect('editBookGrade', book.stage, book.grade);
+            document.getElementById('editBookSubject').value   = book.subject;
+            document.getElementById('editBookAvailable').value = book.available;
+            document.getElementById('editBookPrice').value     = book.price;
+            document.getElementById('editBookModal').classList.add('active');
+        }
+
+        function saveEditBook() {
+            const bookId    = parseInt(document.getElementById('editBookId').value);
+            const book      = books.find(b => b.id === bookId);
+            if (!book) return;
+            const name      = document.getElementById('editBookName').value.trim();
+            const stage     = document.getElementById('editBookStage').value;
+            const gradeEl   = document.getElementById('editBookGrade');
+            const grade     = parseInt(gradeEl.value);
+            const gradeName = gradeEl.options[gradeEl.selectedIndex].text;
+            const subject   = document.getElementById('editBookSubject').value;
+            const available = parseInt(document.getElementById('editBookAvailable').value) || 0;
+            const price     = parseInt(document.getElementById('editBookPrice').value) || 0;
+
+            if (!name) { showAlert('الرجاء إدخال اسم الكتاب!', 'danger'); return; }
+
+            Object.assign(book, { name, stage, grade, gradeName, subject, available, price });
+            saveData();
+            showAlert(`تم تعديل بيانات كتاب "${name}" بنجاح! ✔`);
+            closeModal('editBookModal');
+            renderBooks();
+        }
+
+        function deleteBook(bookId) {
+            const book = books.find(b => b.id === bookId);
+            if (!book) return;
+            const hasReservations = reservations.some(r => r.bookId === bookId);
+            const msg = hasReservations
+                ? `تحذير: يوجد حجوزات لهذا الكتاب!\nهل أنت متأكد من حذف كتاب "${book.name}"؟`
+                : `هل أنت متأكد من حذف كتاب "${book.name}"؟`;
+            if (!confirm(msg)) return;
+            books = books.filter(b => b.id !== bookId);
+            saveData();
+            showAlert(`تم حذف كتاب "${book.name}"!`);
+            renderBooks();
+        }
+
         // Expose to HTML
         window.filterBooks           = filterBooks;
         window.showSetPricesModal    = showSetPricesModal;
@@ -953,6 +1177,13 @@
         window.cancelReservation     = cancelReservation;
         window.payRemaining          = payRemaining;
         window.closeModal            = closeModal;
+        window.showAddBookModal      = showAddBookModal;
+        window.addBook               = addBook;
+        window.showEditBookModal     = showEditBookModal;
+        window.saveEditBook          = saveEditBook;
+        window.deleteBook            = deleteBook;
+        window.updateNewBookGrades   = updateNewBookGrades;
+        window.updateEditBookGrades  = updateEditBookGrades;
 
         // Init
         setFbStatus('connecting', '🔌 جاري الاتصال بـ Firebase...');
