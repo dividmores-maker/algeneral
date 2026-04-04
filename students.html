@@ -556,6 +556,7 @@
                 <select id="subjectFilter" onchange="filterStudents()">
                     <option value="">جميع المواد</option>
                     <option value="math">رياضيات</option>
+                    <option value="science">علوم</option>
                     <option value="studies2">دراسات</option>
                     <option value="arabic">عربي</option>
                     <option value="english">إنجليزي</option>
@@ -631,6 +632,7 @@
                         <label>المواد * (يمكن اختيار أكثر من مادة)</label>
                         <div id="subjectsCheckboxes">
                             <label><input type="checkbox" name="subjects" value="math"><span>📐 رياضيات</span></label>
+                            <label><input type="checkbox" name="subjects" value="science"><span>🔬 علوم</span></label>
                             <label><input type="checkbox" name="subjects" value="studies2"><span>🌍 دراسات</span></label>
                             <label><input type="checkbox" name="subjects" value="arabic"><span>📝 عربي</span></label>
                             <label><input type="checkbox" name="subjects" value="english"><span>🔤 إنجليزي</span></label>
@@ -661,8 +663,8 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>عنوان السكن</label>
-                    <textarea id="studentAddress" rows="3" placeholder="أدخل العنوان"></textarea>
+                    <label>المدرسه</label>
+                    <textarea id="studentAddress" rows="3" placeholder="اسم المدرسه"></textarea>
                 </div>
                 <div class="form-group">
                     <label>ملاحظات</label>
