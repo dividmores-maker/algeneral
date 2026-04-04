@@ -211,6 +211,7 @@
         .session-card.religion { background:rgba(180,130,30,.12);  border-right-color:#b4821e; }
         .session-card.computer { background:rgba(232,32,58,.11);   border-right-color:#c0182a; }
         .session-card.geography { background:rgba(99,102,241,.12);  border-right-color:#6366f1; }
+        .session-card.studies  { background:rgba(20,184,166,.12);  border-right-color:#14b8a6; }
 
         .session-title { font-weight:700; font-size:13px; margin-bottom:3px; color:rgba(255,255,255,.92); }
         .session-info  { font-size:11px; color:rgba(255,255,255,.55); }
@@ -373,6 +374,7 @@
                         <option value="">اختر المادة</option>
                         <option value="social">تاريخ</option>
                         <option value="geography">جغرافيا</option>
+                        <option value="studies">دراسات اجتماعية</option>
                         <option value="arabic">لغة عربية</option>
                         <option value="math">رياضيات</option>
                         <option value="english">لغة إنجليزية</option>
@@ -565,7 +567,7 @@
             return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`;
         }
 
-        const subjectNames = { math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية', science:'علوم', social:'تاريخ', geography:'جغرافيا', religion:'تربية دينية', computer:'حاسب آلي' };
+        const subjectNames = { math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية', science:'علوم', social:'تاريخ', geography:'جغرافيا', studies:'دراسات اجتماعية', religion:'تربية دينية', computer:'حاسب آلي' };
         const teacherNames = { t1:'أ.رامي ابو نور', t2:'أ. فاطمة علي', t3:'أ. خالد محمود', t4:'أ. سارة حسن', t5:'أ. نور الدين', t6:'أ. منى إبراهيم' };
         const classNames   = { grade1p:'الأول الابتدائي', grade2p:'الثاني الابتدائي', grade3p:'الثالث الابتدائي', grade4p:'الرابع الابتدائي', grade5p:'الخامس الابتدائي', grade6p:'السادس الابتدائي', grade7:'الأول الإعدادي', grade8:'الثاني الإعدادي', grade9:'الثالث الإعدادي', grade10:'الأول الثانوي', grade11:'الثاني الثانوي', grade12:'الثالث الثانوي' };
         const roomNames    = { a1:'A1',a2:'A2',b1:'B1',b2:'B2',c1:'C1',c2:'C2',d1:'D1',d2:'D2',e1:'E1' };
