@@ -470,7 +470,10 @@
         <div class="content-card">
             <div class="content-header">
                 <h2><span>📖</span> الكتب المتاحة</h2>
-                <button class="btn btn-success" onclick="showReservationsModal()">📋 عرض الحجوزات</button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="showReserveModal()">📚 حجز طالب جديد</button>
+                    <button class="btn btn-success" onclick="showReservationsModal()">📋 عرض الحجوزات</button>
+                </div>
             </div>
 
             <!-- Filters -->
@@ -525,11 +528,10 @@
     <div class="modal" id="reserveModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>📚 حجز كتاب</h2>
+                <h2>📚 حجز طالب - باقة كتب</h2>
                 <button class="close-btn" onclick="closeModal('reserveModal')">&times;</button>
             </div>
             <form onsubmit="makeReservation(event)">
-                <input type="hidden" id="reserveBookId">
                 <div class="form-group">
                     <label>اسم الطالب</label>
                     <input type="text" id="studentName" placeholder="أدخل اسم الطالب" required>
@@ -539,15 +541,31 @@
                     <input type="tel" id="studentPhone" placeholder="01xxxxxxxxx" pattern="[0-9]{11}" required>
                 </div>
                 <div class="form-group">
-                    <label>عدد النسخ</label>
-                    <input type="number" id="bookQuantity" min="1" value="1" required>
+                    <label>المرحلة الدراسية</label>
+                    <select id="reserveStage" onchange="onReserveStageChange()">
+                        <option value="elementary">الابتدائية</option>
+                        <option value="preparatory">الإعدادية</option>
+                        <option value="primary">الثانوية</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>الصف</label>
+                    <select id="reserveGrade" onchange="updateReservePrice()"></select>
+                </div>
+                <div class="form-group">
+                    <label>عدد الطلاب (لو هيحجز أكتر من طالب بنفس الصف والسعر)</label>
+                    <input type="number" id="reserveQuantity" min="1" value="1" oninput="updateReservePrice()">
+                </div>
+                <div class="form-group">
+                    <label>السعر الإجمالي (قابل للتعديل — استخدمه لعمل خصم لهذا الطالب)</label>
+                    <input type="number" id="reserveTotalPrice" min="0" oninput="markPriceOverride()">
                 </div>
                 <div class="form-group">
                     <label>المبلغ المدفوع</label>
                     <input type="number" id="paidAmount" min="0" placeholder="اترك فارغاً للدفع الكامل">
                 </div>
                 <div class="total-display">
-                    <strong>الإجمالي: <span id="totalPrice">0</span> جنيه</strong>
+                    <strong>عدد كتب الباقة: <span id="reserveBookCount">0</span> كتاب</strong>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-success">✔ تأكيد الحجز</button>
@@ -559,13 +577,27 @@
 
     <!-- Set Prices Modal -->
     <div class="modal" id="setPricesModal">
-        <div class="modal-content large">
+        <div class="modal-content">
             <div class="modal-header">
-                <h2>💰 تحديد أسعار الكتب</h2>
+                <h2>💰 تحديد أسعار المراحل</h2>
                 <button class="close-btn" onclick="closeModal('setPricesModal')">&times;</button>
             </div>
-            <div id="pricesList"></div>
-            <div style="margin-top:20px;">
+            <p style="color:var(--text-muted); font-size:13px; margin-bottom:18px;">
+                السعر هنا هو سعر باقة كتب المرحلة كاملة للطالب الواحد (كل مواد المرحلة مع بعض بسعر واحد).
+            </p>
+            <div class="form-group">
+                <label>سعر باقة المرحلة الابتدائية</label>
+                <input type="number" id="price_elementary" min="0" placeholder="السعر بالجنيه">
+            </div>
+            <div class="form-group">
+                <label>سعر باقة المرحلة الإعدادية</label>
+                <input type="number" id="price_preparatory" min="0" placeholder="السعر بالجنيه">
+            </div>
+            <div class="form-group">
+                <label>سعر باقة المرحلة الثانوية</label>
+                <input type="number" id="price_primary" min="0" placeholder="السعر بالجنيه">
+            </div>
+            <div style="margin-top:12px;">
                 <button class="btn btn-success" style="width:100%;" onclick="savePrices()">✔ حفظ الأسعار</button>
             </div>
         </div>
@@ -726,11 +758,13 @@
 
         let books        = JSON.parse(JSON.stringify(booksDefault));
         let reservations = [];
+        const stagePricesDefault = { elementary: 200, preparatory: 250, primary: 300 };
+        let stagePrices  = { ...stagePricesDefault };
 
         async function saveData() {
             setFbStatus('saving', '💾 جاري الحفظ...');
             try {
-                await setDoc(doc(db, 'books', 'data'), { books, reservations });
+                await setDoc(doc(db, 'books', 'data'), { books, reservations, stagePrices });
                 setFbStatus('connected', '🔥 Firebase — تم الحفظ ✔');
             } catch(e) {
                 setFbStatus('error', '❌ خطأ في الحفظ — ' + e.message);
@@ -757,11 +791,14 @@
         function startListener() {
             onSnapshot(doc(db, 'books', 'data'), (snap) => {
                 if (snap.exists()) {
-                    books        = snap.data().books        || JSON.parse(JSON.stringify(booksDefault));
-                    reservations = snap.data().reservations || [];
+                    const d      = snap.data();
+                    books        = d.books        || JSON.parse(JSON.stringify(booksDefault));
+                    reservations = d.reservations || [];
+                    stagePrices  = d.stagePrices   || { ...stagePricesDefault };
                 } else {
                     books        = JSON.parse(JSON.stringify(booksDefault));
                     reservations = [];
+                    stagePrices  = { ...stagePricesDefault };
                     saveData();
                 }
                 setFbStatus('connected', '🔥 Firebase متصل — البيانات محدّثة لحظياً');
@@ -782,7 +819,7 @@
         function updateStats() {
             document.getElementById('totalBooks').textContent        = books.length;
             document.getElementById('availableBooks').textContent    = books.filter(b => b.available > 0).length;
-            document.getElementById('reservedBooks').textContent     = reservations.reduce((s, r) => s + r.quantity, 0);
+            document.getElementById('reservedBooks').textContent     = reservations.reduce((s, r) => s + (r.quantity * (r.bookCount || 1)), 0);
             document.getElementById('totalReservations').textContent = reservations.length;
             document.getElementById('totalRevenue').textContent      = reservations.reduce((s, r) => s + (r.paidAmount || 0), 0).toLocaleString();
         }
@@ -835,7 +872,7 @@
                     </div>
                     <div class="book-actions">
                         <button class="btn ${isAvail ? 'btn-success' : 'btn-ghost'}"
-                                onclick="showReserveModal(${book.id})"
+                                onclick="showReserveModal('${book.stage}', ${book.grade})"
                                 ${!isAvail ? 'disabled' : ''}>
                             ${isAvail ? '📚 حجز الآن' : '❌ غير متاح'}
                         </button>
@@ -850,79 +887,97 @@
         function filterBooks() { renderBooks(); }
 
         function showSetPricesModal() {
-            const list    = document.getElementById('pricesList');
-            list.innerHTML = '';
-            const grouped = {};
-            books.forEach(b => { if (!grouped[b.gradeName]) grouped[b.gradeName] = []; grouped[b.gradeName].push(b); });
-            Object.keys(grouped).forEach(gradeName => {
-                const sec = document.createElement('div');
-                sec.className = 'price-section';
-                let html = `<h3>${gradeName}</h3>`;
-                grouped[gradeName].forEach(b => {
-                    html += `<div class="form-group"><label>${b.name}</label><input type="number" id="price_${b.id}" value="${b.price}" min="0" placeholder="السعر بالجنيه"></div>`;
-                });
-                sec.innerHTML = html;
-                list.appendChild(sec);
-            });
+            document.getElementById('price_elementary').value  = stagePrices.elementary;
+            document.getElementById('price_preparatory').value = stagePrices.preparatory;
+            document.getElementById('price_primary').value      = stagePrices.primary;
             document.getElementById('setPricesModal').classList.add('active');
         }
 
         function savePrices() {
-            books.forEach(b => {
-                const input = document.getElementById(`price_${b.id}`);
-                if (input) { const p = parseInt(input.value); if (p > 0) b.price = p; }
-            });
+            const elementary  = parseInt(document.getElementById('price_elementary').value);
+            const preparatory = parseInt(document.getElementById('price_preparatory').value);
+            const primary     = parseInt(document.getElementById('price_primary').value);
+            if (!isNaN(elementary)  && elementary  >= 0) stagePrices.elementary  = elementary;
+            if (!isNaN(preparatory) && preparatory >= 0) stagePrices.preparatory = preparatory;
+            if (!isNaN(primary)     && primary     >= 0) stagePrices.primary     = primary;
             saveData();
-            showAlert('تم حفظ الأسعار بنجاح! ✔');
+            showAlert('تم حفظ أسعار المراحل بنجاح! ✔');
             closeModal('setPricesModal');
-            renderBooks();
         }
 
-        function showReserveModal(bookId) {
-            document.getElementById('reserveBookId').value  = bookId;
-            document.getElementById('studentName').value   = '';
-            document.getElementById('studentPhone').value  = '';
-            document.getElementById('bookQuantity').value  = '1';
-            document.getElementById('paidAmount').value    = '';
-            updateTotalPrice();
-            document.getElementById('bookQuantity').addEventListener('input', updateTotalPrice);
+        let reservePriceOverridden = false;
+
+        function markPriceOverride() { reservePriceOverridden = true; }
+
+        function onReserveStageChange() {
+            reservePriceOverridden = false;
+            populateGradeSelect('reserveGrade', document.getElementById('reserveStage').value, null);
+            updateReservePrice();
+        }
+
+        function showReserveModal(stage, grade) {
+            document.getElementById('studentName').value    = '';
+            document.getElementById('studentPhone').value   = '';
+            document.getElementById('reserveQuantity').value = '1';
+            document.getElementById('paidAmount').value      = '';
+            reservePriceOverridden = false;
+            const st = stage || 'elementary';
+            document.getElementById('reserveStage').value = st;
+            populateGradeSelect('reserveGrade', st, grade || null);
+            updateReservePrice();
             document.getElementById('reserveModal').classList.add('active');
         }
 
-        function updateTotalPrice() {
-            const bookId   = parseInt(document.getElementById('reserveBookId').value);
-            const quantity = parseInt(document.getElementById('bookQuantity').value) || 0;
-            const book     = books.find(b => b.id === bookId);
-            if (book) document.getElementById('totalPrice').textContent = (book.price * quantity).toLocaleString();
+        function updateReservePrice() {
+            const stage    = document.getElementById('reserveStage').value;
+            const gradeEl  = document.getElementById('reserveGrade');
+            const grade    = parseInt(gradeEl.value);
+            const quantity = parseInt(document.getElementById('reserveQuantity').value) || 0;
+            const gradeBooks = books.filter(b => b.grade === grade);
+            document.getElementById('reserveBookCount').textContent = gradeBooks.length;
+            if (!reservePriceOverridden) {
+                const unit = stagePrices[stage] || 0;
+                document.getElementById('reserveTotalPrice').value = unit * quantity;
+            }
         }
 
         function makeReservation(e) {
             e.preventDefault();
-            const bookId      = parseInt(document.getElementById('reserveBookId').value);
-            const studentName = document.getElementById('studentName').value;
-            const studentPhone= document.getElementById('studentPhone').value;
-            const quantity    = parseInt(document.getElementById('bookQuantity').value);
-            const paidAmount  = parseFloat(document.getElementById('paidAmount').value) || 0;
-            const book        = books.find(b => b.id === bookId);
-            const totalPrice  = book.price * quantity;
+            const studentName  = document.getElementById('studentName').value.trim();
+            const studentPhone = document.getElementById('studentPhone').value.trim();
+            const stage        = document.getElementById('reserveStage').value;
+            const gradeEl      = document.getElementById('reserveGrade');
+            const grade        = parseInt(gradeEl.value);
+            const gradeName    = gradeEl.options[gradeEl.selectedIndex].text;
+            const quantity     = parseInt(document.getElementById('reserveQuantity').value) || 1;
+            const totalPrice   = parseFloat(document.getElementById('reserveTotalPrice').value) || 0;
+            const paidAmount   = parseFloat(document.getElementById('paidAmount').value) || 0;
 
-            if (quantity > book.available) { showAlert('عدد النسخ المطلوب أكبر من المتاح!', 'danger'); return; }
-            if (paidAmount > totalPrice)   { showAlert('المبلغ المدفوع أكبر من الإجمالي!', 'danger'); return; }
+            const gradeBooks = books.filter(b => b.grade === grade);
+            if (!gradeBooks.length) { showAlert('لا توجد كتب مضافة لهذا الصف بعد!', 'danger'); return; }
 
-            book.available -= quantity;
-            book.reserved  += quantity;
+            const shortBooks = gradeBooks.filter(b => b.available < quantity);
+            if (shortBooks.length) {
+                showAlert(`الكمية غير متاحة لكتاب: ${shortBooks.map(b => b.name).join('، ')}`, 'danger');
+                return;
+            }
+            if (paidAmount > totalPrice) { showAlert('المبلغ المدفوع أكبر من الإجمالي!', 'danger'); return; }
+
+            gradeBooks.forEach(b => { b.available -= quantity; b.reserved += quantity; });
+
             const remaining     = totalPrice - paidAmount;
             const paymentStatus = paidAmount === 0 ? 'not_paid' : (remaining === 0 ? 'paid' : 'partial');
 
             reservations.push({
-                id: Date.now(), bookId, bookName: book.name, grade: book.gradeName,
-                studentName, studentPhone, quantity, price: book.price,
+                id: Date.now(), stage, gradeNum: grade, grade: gradeName,
+                bookIds: gradeBooks.map(b => b.id), bookCount: gradeBooks.length,
+                studentName, studentPhone, quantity,
                 totalPrice, paidAmount, remainingAmount: remaining,
                 paymentStatus, date: new Date().toISOString(), status: 'confirmed'
             });
 
             saveData();
-            let msg = `تم حجز ${quantity} نسخة من كتاب ${book.name} بنجاح! ✓`;
+            let msg = `تم حجز باقة كتب ${gradeName} للطالب ${studentName} بنجاح! ✓`;
             if (paymentStatus === 'partial')  msg += ` — تم دفع ${paidAmount} ج - المتبقي: ${remaining} ج`;
             if (paymentStatus === 'not_paid') msg += ` — لم يتم الدفع، المطلوب: ${totalPrice} ج`;
             showAlert(msg);
@@ -980,9 +1035,10 @@
                                         const badgeCls = res.paymentStatus === 'paid' ? 'badge-paid' : res.paymentStatus === 'partial' ? 'badge-partial' : 'badge-unpaid';
                                         const badgeTxt = res.paymentStatus === 'paid' ? 'مدفوع' : res.paymentStatus === 'partial' ? 'جزئي' : 'لم يدفع';
                                         const remColor = res.remainingAmount > 0 ? '#fca5a5' : '#6ee7b7';
+                                        const perSet = res.quantity ? Math.round(res.totalPrice / res.quantity) : res.totalPrice;
                                         return `<tr>
-                                            <td>${i+1}</td><td>${res.studentName}</td><td>${res.studentPhone}</td><td>${res.bookName}</td>
-                                            <td>${res.quantity}</td><td>${res.price} ج</td><td>${res.totalPrice} ج</td>
+                                            <td>${i+1}</td><td>${res.studentName}</td><td>${res.studentPhone}</td><td>باقة (${res.bookCount || '-'} كتاب)</td>
+                                            <td>${res.quantity}</td><td>${perSet} ج</td><td>${res.totalPrice} ج</td>
                                             <td>${res.paidAmount||0} ج</td>
                                             <td><strong style="color:${remColor}">${res.remainingAmount||0} ج</strong></td>
                                             <td><span class="${badgeCls}">${badgeTxt}</span></td>
@@ -1028,11 +1084,13 @@
 
         function cancelReservation(reservationId) {
             if (!confirm('هل أنت متأكد من إلغاء هذا الحجز؟')) return;
-            const res  = reservations.find(r => r.id === reservationId);
-            const book = books.find(b => b.id === res.bookId);
-            book.available   += res.quantity;
-            book.reserved    -= res.quantity;
-            reservations      = reservations.filter(r => r.id !== reservationId);
+            const res = reservations.find(r => r.id === reservationId);
+            if (!res) return;
+            (res.bookIds || []).forEach(bid => {
+                const book = books.find(b => b.id === bid);
+                if (book) { book.available += res.quantity; book.reserved -= res.quantity; }
+            });
+            reservations = reservations.filter(r => r.id !== reservationId);
             saveData();
             showAlert('تم إلغاء الحجز بنجاح!');
             showReservationsModal();
@@ -1170,7 +1228,9 @@
         window.showSetPricesModal    = showSetPricesModal;
         window.savePrices            = savePrices;
         window.showReserveModal      = showReserveModal;
-        window.updateTotalPrice      = updateTotalPrice;
+        window.onReserveStageChange  = onReserveStageChange;
+        window.updateReservePrice    = updateReservePrice;
+        window.markPriceOverride     = markPriceOverride;
         window.makeReservation       = makeReservation;
         window.showReservationsModal = showReservationsModal;
         window.toggleGradeDetails    = toggleGradeDetails;
