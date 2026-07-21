@@ -19,9 +19,6 @@
             --amber-accent:  #f59e0b;
             --red-accent:    #ef4444;
             --cyan-accent:   #06b6d4;
-            --amber-accent:  #f59e0b;
-            --red-accent:    #ef4444;
-            --cyan-accent:   #06b6d4;
             --white:         #ffffff;
             --card-bg:       rgba(10,6,0,0.55);
             --card-border:   rgba(212,160,23,0.2);
@@ -37,7 +34,6 @@
             position: relative;
         }
 
-        /* ── Background ── */
         .bg-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
         .bg-gradient {
             position: absolute; inset: 0;
@@ -74,10 +70,8 @@
         .scan-line:nth-child(2) { top:65%; animation-delay:2.5s; }
         @keyframes scanLine { 0%{opacity:0;transform:scaleX(0)} 50%{opacity:1;transform:scaleX(1)} 100%{opacity:0;transform:scaleX(0)} }
 
-        /* ── Page ── */
         .page { position:relative; z-index:10; max-width:1400px; margin:0 auto; padding:24px 20px 40px; }
 
-        /* ── Header ── */
         .header {
             display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;
             margin-bottom:28px; padding:22px 28px;
@@ -112,7 +106,6 @@
         .nav-btn-primary { background:linear-gradient(135deg,var(--crimson),var(--gold)); color:var(--white); box-shadow:0 4px 16px rgba(212,160,23,.4); }
         .nav-btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 22px rgba(212,160,23,.6); }
 
-        /* ── Firebase Bar ── */
         .firebase-bar {
             display:flex; align-items:center; gap:10px; padding:11px 20px;
             border-radius:12px; margin-bottom:24px; font-size:13px; font-weight:700;
@@ -130,7 +123,6 @@
         .firebase-dot.saving     { background:#3b82f6; animation:fbPulse .4s infinite; }
         @keyframes fbPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-        /* ── Alert ── */
         #alertContainer { margin-bottom: 16px; }
         .alert {
             padding:14px 18px; border-radius:12px; font-weight:700; font-size:14px;
@@ -139,7 +131,6 @@
         .alert-success { background:rgba(16,185,129,.15); border:1px solid rgba(16,185,129,.35); color:#6ee7b7; }
         .alert-danger  { background:rgba(239,68,68,.15);  border:1px solid rgba(239,68,68,.35);  color:#fca5a5; }
 
-        /* ── Stats Row ── */
         .stats-row {
             display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
             gap:14px; margin-bottom:20px;
@@ -158,7 +149,6 @@
         }
         .stat-label { font-size:12px; color:var(--text-muted); }
 
-        /* ── Content Area ── */
         .content-card {
             background:var(--card-bg); border:1px solid var(--card-border);
             border-radius:18px; padding:24px; backdrop-filter:blur(12px);
@@ -170,7 +160,6 @@
         }
         .content-header h2 { font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px; }
 
-        /* ── Filter Section ── */
         .filter-section {
             display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
             gap:14px; margin-bottom:24px; padding:18px;
@@ -192,7 +181,6 @@
         .filter-section select:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,160,23,.12); }
         .filter-section select option { background:#0d0900; color:var(--white); }
 
-        /* ── Books Grid ── */
         .books-grid {
             display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:18px;
         }
@@ -260,7 +248,6 @@
         .btn-ghost:hover   { background:rgba(255,255,255,.14); }
         .btn:disabled { opacity:.45; cursor:not-allowed; transform:none !important; }
 
-        /* ── Modals ── */
         .modal {
             display:none; position:fixed; inset:0;
             background:rgba(0,0,0,.7); backdrop-filter:blur(6px);
@@ -335,7 +322,6 @@
         .form-actions { display:flex; gap:10px; margin-top:20px; }
         .form-actions .btn { flex:1; }
 
-        /* ── Report Table ── */
         .report-table { width:100%; border-collapse:collapse; margin-top:16px; font-size:13px; }
         .report-table th,
         .report-table td { padding:11px 12px; text-align:right; border:1px solid rgba(255,255,255,.08); }
@@ -346,7 +332,6 @@
         .report-table tbody tr { transition:background .2s; }
         .report-table tbody tr:hover { background:rgba(212,160,23,.07); }
 
-        /* ── Grade Card (Reservations) ── */
         .grade-card {
             background:rgba(255,255,255,.04); border:1px solid rgba(212,160,23,.18);
             border-right:3px solid var(--gold);
@@ -365,7 +350,6 @@
             overflow-x:auto;
         }
 
-        /* ── Report Summary ── */
         .report-summary {
             display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
             gap:14px; margin-top:20px; padding:18px;
@@ -381,7 +365,6 @@
         }
         .summary-item .label { font-size:12px; color:var(--text-muted); }
 
-        /* ── Price Section ── */
         .price-section {
             margin-bottom:24px; padding:18px;
             background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
@@ -389,21 +372,17 @@
         }
         .price-section h3 { font-size:15px; font-weight:700; color:var(--gold-soft); margin-bottom:14px; }
 
-        /* ── Payment badges ── */
         .badge-paid    { background:rgba(16,185,129,.2); color:#6ee7b7; border:1px solid rgba(16,185,129,.3); padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
         .badge-partial { background:rgba(245,158,11,.15); color:#fde68a; border:1px solid rgba(245,158,11,.3); padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
         .badge-unpaid  { background:rgba(239,68,68,.15); color:#fca5a5; border:1px solid rgba(239,68,68,.3); padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
 
-        /* ── Empty ── */
         .empty { text-align:center; color:var(--text-muted); padding:40px; font-size:14px; grid-column:1/-1; }
 
-        /* ── Animations ── */
         @keyframes fadeDown {
             from { opacity:0; transform:translateY(-16px); }
             to   { opacity:1; transform:translateY(0); }
         }
 
-        /* ── Print ── */
         @media print {
             body { background:white; color:#000; }
             .bg-layer, .header, .stats-row, .filter-section, .nav-btn, .btn { display:none !important; }
@@ -420,7 +399,6 @@
 </head>
 <body>
 
-    <!-- Background -->
     <div class="bg-layer">
         <div class="bg-gradient"></div>
         <div class="dot-grid"></div>
@@ -434,7 +412,6 @@
 
     <div class="page">
 
-        <!-- Header -->
         <div class="header">
             <div class="header-brand">
                 <div class="header-icon">📚</div>
@@ -451,16 +428,13 @@
             </nav>
         </div>
 
-        <!-- Firebase Status -->
         <div class="firebase-bar connecting" id="firebaseStatusBar">
             <div class="firebase-dot connecting" id="firebaseDot"></div>
             <span id="firebaseMsg">🔌 جاري الاتصال بـ Firebase...</span>
         </div>
 
-        <!-- Alert -->
         <div id="alertContainer"></div>
 
-        <!-- Stats -->
         <div class="stats-row">
             <div class="stat-box">
                 <div class="stat-number" id="totalBooks">0</div>
@@ -484,7 +458,6 @@
             </div>
         </div>
 
-        <!-- Content -->
         <div class="content-card">
             <div class="content-header">
                 <h2><span>📖</span> الكتب المتاحة</h2>
@@ -494,7 +467,6 @@
                 </div>
             </div>
 
-            <!-- Filters -->
             <div class="filter-section">
                 <select id="stageFilter" onchange="filterBooks()">
                     <option value="">جميع المراحل</option>
@@ -542,7 +514,6 @@
         </div>
     </div>
 
-    <!-- Reserve Modal -->
     <div class="modal" id="reserveModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -595,7 +566,6 @@
         </div>
     </div>
 
-    <!-- Set Prices Modal -->
     <div class="modal" id="setPricesModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -623,7 +593,6 @@
         </div>
     </div>
 
-    <!-- Reservations Modal -->
     <div class="modal" id="reservationsModal">
         <div class="modal-content large">
             <div class="modal-header">
@@ -637,7 +606,6 @@
         </div>
     </div>
 
-    <!-- Add Book Modal -->
     <div class="modal" id="addBookModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -689,7 +657,6 @@
         </div>
     </div>
 
-    <!-- Edit Book Modal -->
     <div class="modal" id="editBookModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1121,6 +1088,7 @@
                                             <td><span class="${badgeCls}">${badgeTxt}</span></td>
                                             <td>${date}</td>
                                             <td style="white-space:nowrap;">
+                                                <button class="btn" style="padding:4px 10px;font-size:11px;margin-left:4px;background:linear-gradient(135deg,#128C7E,#25D366);color:#fff;" onclick="event.stopPropagation();sendWhatsAppToParent(${res.id})">📱 إرسال لولي الأمر</button>
                                                 ${res.remainingAmount > 0 ? `<button class="btn btn-success" style="padding:4px 10px;font-size:11px;margin-left:4px;" onclick="event.stopPropagation();payRemaining(${res.id})">💰 دفع</button>` : ''}
                                                 <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();cancelReservation(${res.id})">❌</button>
                                             </td>
@@ -1191,11 +1159,39 @@
             renderBooks();
         }
 
+        function sendWhatsAppToParent(reservationId) {
+            const res = reservations.find(r => r.id === reservationId);
+            if (!res) return;
+            if (!res.studentPhone) { showAlert('لا يوجد رقم هاتف مسجل لهذا الطالب!', 'danger'); return; }
+
+            let phone = res.studentPhone.replace(/\D/g, '');
+            if (phone.startsWith('0')) phone = phone.substring(1);
+            if (!phone.startsWith('20')) phone = '20' + phone;
+
+            const date = new Date(res.date).toLocaleDateString('ar-EG');
+            const statusText = res.paymentStatus === 'paid'
+                ? 'مدفوع بالكامل ✅'
+                : (res.paymentStatus === 'partial' ? 'دفع جزئي ⚠️' : 'لم يتم الدفع ❌');
+
+            let message = `مرحباً بولي أمر الطالب/ة *${res.studentName}*\n\n`;
+            message += `📚 تم حجز باقة كتب: *${res.grade}*\n`;
+            message += `📦 عدد الكتب فى الباقة: ${res.bookCount || '-'} كتاب\n`;
+            message += `🔢 الكمية: ${res.quantity}\n`;
+            message += `💰 السعر الإجمالي: ${res.totalPrice} جنيه\n`;
+            message += `✅ المبلغ المدفوع: ${res.paidAmount || 0} جنيه\n`;
+            message += `⏳ المبلغ المتبقي: ${res.remainingAmount || 0} جنيه\n`;
+            message += `📌 حالة الدفع: ${statusText}\n`;
+            message += `📅 تاريخ الحجز: ${date}\n\n`;
+            message += `نرجو سرعة سداد المتبقي (إن وجد)\nشكراً لتعاونكم معنا 🌹`;
+
+            const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
         window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.classList.remove('active'); };
 
-        // ── Grade options helper ──
         const gradeOptions = {
             primary:      [{val:1, label:'الأول الثانوي'}, {val:2, label:'الثاني الثانوي'}, {val:3, label:'الثالث الثانوي'}],
             preparatory:  [{val:7, label:'الأول الإعدادي'}, {val:8, label:'الثاني الإعدادي'}, {val:9, label:'الثالث الإعدادي'}],
@@ -1300,7 +1296,6 @@
             renderBooks();
         }
 
-        // Expose to HTML
         window.filterBooks           = filterBooks;
         window.showSetPricesModal    = showSetPricesModal;
         window.savePrices            = savePrices;
@@ -1315,6 +1310,7 @@
         window.showReservationsModal = showReservationsModal;
         window.toggleGradeDetails    = toggleGradeDetails;
         window.cancelReservation     = cancelReservation;
+        window.sendWhatsAppToParent  = sendWhatsAppToParent;
         window.payRemaining          = payRemaining;
         window.closeModal            = closeModal;
         window.showAddBookModal      = showAddBookModal;
