@@ -308,6 +308,24 @@
         .form-group select:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,160,23,.12); }
         .form-group select option { background:#1a0030; }
 
+        .student-search-wrap { position:relative; }
+        .student-suggestions {
+            display:none; position:absolute; top:calc(100% + 4px); right:0; left:0;
+            max-height:220px; overflow-y:auto; z-index:50;
+            background:#150e00; border:1px solid var(--gold); border-radius:10px;
+            box-shadow:0 10px 30px rgba(0,0,0,.5);
+        }
+        .student-suggestions.show { display:block; }
+        .student-suggestion-item {
+            padding:10px 14px; cursor:pointer; border-bottom:1px solid rgba(212,160,23,.15);
+            transition:background .15s;
+        }
+        .student-suggestion-item:last-child { border-bottom:none; }
+        .student-suggestion-item:hover, .student-suggestion-item.active { background:rgba(212,160,23,.15); }
+        .student-suggestion-item .s-name { font-weight:700; color:var(--white); font-size:14px; }
+        .student-suggestion-item .s-meta { font-size:12px; color:var(--text-muted); margin-top:2px; }
+        .student-suggestion-empty { padding:12px 14px; font-size:13px; color:var(--text-muted); text-align:center; }
+
         .total-display {
             background:rgba(212,160,23,.1); border:1px solid rgba(212,160,23,.22);
             padding:16px; border-radius:12px; text-align:center; margin-bottom:16px;
@@ -532,9 +550,11 @@
                 <button class="close-btn" onclick="closeModal('reserveModal')">&times;</button>
             </div>
             <form onsubmit="makeReservation(event)">
-                <div class="form-group">
+                <div class="form-group student-search-wrap">
                     <label>اسم الطالب</label>
-                    <input type="text" id="studentName" placeholder="أدخل اسم الطالب" required>
+                    <input type="text" id="studentName" placeholder="اكتب اسم الطالب للبحث في طلاب هذا الصف..." autocomplete="off"
+                           oninput="onStudentNameInput()" onfocus="onStudentNameInput()" onblur="hideStudentSuggestionsDelayed()" required>
+                    <div class="student-suggestions" id="studentSuggestions"></div>
                 </div>
                 <div class="form-group">
                     <label>رقم الهاتف</label>
@@ -758,8 +778,15 @@
 
         let books        = JSON.parse(JSON.stringify(booksDefault));
         let reservations = [];
+        let allStudents  = [];
         const stagePricesDefault = { elementary: 200, preparatory: 250, primary: 300 };
         let stagePrices  = { ...stagePricesDefault };
+
+        function startStudentsListener() {
+            onSnapshot(doc(db, 'students', 'data'), (snap) => {
+                allStudents = snap.exists() ? (snap.data().students || []) : [];
+            }, (err) => console.warn('Students listener error:', err));
+        }
 
         async function saveData() {
             setFbStatus('saving', '💾 جاري الحفظ...');
@@ -909,10 +936,58 @@
 
         function markPriceOverride() { reservePriceOverridden = true; }
 
+        function getSelectedGradeLabel() {
+            const gradeEl = document.getElementById('reserveGrade');
+            return (gradeEl.options[gradeEl.selectedIndex]) ? gradeEl.options[gradeEl.selectedIndex].text : '';
+        }
+
+        function onStudentNameInput() {
+            const term = document.getElementById('studentName').value.trim().toLowerCase();
+            const box  = document.getElementById('studentSuggestions');
+            if (!term) { box.classList.remove('show'); box.innerHTML = ''; return; }
+            const gradeLabel = getSelectedGradeLabel();
+            const matches = allStudents.filter(s =>
+                s.name && s.name.toLowerCase().includes(term) &&
+                (!gradeLabel || (s.class || '').includes(gradeLabel))
+            ).slice(0, 8);
+
+            if (!matches.length) {
+                box.innerHTML = '<div class="student-suggestion-empty">لا يوجد طالب بهذا الاسم في هذا الصف</div>';
+                box.classList.add('show');
+                return;
+            }
+            box.innerHTML = matches.map(s => `
+                <div class="student-suggestion-item" onmousedown="selectStudentSuggestion('${s.id}')">
+                    <div class="s-name">${s.name}</div>
+                    <div class="s-meta">${s.class || ''} — ${s.phone || 'بدون رقم'}</div>
+                </div>
+            `).join('');
+            box.classList.add('show');
+        }
+
+        function selectStudentSuggestion(studentId) {
+            const student = allStudents.find(s => s.id === studentId);
+            if (!student) return;
+            document.getElementById('studentName').value  = student.name;
+            document.getElementById('studentPhone').value = student.phone || '';
+            hideStudentSuggestions();
+        }
+
+        function hideStudentSuggestions() {
+            const box = document.getElementById('studentSuggestions');
+            box.classList.remove('show');
+            box.innerHTML = '';
+        }
+
+        function hideStudentSuggestionsDelayed() {
+            setTimeout(hideStudentSuggestions, 150);
+        }
+
         function onReserveStageChange() {
             reservePriceOverridden = false;
             populateGradeSelect('reserveGrade', document.getElementById('reserveStage').value, null);
             updateReservePrice();
+            onStudentNameInput();
         }
 
         function showReserveModal(stage, grade) {
@@ -921,6 +996,7 @@
             document.getElementById('reserveQuantity').value = '1';
             document.getElementById('paidAmount').value      = '';
             reservePriceOverridden = false;
+            hideStudentSuggestions();
             const st = stage || 'elementary';
             document.getElementById('reserveStage').value = st;
             populateGradeSelect('reserveGrade', st, grade || null);
@@ -939,6 +1015,7 @@
                 const unit = stagePrices[stage] || 0;
                 document.getElementById('reserveTotalPrice').value = unit * quantity;
             }
+            onStudentNameInput();
         }
 
         function makeReservation(e) {
@@ -1231,6 +1308,9 @@
         window.onReserveStageChange  = onReserveStageChange;
         window.updateReservePrice    = updateReservePrice;
         window.markPriceOverride     = markPriceOverride;
+        window.onStudentNameInput    = onStudentNameInput;
+        window.selectStudentSuggestion = selectStudentSuggestion;
+        window.hideStudentSuggestionsDelayed = hideStudentSuggestionsDelayed;
         window.makeReservation       = makeReservation;
         window.showReservationsModal = showReservationsModal;
         window.toggleGradeDetails    = toggleGradeDetails;
@@ -1248,6 +1328,7 @@
         // Init
         setFbStatus('connecting', '🔌 جاري الاتصال بـ Firebase...');
         migrateIfNeeded().then(() => startListener());
+        startStudentsListener();
     </script>
 </body>
 </html>

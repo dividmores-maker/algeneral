@@ -382,15 +382,28 @@
             <h2>💰 تحديد أسعار الاشتراكات</h2>
             <button class="close-btn" onclick="closeModal('setPricesModal')">&times;</button>
         </div>
-        <div style="margin-bottom:18px;">
-            <div class="form-group">
-                <label>تطبيق سعر موحد على الجميع</label>
-                <div style="display:flex;gap:10px;">
-                    <input type="number" id="bulkPrice" placeholder="السعر الموحد" min="0">
-                    <button class="btn btn-success" onclick="applyBulkPrice()">✓ تطبيق</button>
+        <div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--glass-border);">
+            <label style="display:block;margin-bottom:10px;color:var(--gold-soft);font-weight:700;">💰 سعر موحد لكل مرحلة</label>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
+                <div class="form-group" style="margin:0;">
+                    <label>الابتدائي</label>
+                    <input type="number" id="stagePrice_ابتدائي" placeholder="مثال: 500" min="0">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>الإعدادي</label>
+                    <input type="number" id="stagePrice_اعدادي" placeholder="مثال: 500" min="0">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>الثانوي</label>
+                    <input type="number" id="stagePrice_ثانوي" placeholder="مثال: 500" min="0">
                 </div>
             </div>
+            <button class="btn btn-success" style="width:100%;margin-top:12px;" onclick="applyStagePrices()">✓ تطبيق أسعار المراحل</button>
+            <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:8px;">
+                هيتطبق على كل طلاب المرحلة في القائمة تحت — تقدر تعدّل سعر أي طالب لوحده (تخفيض مثلاً) قبل ما تضغط "حفظ الأسعار".
+            </p>
         </div>
+        <label style="display:block;margin-bottom:10px;color:var(--gold-soft);font-weight:700;">✏️ تعديل سعر طالب بعينه (تخفيض مثلاً)</label>
         <div id="pricesList"></div>
         <div style="margin-top:18px;">
             <button class="btn btn-success" style="width:100%;" onclick="savePrices()">✓ حفظ الأسعار</button>
@@ -470,6 +483,24 @@
     const db  = getFirestore(app);
 
     const DEFAULT_PRICE = 500;
+    const STAGES = ['ابتدائي', 'اعدادي', 'ثانوي'];
+
+    // يحدد مرحلة الطالب (ابتدائي / اعدادي / ثانوي) من اسم الفصل
+    function getStudentStage(classText) {
+        const t = (classText || '').replace('إعدادي', 'اعدادي');
+        if (t.includes('ابتدائي')) return 'ابتدائي';
+        if (t.includes('اعدادي'))  return 'اعدادي';
+        if (t.includes('ثانوي'))   return 'ثانوي';
+        return null;
+    }
+
+    // يحسب السعر الفعلي: تعديل خاص بالطالب > سعر المرحلة > السعر الافتراضي
+    function getEffectivePrice(s) {
+        if (metaData.prices && metaData.prices[s.id] != null) return metaData.prices[s.id];
+        const stage = getStudentStage(s.class);
+        if (stage && metaData.stagePrices && metaData.stagePrices[stage] != null) return metaData.stagePrices[stage];
+        return DEFAULT_PRICE;
+    }
 
     // ── Helpers ──
     function currentMonthKey() {
@@ -536,7 +567,7 @@
     function buildStudentsList() {
         students = rawStudents.map(s => {
             const md = monthData[s.id] || {};
-            const price = (metaData.prices && metaData.prices[s.id]) ?? DEFAULT_PRICE;
+            const price = getEffectivePrice(s);
             return {
                 id: s.id,
                 name: s.name,
@@ -706,10 +737,17 @@
 
     // ── Set Prices ──
     function showSetPricesModal() {
-        let html = '<div style="max-height:380px;overflow-y:auto;">';
+        STAGES.forEach(stage => {
+            const inp = document.getElementById(`stagePrice_${stage}`);
+            if (inp) inp.value = (metaData.stagePrices && metaData.stagePrices[stage]) || '';
+        });
+
+        let html = '<div style="max-height:320px;overflow-y:auto;">';
         students.forEach(s => {
+            const stage = getStudentStage(s.class);
+            const hasOverride = metaData.prices && metaData.prices[s.id] != null;
             html += `<div class="form-group">
-                <label>${s.name} (${s.class})</label>
+                <label>${s.name} (${s.class}${stage ? '' : ' — مرحلة غير محددة'})${hasOverride ? ' 🏷️ سعر خاص' : ''}</label>
                 <input type="number" id="price_${s.id}" value="${s.subscriptionPrice}" min="0">
             </div>`;
         });
@@ -718,23 +756,52 @@
         document.getElementById('setPricesModal').classList.add('active');
     }
 
-    function applyBulkPrice() {
-        const p = document.getElementById('bulkPrice').value;
-        if (!p || p <= 0) { showAlert('يرجى إدخال سعر صحيح!', 'danger'); return; }
-        students.forEach(s => {
-            const inp = document.getElementById(`price_${s.id}`);
-            if (inp) inp.value = p;
+    // تطبيق سعر كل مرحلة على طلابها في القائمة (تقدر تعدل أي طالب لوحده بعدها قبل الحفظ)
+    function applyStagePrices() {
+        const stagePrices = {};
+        STAGES.forEach(stage => {
+            const v = document.getElementById(`stagePrice_${stage}`).value;
+            if (v && v > 0) stagePrices[stage] = parseInt(v);
         });
-        showAlert('تم تطبيق السعر الموحد!');
+        if (Object.keys(stagePrices).length === 0) { showAlert('يرجى إدخال سعر مرحلة واحدة على الأقل!', 'danger'); return; }
+
+        let applied = 0;
+        students.forEach(s => {
+            const stage = getStudentStage(s.class);
+            if (stage && stagePrices[stage] != null) {
+                const inp = document.getElementById(`price_${s.id}`);
+                if (inp) { inp.value = stagePrices[stage]; applied++; }
+            }
+        });
+        if (applied === 0) {
+            showAlert('محدش من الطلاب اتحدد له مرحلة — تأكد إن اسم الفصل فيه كلمة ابتدائي/اعدادي/ثانوي', 'danger');
+            return;
+        }
+        showAlert(`تم تطبيق أسعار المراحل على ${applied} طالب — اضغط "حفظ الأسعار" لتأكيدها (تقدر تعدل أي طالب لوحده الأول)`);
     }
 
     function savePrices() {
+        // احفظ أسعار المراحل
+        metaData.stagePrices = metaData.stagePrices || {};
+        STAGES.forEach(stage => {
+            const v = document.getElementById(`stagePrice_${stage}`).value;
+            if (v && v > 0) metaData.stagePrices[stage] = parseInt(v);
+        });
+
         if (!metaData.prices) metaData.prices = {};
         let hasError = false;
         students.forEach(s => {
             const price = parseInt(document.getElementById(`price_${s.id}`)?.value);
             if (!price || price < 0) { hasError = true; return; }
-            metaData.prices[s.id] = price;
+            const stage = getStudentStage(s.class);
+            const stageDefault = stage && metaData.stagePrices[stage] != null ? metaData.stagePrices[stage] : DEFAULT_PRICE;
+            if (price === stageDefault) {
+                // السعر مطابق لسعر المرحلة الافتراضي → مفيش داعي لسعر خاص، هيتبع سعر المرحلة تلقائيًا
+                delete metaData.prices[s.id];
+            } else {
+                // سعر مختلف → اعتبره سعر خاص (تخفيض غالبًا)
+                metaData.prices[s.id] = price;
+            }
         });
         if (hasError) { showAlert('يرجى إدخال أسعار صحيحة!', 'danger'); return; }
         saveMeta();
@@ -779,7 +846,7 @@
                 const studs    = m.data.students || {};
                 const studentList = rawStudents.map(rs => {
                     const pd = studs[rs.id] || {};
-                    const price = (metaData.prices && metaData.prices[rs.id]) ?? DEFAULT_PRICE;
+                    const price = getEffectivePrice(rs);
                     return { id: rs.id, name: rs.name, class: rs.class, paid: pd.paid || 0, price };
                 });
                 const totalPaid   = studentList.reduce((s, x) => s + x.paid, 0);
@@ -914,7 +981,7 @@
     window.processPayment     = processPayment;
     window.showStudentDetails = showStudentDetails;
     window.showSetPricesModal = showSetPricesModal;
-    window.applyBulkPrice     = applyBulkPrice;
+    window.applyStagePrices   = applyStagePrices;
     window.savePrices         = savePrices;
     window.filterStudents     = filterStudents;
     window.closeModal         = closeModal;
