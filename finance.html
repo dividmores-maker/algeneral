@@ -404,6 +404,9 @@
             </p>
         </div>
         <label style="display:block;margin-bottom:10px;color:var(--gold-soft);font-weight:700;">✏️ تعديل سعر طالب بعينه (تخفيض مثلاً)</label>
+        <div class="search-box" style="margin-bottom:12px;">
+            <input type="text" id="pricesSearchInput" placeholder="🔍 ابحث عن طالب لتعديل سعره..." onkeyup="filterPricesList()">
+        </div>
         <div id="pricesList"></div>
         <div style="margin-top:18px;">
             <button class="btn btn-success" style="width:100%;" onclick="savePrices()">✓ حفظ الأسعار</button>
@@ -746,14 +749,22 @@
         students.forEach(s => {
             const stage = getStudentStage(s.class);
             const hasOverride = metaData.prices && metaData.prices[s.id] != null;
-            html += `<div class="form-group">
+            html += `<div class="form-group price-row" data-search="${(s.name + ' ' + s.class).toLowerCase()}">
                 <label>${s.name} (${s.class}${stage ? '' : ' — مرحلة غير محددة'})${hasOverride ? ' 🏷️ سعر خاص' : ''}</label>
                 <input type="number" id="price_${s.id}" value="${s.subscriptionPrice}" min="0">
             </div>`;
         });
         html += '</div>';
         document.getElementById('pricesList').innerHTML = html;
+        document.getElementById('pricesSearchInput').value = '';
         document.getElementById('setPricesModal').classList.add('active');
+    }
+
+    function filterPricesList() {
+        const term = document.getElementById('pricesSearchInput').value.toLowerCase();
+        document.querySelectorAll('#pricesList .price-row').forEach(row => {
+            row.style.display = row.dataset.search.includes(term) ? '' : 'none';
+        });
     }
 
     // تطبيق سعر كل مرحلة على طلابها في القائمة (تقدر تعدل أي طالب لوحده بعدها قبل الحفظ)
@@ -981,6 +992,7 @@
     window.processPayment     = processPayment;
     window.showStudentDetails = showStudentDetails;
     window.showSetPricesModal = showSetPricesModal;
+    window.filterPricesList   = filterPricesList;
     window.applyStagePrices   = applyStagePrices;
     window.savePrices         = savePrices;
     window.filterStudents     = filterStudents;
