@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نقاطي - نظام إدارة السنتر التعليمي</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root{
+  --bg-base:#080808; --gold:#d4a017; --gold-hi:#f5c842; --gold-soft:#e8c96a; --gold-dim:#a07810;
+  --crimson:#c0182a; --crimson-hi:#e8203a; --crimson-soft:#ff6070;
+  --white:#ffffff; --white-80:rgba(255,255,255,.8); --white-50:rgba(255,255,255,.5);
+  --white-20:rgba(255,255,255,.2); --white-08:rgba(255,255,255,.08);
+  --card-bg:rgba(12,8,0,.7); --glass-border:rgba(212,160,23,.18); --border-hi:rgba(212,160,23,.38);
+  --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
+}
+html,body{ min-height:100vh; scroll-behavior:smooth; }
+body{
+  font-family:'Cairo',sans-serif; background:var(--bg-base); color:var(--white);
+  position:relative; padding-bottom:50px; overflow-x:hidden;
+}
+::selection{ background:rgba(212,160,23,.35); }
+
+/* ---------- Background ---------- */
+.bg-layer{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.bg-gradient{
+  position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse 75% 55% at 50% -5%, rgba(212,160,23,.35) 0%, transparent 62%),
+    radial-gradient(ellipse 50% 42% at 88% 85%, rgba(192,24,42,.26) 0%, transparent 55%),
+    radial-gradient(ellipse 42% 36% at 10% 75%, rgba(212,160,23,.16) 0%, transparent 52%),
+    radial-gradient(ellipse 28% 24% at 78% 12%, rgba(192,24,42,.12) 0%, transparent 48%),
+    linear-gradient(160deg, #0d0900 0%, #100a00 35%, #080808 65%, #0d0203 100%);
+}
+.orb{ position:absolute; border-radius:50%; filter:blur(80px); animation:floatOrb 8s ease-in-out infinite; }
+.orb-1{ width:420px; height:420px; background:rgba(212,160,23,.18); top:-110px; left:50%; transform:translateX(-50%); }
+.orb-2{ width:300px; height:300px; background:rgba(192,24,42,.2); bottom:10%; right:-50px; animation-delay:-3s; }
+.orb-3{ width:250px; height:250px; background:rgba(212,160,23,.12); bottom:20%; left:-30px; animation-delay:-5s; }
+@keyframes floatOrb{ 0%,100%{transform:translateY(0) translateX(0);} 33%{transform:translateY(-20px) translateX(10px);} 66%{transform:translateY(10px) translateX(-10px);} }
+.grid-lines{
+  position:absolute; inset:0;
+  background-image:linear-gradient(rgba(212,160,23,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(212,160,23,.05) 1px, transparent 1px);
+  background-size:60px 60px;
+}
+.dot-grid{
+  position:absolute; inset:0;
+  background-image:radial-gradient(rgba(212,160,23,.1) 1px, transparent 1px);
+  background-size:30px 30px;
+  mask-image:radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent);
+}
+.particles{ position:fixed; inset:0; z-index:1; pointer-events:none; }
+.particle{ position:absolute; border-radius:50%; animation:floatParticle linear infinite; opacity:0; }
+@keyframes floatParticle{ 0%{transform:translateY(100vh);opacity:0;} 10%{opacity:.5;} 90%{opacity:.25;} 100%{transform:translateY(-10vh) translateX(30px);opacity:0;} }
+
+.wrap{ position:relative; z-index:10; max-width:900px; margin:0 auto; padding:22px 16px; }
+@keyframes riseIn{ from{ opacity:0; transform:translateY(14px);} to{ opacity:1; transform:translateY(0);} }
+
+/* ---------- Login screen ---------- */
+#loginScreen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; position:relative; z-index:10; }
+.login-card{
+  width:100%; max-width:430px; background:var(--card-bg); border:1px solid var(--glass-border); border-radius:26px;
+  padding:38px 28px; backdrop-filter:blur(18px);
+  box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(212,160,23,.08);
+  animation:riseIn .55s cubic-bezier(.16,1,.3,1) both;
+}
+.login-logo-badge{
+  width:64px; height:64px; margin:0 auto 18px; border-radius:20px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, rgba(212,160,23,.3), rgba(192,24,42,.15));
+  border:1px solid var(--border-hi); font-size:30px;
+  box-shadow:0 0 30px rgba(212,160,23,.35); animation:badgeFloat 3.5s ease-in-out infinite;
+}
+@keyframes badgeFloat{ 0%,100%{ transform:translateY(0) rotate(0deg);} 50%{ transform:translateY(-5px) rotate(-3deg);} }
+.login-title{
+  text-align:center; font-size:23px; font-weight:900; margin-bottom:5px;
+  background:linear-gradient(135deg, var(--gold-hi), var(--gold-soft), var(--crimson-soft));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  filter:drop-shadow(0 0 12px rgba(212,160,23,.35));
+}
+.login-sub{ text-align:center; font-size:13px; color:var(--white-50); margin-bottom:30px; }
+.field{ margin-bottom:17px; }
+.field label{ display:block; font-size:12.5px; font-weight:800; color:var(--gold-soft); margin-bottom:7px; }
+.field input{
+  width:100%; padding:14px 15px; border-radius:13px; border:1px solid var(--glass-border);
+  background:rgba(255,255,255,.035); color:var(--white); font-family:'Cairo',sans-serif; font-size:15px;
+  letter-spacing:1px; text-align:center; transition:border-color .2s, box-shadow .2s;
+}
+.field input:focus{ outline:none; border-color:var(--gold-hi); box-shadow:0 0 0 4px rgba(212,160,23,.13); }
+.field small{ display:block; margin-top:7px; font-size:11.5px; color:var(--white-50); text-align:center; }
+.btn{
+  width:100%; padding:15px; border:none; border-radius:13px; cursor:pointer;
+  font-family:'Cairo',sans-serif; font-weight:900; font-size:15px; color:#0d0800;
+  background:linear-gradient(135deg,var(--gold-dim),var(--gold)); box-shadow:0 10px 28px rgba(212,160,23,.35);
+  transition:transform .15s, box-shadow .2s;
+}
+.btn:hover{ box-shadow:0 12px 34px rgba(212,160,23,.55); filter:brightness(1.08); }
+.btn:active{ transform:scale(.97); }
+.login-error{
+  display:none; background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.4);
+  color:#fca5a5; font-size:13px; padding:11px 12px; border-radius:11px; margin-bottom:15px; text-align:center;
+}
+#loginSpinner{ display:none; text-align:center; margin-top:15px; color:var(--gold-soft); font-size:13px; }
+
+/* ---------- Dashboard ---------- */
+#dashboardScreen{ display:none; }
+.hero-header{
+  position:relative; background:var(--card-bg); border:1px solid var(--glass-border); border-radius:22px;
+  padding:26px 24px; margin-bottom:20px; backdrop-filter:blur(16px); overflow:hidden;
+  box-shadow:0 20px 50px rgba(0,0,0,.4), inset 0 1px 0 rgba(212,160,23,.08);
+  animation:riseIn .5s cubic-bezier(.16,1,.3,1) both; text-align:center;
+}
+.hero-header::after{
+  content:''; position:absolute; width:240px; height:240px; border-radius:50%;
+  background:radial-gradient(circle, rgba(212,160,23,.28), transparent 70%);
+  top:-100px; left:50%; transform:translateX(-50%); pointer-events:none;
+}
+.top-bar{ display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; margin-bottom:18px; }
+.avatar-ring{
+  width:58px; height:58px; border-radius:50%; padding:3px;
+  background:linear-gradient(135deg,var(--gold),var(--gold-hi),var(--crimson));
+  box-shadow:0 0 22px rgba(212,160,23,.4);
+}
+.avatar{
+  width:100%; height:100%; border-radius:50%; object-fit:cover; background:var(--bg-base);
+  display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:900; color:var(--gold-soft);
+}
+.top-info{ text-align:right; }
+.top-name{ font-size:17px; font-weight:900; }
+.top-meta{ font-size:11.5px; color:var(--white-50); margin-top:3px; }
+.logout-btn{
+  background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); color:#fca5a5;
+  padding:9px 16px; border-radius:11px; font-family:'Cairo',sans-serif; font-weight:700; font-size:12px; cursor:pointer;
+}
+.logout-btn:hover{ background:rgba(239,68,68,.2); }
+
+.points-ring-wrap{ position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.points-ring{ position:relative; width:150px; height:150px; }
+.points-ring svg{ transform:rotate(-90deg); }
+.points-big{
+  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.points-big .num{ font-size:34px; font-weight:900; font-family:'Space Mono',monospace; color:var(--gold-hi); line-height:1; }
+.points-big .lbl{ font-size:10.5px; color:var(--white-50); margin-top:3px; }
+.current-title{
+  margin-top:6px; font-size:16px; font-weight:900;
+  background:linear-gradient(135deg, var(--gold-hi), var(--crimson-soft));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.title-next{ font-size:11.5px; color:var(--white-50); }
+
+/* ---------- Sections ---------- */
+.section-header{ display:flex; align-items:center; gap:12px; margin:26px 0 14px; }
+.section-line{ flex:1; height:1px; background:linear-gradient(90deg, rgba(212,160,23,.4), transparent); }
+.section-label{ font-size:12px; font-weight:800; letter-spacing:1.5px; color:var(--gold-soft); text-transform:uppercase; }
+
+.card{
+  background:var(--card-bg); border:1px solid var(--glass-border); border-radius:18px; padding:20px;
+  margin-bottom:14px; backdrop-filter:blur(10px); box-shadow:inset 0 1px 0 rgba(212,160,23,.06);
+}
+.card h3{ font-size:14.5px; font-weight:900; color:var(--gold-soft); margin-bottom:15px; display:flex; align-items:center; gap:8px; }
+
+/* Points breakdown */
+.breakdown-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+.breakdown-box{ background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.04); border-radius:14px; padding:14px; text-align:center; }
+.breakdown-box .num{ font-size:20px; font-weight:900; font-family:'Space Mono',monospace; color:var(--gold-hi); }
+.breakdown-box .lbl{ font-size:11px; color:var(--white-50); margin-top:4px; }
+
+/* Badges grid */
+.badges-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:12px; }
+.badge-item{
+  text-align:center; padding:16px 10px; border-radius:16px; border:1px solid rgba(255,255,255,.05);
+  background:rgba(255,255,255,.02); transition:all .25s;
+}
+.badge-item.earned{
+  border-color:var(--border-hi); background:linear-gradient(160deg, rgba(212,160,23,.12), rgba(192,24,42,.05));
+  box-shadow:0 8px 24px rgba(212,160,23,.15);
+}
+.badge-item .emoji{ font-size:30px; margin-bottom:8px; filter:grayscale(1) opacity(.35); }
+.badge-item.earned .emoji{ filter:none; }
+.badge-item .name{ font-size:12.5px; font-weight:800; color:var(--white-50); }
+.badge-item.earned .name{ color:var(--gold-soft); }
+.badge-item .desc{ font-size:10.5px; color:var(--white-50); margin-top:4px; opacity:.7; }
+
+/* Challenges */
+.challenge{
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.04); border-radius:14px;
+  padding:14px 16px; margin-bottom:10px;
+}
+.challenge:last-child{ margin-bottom:0; }
+.challenge-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+.challenge-name{ font-size:13.5px; font-weight:800; display:flex; align-items:center; gap:8px; }
+.challenge-status{ font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px; }
+.challenge-status.done{ background:rgba(34,197,94,.15); color:#4ade80; }
+.challenge-status.pending{ background:rgba(212,160,23,.14); color:var(--gold-soft); }
+.progress-track{ height:7px; border-radius:10px; background:rgba(255,255,255,.06); overflow:hidden; }
+.progress-fill{ height:100%; border-radius:10px; background:linear-gradient(90deg,var(--gold),var(--gold-hi)); transition:width .8s cubic-bezier(.16,1,.3,1); }
+.progress-fill.done{ background:linear-gradient(90deg,#16a34a,#4ade80); }
+.challenge-meta{ font-size:10.5px; color:var(--white-50); margin-top:6px; }
+
+/* Leaderboard */
+.lb-row{
+  display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:13px;
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.04); margin-bottom:8px; transition:background .2s;
+}
+.lb-row.me{ border-color:var(--border-hi); background:linear-gradient(90deg, rgba(212,160,23,.14), rgba(192,24,42,.04)); }
+.lb-rank{
+  width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:900; font-family:'Space Mono',monospace; flex-shrink:0;
+  background:rgba(255,255,255,.05); color:var(--white-50);
+}
+.lb-rank.top1{ background:linear-gradient(135deg,#f5c842,#d4a017); color:#0d0800; }
+.lb-rank.top2{ background:linear-gradient(135deg,#e5e7eb,#9ca3af); color:#0d0800; }
+.lb-rank.top3{ background:linear-gradient(135deg,#e8a45c,#b5651d); color:#0d0800; }
+.lb-name{ flex:1; min-width:0; }
+.lb-name .n{ font-size:13.5px; font-weight:800; }
+.lb-name .n .you{ color:var(--gold-soft); font-size:11px; font-weight:700; }
+.lb-pts{ font-size:15px; font-weight:900; font-family:'Space Mono',monospace; color:var(--gold-hi); }
+
+.empty{ text-align:center; padding:30px 10px; color:var(--white-50); font-size:13.5px; }
+.loading{ text-align:center; padding:34px 10px; color:var(--gold-soft); font-size:13.5px; }
+.loading::before{ content:'⏳'; display:block; font-size:22px; margin-bottom:8px; animation:spin 1.8s linear infinite; }
+@keyframes spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
+
+@media (max-width:480px){
+  .badges-grid{ grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+<div class="bg-layer"><div class="bg-gradient"></div><div class="grid-lines"></div><div class="dot-grid"></div>
+  <div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
+</div>
+<div class="particles" id="particles"></div>
+<script>
+(function(){
+  const box = document.getElementById('particles');
+  const colors = ['#f5c842','#d4a017','#e8203a'];
+  for (let i=0;i<16;i++){
+    const p = document.createElement('div');
+    p.className='particle';
+    const size = 2 + Math.random()*3;
+    p.style.width = size+'px'; p.style.height = size+'px';
+    p.style.left = Math.random()*100+'vw';
+    p.style.bottom = '-5vh';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDuration = (10+Math.random()*14)+'s';
+    p.style.animationDelay = (Math.random()*12)+'s';
+    box.appendChild(p);
+  }
+})();
+</script>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo-badge">🏆</div>
+    <div class="login-title">نقاطي</div>
+    <div class="login-sub">سجّل دخولك بنفس كود وكلمة سر بوابة أولياء الأمور</div>
+    <div class="login-error" id="loginError"></div>
+    <div class="field">
+      <label>كود الطالب</label>
+      <input type="text" id="studentCodeInput" placeholder="أدخل الكود المطبوع على الكارت" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>كلمة السر</label>
+      <input type="text" id="secretCodeInput" placeholder="اكتب كلمة السر المطبوعة على الكارت" maxlength="12">
+    </div>
+    <button class="btn" onclick="handleLogin()">دخول 🔓</button>
+    <div id="loginSpinner">⏳ جاري التحقق من البيانات...</div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD SCREEN ============ -->
+<div id="dashboardScreen">
+  <div class="wrap">
+    <div class="hero-header">
+      <div class="top-bar">
+        <button class="logout-btn" onclick="logout()">خروج 🚪</button>
+        <div class="top-info">
+          <div class="top-name" id="topName">—</div>
+          <div class="top-meta" id="topMeta"></div>
+        </div>
+        <div class="avatar-ring"><div class="avatar" id="topAvatar">👤</div></div>
+      </div>
+      <div class="points-ring-wrap">
+        <div class="points-ring">
+          <svg width="150" height="150" viewBox="0 0 150 150">
+            <circle cx="75" cy="75" r="64" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="10"/>
+            <circle id="ringProgress" cx="75" cy="75" r="64" fill="none" stroke="url(#ringGrad)" stroke-width="10"
+                    stroke-linecap="round" stroke-dasharray="402" stroke-dashoffset="402"
+                    style="transition:stroke-dashoffset 1.2s cubic-bezier(.16,1,.3,1);"/>
+            <defs>
+              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#f5c842"/>
+                <stop offset="100%" stop-color="#c0182a"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="points-big"><div class="num" id="pointsNum">0</div><div class="lbl">نقطة</div></div>
+        </div>
+        <div class="current-title" id="currentTitle">—</div>
+        <div class="title-next" id="titleNext"></div>
+      </div>
+    </div>
+
+    <div id="breakdownSection"><div class="loading">⏳ جاري حساب النقاط...</div></div>
+
+    <div class="section-header"><div class="section-line"></div><div class="section-label">الألقاب والشارات</div><div class="section-line"></div></div>
+    <div class="card"><div class="badges-grid" id="badgesGrid"><div class="loading">⏳ جاري التحميل...</div></div></div>
+
+    <div class="section-header"><div class="section-line"></div><div class="section-label">التحديات</div><div class="section-line"></div></div>
+    <div id="challengesSection"><div class="loading">⏳ جاري التحميل...</div></div>
+
+    <div class="section-header"><div class="section-line"></div><div class="section-label">لوحة ترتيب الفصل</div><div class="section-line"></div></div>
+    <div id="leaderboardSection"><div class="loading">⏳ جاري التحميل...</div></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+  authDomain: "al-gnarl.firebaseapp.com",
+  projectId: "al-gnarl",
+  storageBucket: "al-gnarl.firebasestorage.app",
+  messagingSenderId: "288765966471",
+  appId: "1:288765966471:web:63358febfb82843c2fa022"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+/* ---------- Reference dictionaries ---------- */
+const CLASSES = {
+  grade1:'الأول الابتدائي', grade2:'الثاني الابتدائي', grade3:'الثالث الابتدائي',
+  grade4:'الرابع الابتدائي', grade5:'الخامس الابتدائي', grade6:'السادس الابتدائي',
+  grade7:'الأول الإعدادي', grade8:'الثاني الإعدادي', grade9:'الثالث الإعدادي',
+  grade10:'الأول الثانوي', grade11:'الثاني الثانوي', grade12:'الثالث الثانوي'
+};
+const getClassName = k => CLASSES[k] || k;
+
+/* ---------- Points rules (adjustable here) ---------- */
+const RULES = {
+  ATTEND_PRESENT: 5,
+  EXAM_PASS: 10,
+  EXAM_EXCELLENCE_BONUS: 5,   // extra if score/max >= 90%
+  EXAM_EXCELLENCE_MIN: 90,
+  PAYMENT_ON_TIME: 10,
+  BOOK_RESERVED: 5
+};
+
+const TITLES = [
+  { min:0,   label:'طالب مجتهد',        emoji:'🙂' },
+  { min:50,  label:'نجم الفصل',          emoji:'🌟' },
+  { min:100, label:'بطل السنتر',         emoji:'🏆' },
+  { min:200, label:'أسطورة AL GENERAL',  emoji:'👑' },
+  { min:350, label:'الأسطورة الذهبية',    emoji:'💎' }
+];
+function getTitleInfo(points){
+  let cur = TITLES[0];
+  for (const t of TITLES) if (points >= t.min) cur = t;
+  const idx = TITLES.indexOf(cur);
+  const next = TITLES[idx+1] || null;
+  return { ...cur, next };
+}
+
+let currentStudent = null;
+let allData = null; // { students, attendanceRecords, scheduleData, gradesData, examsData, financeByStudent, bookReservations }
+
+/* ---------- Login ---------- */
+window.handleLogin = async function(){
+  const code   = document.getElementById('studentCodeInput').value.trim();
+  const secret = document.getElementById('secretCodeInput').value.trim();
+  const errBox = document.getElementById('loginError');
+  errBox.style.display = 'none';
+  if (!code || !secret) {
+    errBox.textContent = 'من فضلك أدخل كود الطالب وكلمة السر.';
+    errBox.style.display = 'block';
+    return;
+  }
+  document.getElementById('loginSpinner').style.display = 'block';
+  try {
+    const snap = await getDoc(doc(db, 'students', 'data'));
+    const list = snap.exists() ? (snap.data().students || []) : [];
+    const student = list.find(s => String(s.id) === String(code));
+    if (!student) {
+      errBox.textContent = 'كود الطالب غير صحيح.';
+      errBox.style.display = 'block';
+      return;
+    }
+    const passKey = student.portalPassword || String(student.id).slice(-4);
+    if (String(passKey) !== secret) {
+      errBox.textContent = 'كلمة السر غير صحيحة.';
+      errBox.style.display = 'block';
+      return;
+    }
+    currentStudent = student;
+    sessionStorage.setItem('pointsPortalStudentId', String(student.id));
+    await boot(student, list);
+  } catch(e) {
+    errBox.textContent = 'حدث خطأ في الاتصال، حاول مرة أخرى.';
+    errBox.style.display = 'block';
+  } finally {
+    document.getElementById('loginSpinner').style.display = 'none';
+  }
+};
+
+window.logout = function(){
+  sessionStorage.removeItem('pointsPortalStudentId');
+  currentStudent = null;
+  document.getElementById('dashboardScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+};
+
+/* ---------- Data loading ---------- */
+async function loadAllData(students){
+  let attendanceRecords = [];
+  try {
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    const nextMonth = new Date(now.getFullYear(), now.getMonth()+1, 1);
+    const monthEnd = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth()+1).padStart(2,'0')}-01`;
+    const attCol = collection(db, 'attendance_data', 'default_user', 'attendanceHistory');
+    const attQuery = query(attCol, where('saveDate', '>=', monthStart), where('saveDate', '<', monthEnd));
+    const snap = await getDocs(attQuery);
+    snap.forEach(d => attendanceRecords.push(d.data()));
+  } catch(e) {}
+
+  let scheduleData = { sessions: [] };
+  try {
+    const snap = await getDoc(doc(db, 'schedule', 'data'));
+    if (snap.exists()) scheduleData = snap.data();
+  } catch(e) {}
+
+  let gradesData = {}, examsData = {};
+  try {
+    const snap = await getDoc(doc(db, 'grades', 'data'));
+    if (snap.exists()) { const d = snap.data(); gradesData = d.grades || {}; examsData = d.exams || {}; }
+  } catch(e) {}
+
+  let financeByStudent = {}; // studentId -> [ {key, subscriptionPrice, paid, ...} ]
+  try {
+    const snap = await getDocs(collection(db, 'finance'));
+    snap.forEach(d => {
+      if (!d.id.startsWith('month-')) return;
+      const key = d.id.replace('month-','');
+      const data = d.data();
+      Object.entries(data.students || {}).forEach(([sid, info]) => {
+        (financeByStudent[sid] ??= []).push({ key, ...info });
+      });
+    });
+  } catch(e) {}
+
+  let bookReservations = [];
+  try {
+    const snap = await getDoc(doc(db, 'books', 'data'));
+    if (snap.exists()) bookReservations = snap.data().reservations || [];
+  } catch(e) {}
+
+  return { students, attendanceRecords, scheduleData, gradesData, examsData, financeByStudent, bookReservations };
+}
+
+/* ---------- Points computation for a single student ---------- */
+function getMySessions(student, scheduleData){
+  return (scheduleData.sessions || []).filter(sess =>
+    String(sess.class) === String(student.class) &&
+    (!student.subjects || student.subjects.length === 0 || student.subjects.includes(sess.subject))
+  );
+}
+function computeAttendance(student, attendanceRecords){
+  let present=0, absent=0;
+  const mine = [];
+  attendanceRecords.forEach(r => {
+    const entry = (r.students || []).find(st => String(st.id) === String(student.id));
+    if (entry) { mine.push({ date: r.saveDate || '', status: entry.status }); if (entry.status === 'present') present++; else if (entry.status === 'absent') absent++; }
+  });
+  const total = present + absent;
+  const rate = total ? Math.round((present/total)*100) : 0;
+  mine.sort((a,b) => b.date.localeCompare(a.date));
+  let streak = 0;
+  for (const m of mine) { if (m.status === 'present') streak++; else break; }
+  return { present, absent, total, rate, streak };
+}
+function computeExams(student, scheduleData, gradesData, examsData){
+  const mySessions = getMySessions(student, scheduleData);
+  let passed=0, total=0, excellent=0; const percents=[];
+  mySessions.forEach(sess => {
+    const sid = String(sess.id);
+    const exams = examsData[sid] || [];
+    exams.forEach(exam => {
+      const g = (gradesData[sid] || {})[String(exam.id)] || {};
+      const entry = g[String(student.id)];
+      if (entry === undefined) return;
+      total++;
+      const score = entry.score, max = exam.max, passMark = exam.pass;
+      if (typeof score === 'number' && typeof passMark === 'number' && score >= passMark) passed++;
+      if (typeof score === 'number' && typeof max === 'number' && max > 0) {
+        const pct = (score/max)*100; percents.push(pct);
+        if (pct >= RULES.EXAM_EXCELLENCE_MIN) excellent++;
+      }
+    });
+  });
+  const avg = percents.length ? (percents.reduce((a,b)=>a+b,0)/percents.length) : null;
+  return { passed, total, excellent, avg };
+}
+function computeFinance(student, financeByStudent){
+  const months = financeByStudent[String(student.id)] || [];
+  let paidMonths = 0;
+  months.forEach(m => { if ((m.paid||0) >= (m.subscriptionPrice||0) && (m.subscriptionPrice||0) > 0) paidMonths++; });
+  return { paidMonths, totalMonths: months.length, allPaid: months.length > 0 && paidMonths === months.length };
+}
+function computeBooks(student, bookReservations){
+  const mine = bookReservations.filter(r => (r.studentName||'').trim() === (student.name||'').trim());
+  return { count: mine.length };
+}
+function computeStudentPoints(student, data){
+  const att   = computeAttendance(student, data.attendanceRecords);
+  const exams = computeExams(student, data.scheduleData, data.gradesData, data.examsData);
+  const fin   = computeFinance(student, data.financeByStudent);
+  const books = computeBooks(student, data.bookReservations);
+
+  const attPts   = att.present * RULES.ATTEND_PRESENT;
+  const examPts  = exams.passed * RULES.EXAM_PASS + exams.excellent * RULES.EXAM_EXCELLENCE_BONUS;
+  const finPts   = fin.paidMonths * RULES.PAYMENT_ON_TIME;
+  const bookPts  = books.count * RULES.BOOK_RESERVED;
+  const total = attPts + examPts + finPts + bookPts;
+
+  return { total, breakdown:{ attendance:attPts, exams:examPts, finance:finPts, books:bookPts }, att, exams, fin, books };
+}
+
+/* ---------- Rendering ---------- */
+function animateNumber(el, target, duration=1100){
+  const start = performance.now();
+  function step(now){
+    const p = Math.min(1, (now-start)/duration);
+    el.textContent = Math.round(target * (1 - Math.pow(1-p,3)));
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderHero(student, result){
+  document.getElementById('topAvatar').innerHTML = student.photo
+    ? `<img src="${student.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`
+    : (student.name ? student.name.trim()[0] : '👤');
+  document.getElementById('topName').textContent = student.name || '—';
+  document.getElementById('topMeta').textContent = `${getClassName(student.class)} · كود ${student.id}`;
+
+  const R = 64, C = 2*Math.PI*R;
+  const cap = 500; // visual cap for ring fill
+  const pct = Math.min(1, result.total/cap);
+  const ring = document.getElementById('ringProgress');
+  ring.setAttribute('stroke-dasharray', C);
+  requestAnimationFrame(() => { ring.style.strokeDashoffset = String(C - C*pct); });
+
+  animateNumber(document.getElementById('pointsNum'), result.total);
+
+  const info = getTitleInfo(result.total);
+  document.getElementById('currentTitle').textContent = `${info.emoji} ${info.label}`;
+  document.getElementById('titleNext').textContent = info.next
+    ? `باقيلك ${info.next.min - result.total} نقطة لـ «${info.next.label}» ${info.next.emoji}`
+    : 'وصلت لأعلى لقب 🎉';
+}
+
+function renderBreakdown(result){
+  const s = document.getElementById('breakdownSection');
+  s.innerHTML = `
+    <div class="card">
+      <h3>📊 تفاصيل النقاط</h3>
+      <div class="breakdown-grid">
+        <div class="breakdown-box"><div class="num">${result.breakdown.attendance}</div><div class="lbl">من الحضور هذا الشهر (${result.att.present} حصة)</div></div>
+        <div class="breakdown-box"><div class="num">${result.breakdown.exams}</div><div class="lbl">من الامتحانات (${result.exams.passed} ناجح)</div></div>
+        <div class="breakdown-box"><div class="num">${result.breakdown.finance}</div><div class="lbl">من الالتزام بالمصروف (${result.fin.paidMonths} شهر)</div></div>
+        <div class="breakdown-box"><div class="num">${result.breakdown.books}</div><div class="lbl">من الكتب (${result.books.count} كتاب)</div></div>
+      </div>
+    </div>`;
+}
+
+function renderBadges(result){
+  const badges = [
+    { earned: result.att.total >= 5 && result.att.rate >= 90, emoji:'🎯', name:'ملتزم', desc:'حضور 90%+' },
+    { earned: result.exams.passed >= 3, emoji:'📝', name:'نجم الامتحانات', desc:'3 امتحانات ناجحة' },
+    { earned: result.exams.avg !== null && result.exams.avg >= 90, emoji:'✨', name:'متفوق', desc:'متوسط درجات 90%+' },
+    { earned: result.fin.allPaid, emoji:'💳', name:'ملتزم بالمصروف', desc:'كل الشهور مدفوعة' },
+    { earned: result.books.count >= 1, emoji:'📚', name:'قارئ', desc:'حجز كتاب واحد على الأقل' },
+  ];
+  document.getElementById('badgesGrid').innerHTML = badges.map(b => `
+    <div class="badge-item ${b.earned ? 'earned' : ''}">
+      <div class="emoji">${b.emoji}</div>
+      <div class="name">${b.name}</div>
+      <div class="desc">${b.desc}</div>
+    </div>`).join('');
+}
+
+function renderChallenges(result){
+  const challenges = [
+    { name:'احضر 5 حصص متتالية بدون غياب', emoji:'🔥', progress: result.att.streak, target: 5 },
+    { name:'حقق نسبة حضور 90% أو أكتر', emoji:'✅', progress: result.att.rate, target: 90, unit:'%' },
+    { name:'اجتز 3 امتحانات بنجاح', emoji:'📝', progress: result.exams.passed, target: 3 },
+    { name:'احجز كتابين', emoji:'📚', progress: result.books.count, target: 2 },
+  ];
+  document.getElementById('challengesSection').innerHTML = `<div class="card" style="padding:14px;">${
+    challenges.map(c => {
+      const done = c.progress >= c.target;
+      const pct = Math.min(100, Math.round((c.progress/c.target)*100));
+      return `
+      <div class="challenge">
+        <div class="challenge-top">
+          <div class="challenge-name">${c.emoji} ${c.name}</div>
+          <div class="challenge-status ${done?'done':'pending'}">${done ? 'مكتمل ✔' : `${c.progress}${c.unit||''} / ${c.target}${c.unit||''}`}</div>
+        </div>
+        <div class="progress-track"><div class="progress-fill ${done?'done':''}" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+function renderLeaderboard(student, data){
+  const classmates = data.students.filter(s => String(s.class) === String(student.class));
+  const ranked = classmates.map(s => ({ student: s, points: computeStudentPoints(s, data).total }))
+    .sort((a,b) => b.points - a.points);
+
+  const myIndex = ranked.findIndex(r => String(r.student.id) === String(student.id));
+  let visible = ranked.slice(0, 10);
+  if (myIndex >= 10) visible = [...visible, ranked[myIndex]];
+
+  if (ranked.length === 0) {
+    document.getElementById('leaderboardSection').innerHTML = `<div class="card"><div class="empty">لا يوجد طلاب في نفس الفصل حتى الآن.</div></div>`;
+    return;
+  }
+
+  const rows = visible.map((r, i) => {
+    const rank = ranked.indexOf(r) + 1;
+    const isMe = String(r.student.id) === String(student.id);
+    const rankClass = rank===1?'top1':rank===2?'top2':rank===3?'top3':'';
+    return `
+      <div class="lb-row ${isMe?'me':''}">
+        <div class="lb-rank ${rankClass}">${rank}</div>
+        <div class="lb-name"><div class="n">${r.student.name || '—'} ${isMe ? '<span class="you">(انت)</span>' : ''}</div></div>
+        <div class="lb-pts">${r.points}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('leaderboardSection').innerHTML = `<div>${rows}</div>`;
+}
+
+/* ---------- Boot ---------- */
+async function boot(student, students){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboardScreen').style.display = 'block';
+
+  const data = await loadAllData(students);
+  allData = data;
+  const result = computeStudentPoints(student, data);
+
+  renderHero(student, result);
+  renderBreakdown(result);
+  renderBadges(result);
+  renderChallenges(result);
+  renderLeaderboard(student, data);
+}
+
+/* ---------- Auto-login ---------- */
+(async function initAutoLogin(){
+  const savedId = sessionStorage.getItem('pointsPortalStudentId');
+  if (!savedId) return;
+  try {
+    const snap = await getDoc(doc(db, 'students', 'data'));
+    const list = snap.exists() ? (snap.data().students || []) : [];
+    const student = list.find(x => String(x.id) === String(savedId));
+    if (student) { currentStudent = student; await boot(student, list); }
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بوابة أولياء الأمور - سنتر المحكمة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root{
+  --deep:#080808; --mid:#0f0f0f; --purple:#c9a227; --glow:#f0c040; --light:#ffd700;
+  --blue:#dc2626; --white:#ffffff; --muted:rgba(255,255,255,.55);
+  --border:rgba(212,175,55,.22); --card:rgba(255,255,255,.045);
+  --green:#22c55e; --red:#ef4444; --amber:#f59e0b; --gold:#f0c040;
+}
+html,body{ min-height:100vh; scroll-behavior:smooth; }
+body{
+  font-family:'Cairo',sans-serif; background:var(--deep); color:var(--white);
+  position:relative; padding-bottom:50px; overflow-x:hidden;
+}
+::selection{ background:rgba(212,175,55,.35); }
+
+/* ---------- Ambient background ---------- */
+.bg{
+  position:fixed; inset:0; z-index:0;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(180,130,20,.42) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 92% 15%, rgba(212,175,55,.2) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 40% at 6% 75%, rgba(220,38,38,.16) 0%, transparent 55%),
+    linear-gradient(180deg,#080808 0%, #120a00 45%, #080808 100%);
+}
+.grid{
+  position:fixed; inset:0; z-index:0;
+  background-image: linear-gradient(rgba(180,130,20,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(180,130,20,.055) 1px, transparent 1px);
+  background-size:52px 52px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, black, transparent 85%);
+}
+.orb{ position:fixed; border-radius:50%; filter:blur(90px); z-index:0; animation:orbFloat 10s ease-in-out infinite; pointer-events:none; }
+.orb-1{ width:360px; height:360px; background:rgba(180,130,20,.22); top:-80px; right:-60px; }
+.orb-2{ width:280px; height:280px; background:rgba(220,38,38,.14); bottom:5%; left:-60px; animation-delay:-4s; }
+@keyframes orbFloat{ 0%,100%{ transform:translate(0,0);} 50%{ transform:translate(-14px,16px);} }
+.particles{ position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.particle{ position:absolute; border-radius:50%; background:var(--light); opacity:0; animation:particleUp linear infinite; }
+@keyframes particleUp{
+  0%{ transform:translateY(10vh); opacity:0; }
+  12%{ opacity:.5; } 88%{ opacity:.25; }
+  100%{ transform:translateY(-40vh); opacity:0; }
+}
+
+.wrap{ position:relative; z-index:1; max-width:940px; margin:0 auto; padding:22px 16px; }
+
+/* ---------- Shared entrance motion ---------- */
+@keyframes riseIn{ from{ opacity:0; transform:translateY(14px);} to{ opacity:1; transform:translateY(0);} }
+
+/* ---------- Login screen ---------- */
+#loginScreen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; position:relative; z-index:1; }
+.login-card{
+  width:100%; max-width:430px; background:linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+  border:1px solid var(--border); border-radius:26px; padding:38px 28px; backdrop-filter:blur(18px);
+  box-shadow:0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.02) inset, 0 1px 0 rgba(255,255,255,.08) inset;
+  animation:riseIn .55s cubic-bezier(.16,1,.3,1) both;
+  position:relative; overflow:hidden;
+}
+.login-card::before{
+  content:''; position:absolute; inset:0; z-index:-1; border-radius:26px; padding:1px;
+  background:linear-gradient(135deg, rgba(212,175,55,.5), rgba(220,38,38,.15), transparent 60%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+}
+.login-logo-badge{
+  width:64px; height:64px; margin:0 auto 18px; border-radius:20px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, rgba(180,130,20,.35), rgba(212,175,55,.15));
+  border:1px solid rgba(212,175,55,.4); font-size:30px;
+  box-shadow:0 0 30px rgba(212,175,55,.35);
+  animation:badgeFloat 3.5s ease-in-out infinite;
+}
+@keyframes badgeFloat{ 0%,100%{ transform:translateY(0) rotate(0deg);} 50%{ transform:translateY(-5px) rotate(-3deg);} }
+.login-title{
+  text-align:center; font-size:23px; font-weight:900; margin-bottom:5px;
+  background:linear-gradient(135deg, #ffd700 0%, #f0c040 40%, #dc2626 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  filter:drop-shadow(0 0 18px rgba(212,175,55,.35));
+}
+.login-sub{ text-align:center; font-size:13px; color:var(--muted); margin-bottom:30px; }
+.field{ margin-bottom:17px; }
+.field label{ display:block; font-size:12.5px; font-weight:800; color:var(--light); margin-bottom:7px; letter-spacing:.2px; }
+.field input{
+  width:100%; padding:14px 15px; border-radius:13px; border:1px solid var(--border);
+  background:rgba(255,255,255,.035); color:var(--white); font-family:'Cairo',sans-serif; font-size:15px;
+  letter-spacing:1px; text-align:center; transition:border-color .2s, box-shadow .2s, background .2s;
+}
+.field input:focus{ outline:none; border-color:var(--glow); background:rgba(212,175,55,.06); box-shadow:0 0 0 4px rgba(212,175,55,.13); }
+.field small{ display:block; margin-top:7px; font-size:11.5px; color:var(--muted); text-align:center; }
+.btn{
+  width:100%; padding:15px; border:none; border-radius:13px; cursor:pointer;
+  font-family:'Cairo',sans-serif; font-weight:900; font-size:15px; color:#fff;
+  background:linear-gradient(135deg,var(--purple),var(--glow)); box-shadow:0 10px 28px rgba(180,130,20,.45);
+  transition:transform .15s, box-shadow .2s; position:relative;
+}
+.btn:hover{ box-shadow:0 12px 34px rgba(180,130,20,.6); }
+.btn:active{ transform:scale(.97); }
+.btn-outline{
+  width:100%; padding:12px; border-radius:13px; margin-top:11px; cursor:pointer;
+  font-family:'Cairo',sans-serif; font-weight:700; font-size:13px;
+  background:transparent; border:1px solid var(--border); color:var(--light); transition:background .2s, border-color .2s;
+}
+.btn-outline:hover{ background:rgba(212,175,55,.08); border-color:var(--glow); }
+.login-error{
+  display:none; background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.4);
+  color:#fca5a5; font-size:13px; padding:11px 12px; border-radius:11px; margin-bottom:15px; text-align:center;
+  animation:riseIn .3s ease both;
+}
+#scannerBox{ display:none; margin-top:15px; border-radius:15px; overflow:hidden; border:1px solid var(--border); }
+#loginSpinner{ display:none; text-align:center; margin-top:15px; color:var(--light); font-size:13px; }
+
+/* ---------- Dashboard ---------- */
+#dashboardScreen{ display:none; }
+.hero-header{
+  position:relative; background:linear-gradient(160deg, rgba(180,130,20,.16), rgba(255,255,255,.03));
+  border:1px solid var(--border); border-radius:22px; padding:22px 22px; margin-bottom:20px;
+  backdrop-filter:blur(14px); overflow:hidden;
+  box-shadow:0 20px 50px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.06) inset;
+  animation:riseIn .5s cubic-bezier(.16,1,.3,1) both;
+}
+.hero-header::after{
+  content:''; position:absolute; width:220px; height:220px; border-radius:50%;
+  background:radial-gradient(circle, rgba(212,175,55,.3), transparent 70%);
+  top:-90px; left:-70px; pointer-events:none;
+}
+.top-bar{ display:flex; align-items:center; gap:16px; position:relative; z-index:1; }
+.avatar-ring{
+  width:66px; height:66px; border-radius:50%; flex-shrink:0; padding:3px;
+  background:linear-gradient(135deg,var(--purple),var(--glow),var(--blue));
+  box-shadow:0 0 22px rgba(212,175,55,.45);
+}
+.avatar{
+  width:100%; height:100%; border-radius:50%; object-fit:cover;
+  background:var(--deep); display:flex; align-items:center; justify-content:center;
+  font-size:24px; font-weight:900; color:var(--light);
+}
+.top-info{ flex:1; min-width:0; }
+.top-name{ font-size:19px; font-weight:900; letter-spacing:.2px; }
+.top-meta{ display:flex; gap:7px; flex-wrap:wrap; margin-top:7px; }
+.meta-pill{
+  font-size:11.5px; font-weight:700; color:var(--light); background:rgba(212,175,55,.14);
+  border:1px solid rgba(212,175,55,.28); padding:4px 11px; border-radius:20px;
+}
+.logout-btn{
+  background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); color:#fca5a5;
+  padding:10px 18px; border-radius:11px; font-family:'Cairo',sans-serif; font-weight:700; font-size:12.5px; cursor:pointer;
+  transition:background .2s; flex-shrink:0;
+}
+.logout-btn:hover{ background:rgba(239,68,68,.2); }
+
+.tabs{
+  display:flex; gap:5px; overflow-x:auto; padding:5px; margin-bottom:20px; scrollbar-width:none;
+  background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:16px;
+  animation:riseIn .5s cubic-bezier(.16,1,.3,1) both; animation-delay:.05s;
+}
+.tabs::-webkit-scrollbar{ display:none; }
+.tab-btn{
+  flex-shrink:0; padding:10px 17px; border-radius:12px; border:none; background:transparent;
+  color:var(--muted); font-family:'Cairo',sans-serif; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap;
+  transition:color .2s, background .25s; position:relative;
+}
+.tab-btn.active{ background:linear-gradient(135deg,var(--purple),var(--glow)); color:#fff; box-shadow:0 6px 18px rgba(180,130,20,.4); }
+
+.panel{ display:none; }
+.panel.active{ display:block; animation:fadeIn .35s cubic-bezier(.16,1,.3,1) both; }
+@keyframes fadeIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+.card{
+  background:var(--card); border:1px solid var(--border); border-radius:18px; padding:20px;
+  margin-bottom:14px; backdrop-filter:blur(10px); transition:border-color .25s, transform .25s, box-shadow .25s;
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset;
+}
+.card:hover{ border-color:rgba(212,175,55,.4); }
+.card h3{ font-size:14.5px; font-weight:900; color:var(--light); margin-bottom:15px; display:flex; align-items:center; gap:8px; letter-spacing:.2px; }
+
+.info-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+.info-item{ background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.04); border-radius:12px; padding:11px 13px; transition:background .2s; }
+.info-item:hover{ background:rgba(255,255,255,.05); }
+.info-item span{ display:block; }
+.info-item .lbl{ font-size:11px; color:var(--muted); margin-bottom:4px; }
+.info-item .val{ font-size:14px; font-weight:700; }
+
+.stat-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:10px; margin-bottom:16px; }
+.stat-box{ background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.04); border-radius:14px; padding:15px; text-align:center; }
+.stat-box .num{ font-size:23px; font-weight:900; font-variant-numeric:tabular-nums; font-family:'Space Mono',monospace; }
+.stat-box .lbl{ font-size:11px; color:var(--muted); margin-top:4px; }
+
+table{ width:100%; border-collapse:collapse; }
+th{ font-size:11.5px; color:var(--light); font-weight:900; padding:11px 8px; text-align:center; border-bottom:1px solid var(--border); }
+td{ font-size:13px; padding:11px 8px; text-align:center; border-bottom:1px solid rgba(212,175,55,.07); }
+tr:last-child td{ border-bottom:none; }
+tbody tr{ transition:background .15s; }
+tbody tr:hover{ background:rgba(212,175,55,.05); }
+
+.badge{ display:inline-block; padding:4px 11px; border-radius:20px; font-size:11.5px; font-weight:700; }
+.badge.green{ background:rgba(34,197,94,.15); color:#4ade80; }
+.badge.red{ background:rgba(239,68,68,.15); color:#f87171; }
+.badge.amber{ background:rgba(245,158,11,.15); color:#fbbf24; }
+.badge.blue{ background:rgba(220,38,38,.15); color:#fca5a5; }
+
+.empty{ text-align:center; padding:34px 10px; color:var(--muted); font-size:13.5px; }
+.loading{ text-align:center; padding:34px 10px; color:var(--light); font-size:13.5px; }
+.loading::before{ content:'⏳'; display:block; font-size:22px; margin-bottom:8px; animation:spin 1.8s linear infinite; }
+@keyframes spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
+
+.session-row{
+  display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.04); border-radius:13px; padding:13px 15px; margin-bottom:9px;
+  border-right:3px solid var(--purple); transition:background .2s;
+}
+.session-row:hover{ background:rgba(255,255,255,.05); }
+.session-row .day-pill{ background:rgba(180,130,20,.25); color:var(--light); font-size:11.5px; font-weight:800; padding:4px 11px; border-radius:8px; }
+.session-row .s-sub{ font-weight:800; font-size:14px; }
+.session-row .s-meta{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+
+.subject-block{ margin-bottom:18px; }
+.subject-block h4{
+  font-size:13px; color:var(--white); background:linear-gradient(90deg, rgba(180,130,20,.25), rgba(180,130,20,.05));
+  padding:9px 13px; border-radius:9px; margin-bottom:9px; font-weight:800; border-right:3px solid var(--glow);
+}
+
+/* ---------- Assessment gauge (signature element) ---------- */
+.gauge-card{
+  background:linear-gradient(160deg, rgba(240,196,25,.09), rgba(255,255,255,.03));
+  border:1px solid rgba(240,196,25,.25);
+}
+.gauge-wrap{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; }
+.gauge-ring{ position:relative; width:112px; height:112px; flex-shrink:0; }
+.gauge-ring svg{ transform:rotate(-90deg); }
+.gauge-ring .gauge-pct{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:22px; font-weight:900; font-variant-numeric:tabular-nums; font-family:'Space Mono',monospace;
+}
+.gauge-label{ font-size:18px; font-weight:900; margin-bottom:5px; }
+.gauge-detail{ font-size:12.5px; color:var(--muted); line-height:1.7; }
+
+@media (max-width:520px){
+  .top-bar{ flex-wrap:wrap; }
+  .logout-btn{ order:3; width:100%; margin-top:4px; }
+  .gauge-wrap{ justify-content:center; text-align:center; }
+}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="grid"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="particles" id="particles"></div>
+<script>
+(function(){
+  const box = document.getElementById('particles');
+  const colors = ['#ffd700','#f0c040','#dc2626','#c9a227'];
+  for (let i=0;i<18;i++){
+    const p = document.createElement('div');
+    p.className='particle';
+    const size = 2 + Math.random()*3;
+    p.style.width = size+'px'; p.style.height = size+'px';
+    p.style.left = Math.random()*100+'vw';
+    p.style.bottom = '-5vh';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDuration = (10+Math.random()*14)+'s';
+    p.style.animationDelay = (Math.random()*12)+'s';
+    box.appendChild(p);
+  }
+})();
+</script>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo-badge">🎓</div>
+    <div class="login-title">بوابة أولياء الأمور</div>
+    <div class="login-sub">سنتر المحكمة — تابع بيانات ابنك أول بأول</div>
+
+    <div class="login-error" id="loginError"></div>
+
+    <div class="field">
+      <label>كود الطالب (الباركود)</label>
+      <input type="text" id="studentCodeInput" placeholder="أدخل الكود المطبوع على الكارت" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>كلمة السر</label>
+      <input type="text" id="secretCodeInput" placeholder="اكتب كلمة السر المطبوعة على الكارت" maxlength="12">
+      <small>هتلاقيها مكتوبة "كلمة السر" جنب الباركود على كارت ابنك</small>
+    </div>
+
+    <button class="btn" onclick="handleLogin()">دخول 🔓</button>
+    <button class="btn-outline" onclick="toggleScanner()">📷 تصوير الباركود بالكاميرا بدل الكتابة</button>
+
+    <div id="scannerBox"><div id="qrReader" style="width:100%;"></div></div>
+    <div id="loginSpinner">⏳ جاري التحقق من البيانات...</div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD SCREEN ============ -->
+<div id="dashboardScreen">
+  <div class="wrap">
+    <div class="hero-header">
+      <div class="top-bar">
+        <div class="avatar-ring"><div class="avatar" id="topAvatar">👤</div></div>
+        <div class="top-info">
+          <div class="top-name" id="topName">—</div>
+          <div class="top-meta" id="topMeta"></div>
+        </div>
+        <button class="logout-btn" onclick="logout()">خروج 🚪</button>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabsBar">
+      <button class="tab-btn active" data-tab="overview">📋 نظرة عامة</button>
+      <button class="tab-btn" data-tab="schedule">🗓️ الجدول</button>
+      <button class="tab-btn" data-tab="grades">📝 الدرجات</button>
+      <button class="tab-btn" data-tab="attendance">✅ الحضور</button>
+      <button class="tab-btn" data-tab="finance">💳 المالية</button>
+      <button class="tab-btn" data-tab="books">📚 الكتب</button>
+    </div>
+
+    <div class="panel active" id="panel-overview"><div class="loading">⏳ جاري التحميل...</div></div>
+    <div class="panel" id="panel-schedule"><div class="loading">⏳ جاري التحميل...</div></div>
+    <div class="panel" id="panel-grades"><div class="loading">⏳ جاري التحميل...</div></div>
+    <div class="panel" id="panel-attendance"><div class="loading">⏳ جاري التحميل...</div></div>
+    <div class="panel" id="panel-finance"><div class="loading">⏳ جاري التحميل...</div></div>
+    <div class="panel" id="panel-books"><div class="loading">⏳ جاري التحميل...</div></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script type="module">
+import {
+  initializeApp
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {
+  getFirestore, doc, getDoc, collection, getDocs
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
+  authDomain: "al-gnarl.firebaseapp.com",
+  projectId: "al-gnarl",
+  storageBucket: "al-gnarl.firebasestorage.app",
+  messagingSenderId: "288765966471",
+  appId: "1:288765966471:web:63358febfb82843c2fa022"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+/* ---------- Reference dictionaries (matching the rest of the system) ---------- */
+const SUBJECTS = {
+  math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية',
+  science:'علوم', social:'دراسات اجتماعية', religion:'تربية دينية', computer:'حاسب آلي', technology:'تكنولوجيا'
+};
+const CLASSES = {
+  grade1:'الأول الابتدائي', grade2:'الثاني الابتدائي', grade3:'الثالث الابتدائي',
+  grade4:'الرابع الابتدائي', grade5:'الخامس الابتدائي', grade6:'السادس الابتدائي',
+  grade7:'الأول الإعدادي', grade8:'الثاني الإعدادي', grade9:'الثالث الإعدادي',
+  grade10:'الأول الثانوي', grade11:'الثاني الثانوي', grade12:'الثالث الثانوي'
+};
+const TEACHERS = {
+  t1:'أ. محمد أحمد', t2:'أ. فاطمة علي', t3:'أ. خالد محمود',
+  t4:'أ. سارة حسن', t5:'أ. نور الدين', t6:'أ. منى إبراهيم'
+};
+const EXAM_TYPES = {
+  written:'تحريري ✍️', oral:'شفهي 🎤', quiz:'اختبار قصير 📄', practical:'عملي 🔬',
+  homework:'واجب 📚', project:'مشروع 🏗️', midterm:'نصف الفصل 📋', final:'نهائي 🎓'
+};
+const DAYS = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
+
+const getSubjectName = k => SUBJECTS[k] || k;
+const getTeacherName = k => TEACHERS[k] || k;
+const getDayName     = i => DAYS[i] !== undefined ? DAYS[i] : String(i);
+function getClassName(key, customClasses){
+  if (customClasses && Array.isArray(customClasses)) {
+    const f = customClasses.find(c => c.id == key || c.name == key);
+    if (f) return f.name;
+  }
+  return CLASSES[key] || key;
+}
+function formatTime(t){
+  if (!t) return '';
+  const [h,m] = t.split(':'); const hr = parseInt(h);
+  const p = hr >= 17 ? 'مساءً' : hr >= 12 ? 'ظهراً' : 'صباحاً';
+  return `${hr > 12 ? hr-12 : hr}:${m} ${p}`;
+}
+function fDate(d){
+  if (!d) return '—';
+  if (d.includes('T')) d = d.split('T')[0];
+  const p = d.split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+}
+function monthLabel(key){
+  // key like "2026-07"
+  const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const [y,m] = key.split('-');
+  return `${months[parseInt(m)-1] || m} ${y}`;
+}
+
+let currentStudent = null;
+const statsReady = { grades: false, attendance: false };
+const statsData  = { subjectAverages: {}, overallGradePercent: null, attendanceRate: null, presentCount: 0, absentCount: 0 };
+let gradesChartInstance = null, attendanceChartInstance = null;
+
+/* ---------- Login ---------- */
+window.handleLogin = async function(){
+  const code   = document.getElementById('studentCodeInput').value.trim();
+  const secret = document.getElementById('secretCodeInput').value.trim();
+  const errBox = document.getElementById('loginError');
+  errBox.style.display = 'none';
+
+  if (!code || !secret) {
+    errBox.textContent = 'من فضلك أدخل كود الطالب وكلمة السر.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('loginSpinner').style.display = 'block';
+  try {
+    const snap = await getDoc(doc(db, 'students', 'data'));
+    const list = snap.exists() ? (snap.data().students || []) : [];
+    const student = list.find(s => String(s.id) === String(code));
+
+    if (!student) {
+      errBox.textContent = 'كود الطالب غير صحيح، تأكد من الكود المطبوع على الكارت.';
+      errBox.style.display = 'block';
+      return;
+    }
+    const passKey = student.portalPassword || String(student.id).slice(-4);
+    if (String(passKey) !== secret) {
+      errBox.textContent = 'كلمة السر غير صحيحة.';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    currentStudent = student;
+    sessionStorage.setItem('parentPortalStudentId', String(student.id));
+    showDashboard(student);
+  } catch(e) {
+    errBox.textContent = 'حدث خطأ في الاتصال، حاول مرة أخرى. (' + e.message + ')';
+    errBox.style.display = 'block';
+  } finally {
+    document.getElementById('loginSpinner').style.display = 'none';
+  }
+};
+
+window.logout = function(){
+  sessionStorage.removeItem('parentPortalStudentId');
+  currentStudent = null;
+  document.getElementById('dashboardScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('studentCodeInput').value = '';
+  document.getElementById('secretCodeInput').value = '';
+};
+
+/* ---------- QR / Barcode camera scan (optional convenience) ---------- */
+let scannerActive = false, html5Qr = null;
+window.toggleScanner = async function(){
+  const box = document.getElementById('scannerBox');
+  if (scannerActive) {
+    scannerActive = false;
+    box.style.display = 'none';
+    if (html5Qr) { try { await html5Qr.stop(); } catch(e){} }
+    return;
+  }
+  box.style.display = 'block';
+  scannerActive = true;
+  try {
+    if (!window.Html5Qrcode) {
+      await loadScript('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js');
+    }
+    html5Qr = new window.Html5Qrcode('qrReader');
+    await html5Qr.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 120 } },
+      (decodedText) => {
+        document.getElementById('studentCodeInput').value = decodedText.trim();
+        html5Qr.stop().catch(()=>{});
+        scannerActive = false;
+        box.style.display = 'none';
+        document.getElementById('secretCodeInput').focus();
+      },
+      () => {}
+    );
+  } catch(e) {
+    alert('تعذر فتح الكاميرا، من فضلك اكتب الكود يدويًا.');
+    scannerActive = false;
+    box.style.display = 'none';
+  }
+};
+function loadScript(src){
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+/* ---------- Tabs ---------- */
+document.getElementById('tabsBar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+});
+
+/* ---------- Dashboard boot ---------- */
+async function showDashboard(student){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboardScreen').style.display = 'block';
+
+  document.getElementById('topAvatar').innerHTML = student.photo
+    ? `<img src="${student.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`
+    : (student.name ? student.name.trim()[0] : '👤');
+  document.getElementById('topName').textContent = student.name || '—';
+  document.getElementById('topMeta').innerHTML = `
+    <span class="meta-pill">🏫 ${getClassName(student.class)}</span>
+    <span class="meta-pill">🔖 كود: ${student.id}</span>
+  `;
+
+  statsReady.grades = false;
+  statsReady.attendance = false;
+  statsData.subjectAverages = {};
+  statsData.overallGradePercent = null;
+  statsData.attendanceRate = null;
+  statsData.presentCount = 0;
+  statsData.absentCount = 0;
+
+  renderOverview(student);
+  loadScheduleAndGrades(student);
+  loadAttendance(student);
+  loadFinance(student);
+  loadBooks(student);
+}
+
+/* ---------- Overview ---------- */
+function renderOverview(s){
+  const subs = (s.subjects || []).map(k => getSubjectName(k)).join('، ') || '—';
+  document.getElementById('panel-overview').innerHTML = `
+    <div id="assessmentSection"></div>
+    <div class="card">
+      <h3>👤 بيانات الطالب</h3>
+      <div class="info-grid">
+        <div class="info-item"><span class="lbl">الاسم</span><span class="val">${s.name || '—'}</span></div>
+        <div class="info-item"><span class="lbl">الصف</span><span class="val">${getClassName(s.class)}</span></div>
+        <div class="info-item"><span class="lbl">تاريخ الميلاد</span><span class="val">${fDate(s.birthdate)}</span></div>
+        <div class="info-item"><span class="lbl">السن</span><span class="val">${s.age || '—'}</span></div>
+        <div class="info-item"><span class="lbl">المدرس المسؤول</span><span class="val">${s.teacherName || getTeacherName(s.teacherId) || '—'}</span></div>
+        <div class="info-item"><span class="lbl">رقم الهاتف</span><span class="val">${s.phone || '—'}</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>📖 المواد الدراسية</h3>
+      <div class="info-item"><span class="val">${subs}</span></div>
+    </div>
+    ${s.address ? `<div class="card"><h3>📍 العنوان</h3><div class="info-item"><span class="val">${s.address}</span></div></div>` : ''}
+  `;
+  document.getElementById('assessmentSection').innerHTML = `<div class="card"><div class="loading">⏳ جاري حساب التقدير العام...</div></div>`;
+}
+
+function getAssessmentInfo(percent){
+  if (percent >= 90) return { label:'ممتاز', emoji:'🌟', color:'#22c55e' };
+  if (percent >= 80) return { label:'جيد جدًا', emoji:'👍', color:'#4ade80' };
+  if (percent >= 65) return { label:'جيد',    emoji:'🙂', color:'#fbbf24' };
+  if (percent >= 50) return { label:'مقبول',   emoji:'⚠️', color:'#f59e0b' };
+  return                    { label:'يحتاج متابعة', emoji:'🔴', color:'#ef4444' };
+}
+
+function maybeRenderAssessment(){
+  if (!statsReady.grades || !statsReady.attendance) return;
+
+  const section = document.getElementById('assessmentSection');
+  if (!section) return;
+
+  const gradePct = statsData.overallGradePercent;
+  const attRate  = statsData.attendanceRate;
+
+  let overallScore = null;
+  if (gradePct !== null && attRate !== null) overallScore = Math.round(gradePct * 0.7 + attRate * 0.3);
+  else if (gradePct !== null) overallScore = Math.round(gradePct);
+  else if (attRate !== null)  overallScore = Math.round(attRate);
+
+  const subjectEntries = Object.entries(statsData.subjectAverages);
+
+  if (overallScore === null && subjectEntries.length === 0 && statsData.presentCount + statsData.absentCount === 0) {
+    section.innerHTML = `<div class="card"><div class="empty">لا توجد بيانات كافية بعد (درجات أو حضور) لعرض تقدير عام.</div></div>`;
+    return;
+  }
+
+  const info = overallScore !== null ? getAssessmentInfo(overallScore) : { label:'بيانات غير مكتملة', emoji:'ℹ️', color:'#9ca3af' };
+
+  const R = 48, C = 2 * Math.PI * R;
+  const pctForRing = overallScore ?? 0;
+  const dashOffset = C - (C * pctForRing / 100);
+
+  section.innerHTML = `
+    <div class="card gauge-card">
+      <h3>🏆 التقدير العام للطالب</h3>
+      <div class="gauge-wrap">
+        <div class="gauge-ring">
+          <svg width="112" height="112" viewBox="0 0 112 112">
+            <circle cx="56" cy="56" r="${R}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9"/>
+            <circle id="gaugeProgress" cx="56" cy="56" r="${R}" fill="none" stroke="${info.color}" stroke-width="9"
+                    stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}"
+                    style="transition:stroke-dashoffset 1.1s cubic-bezier(.16,1,.3,1); filter:drop-shadow(0 0 6px ${info.color}88);"/>
+          </svg>
+          <div class="gauge-pct" id="gaugePct" style="color:${info.color};">0%</div>
+        </div>
+        <div>
+          <div class="gauge-label" style="color:${info.color};">${info.emoji} ${info.label}</div>
+          <div class="gauge-detail">
+            ${gradePct !== null ? `متوسط الدرجات: <strong style="color:#fff;">${Math.round(gradePct)}%</strong>` : 'لا توجد درجات مسجلة بعد'}<br>
+            ${attRate !== null ? `نسبة الحضور: <strong style="color:#fff;">${attRate}%</strong>` : 'لا يوجد سجل حضور بعد'}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${subjectEntries.length ? `
+    <div class="card">
+      <h3>📊 متوسط الدرجات حسب المادة</h3>
+      <div style="position:relative;height:${Math.max(180, subjectEntries.length*46)}px;">
+        <canvas id="gradesChart"></canvas>
+      </div>
+    </div>` : ''}
+
+    ${(statsData.presentCount + statsData.absentCount) > 0 ? `
+    <div class="card">
+      <h3>🥧 توزيع الحضور والغياب</h3>
+      <div style="position:relative;height:220px;max-width:280px;margin:0 auto;">
+        <canvas id="attendanceChart"></canvas>
+      </div>
+    </div>` : ''}
+  `;
+
+  requestAnimationFrame(() => {
+    const ring = document.getElementById('gaugeProgress');
+    if (ring) ring.style.strokeDashoffset = String(dashOffset);
+    const pctEl = document.getElementById('gaugePct');
+    if (pctEl && overallScore !== null) {
+      let cur = 0;
+      const step = () => {
+        cur += Math.max(1, Math.round(overallScore / 24));
+        if (cur >= overallScore) { pctEl.textContent = overallScore + '%'; return; }
+        pctEl.textContent = cur + '%';
+        requestAnimationFrame(step);
+      };
+      step();
+    } else if (pctEl) {
+      pctEl.textContent = '—';
+    }
+  });
+
+  if (subjectEntries.length && window.Chart) {
+    const ctx = document.getElementById('gradesChart').getContext('2d');
+    if (gradesChartInstance) gradesChartInstance.destroy();
+    gradesChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: subjectEntries.map(e => e[0]),
+        datasets: [{
+          data: subjectEntries.map(e => Math.round(e[1])),
+          backgroundColor: 'rgba(212,175,55,.65)',
+          borderColor: '#f0c040',
+          borderWidth: 1,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { min:0, max:100, ticks:{ color:'rgba(255,255,255,.6)' }, grid:{ color:'rgba(255,255,255,.06)' } },
+          y: { ticks:{ color:'#fff', font:{ family:'Cairo' } }, grid:{ display:false } }
+        }
+      }
+    });
+  }
+
+  if ((statsData.presentCount + statsData.absentCount) > 0 && window.Chart) {
+    const ctx2 = document.getElementById('attendanceChart').getContext('2d');
+    if (attendanceChartInstance) attendanceChartInstance.destroy();
+    attendanceChartInstance = new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: ['حاضر', 'غائب'],
+        datasets: [{
+          data: [statsData.presentCount, statsData.absentCount],
+          backgroundColor: ['#22c55e', '#ef4444'],
+          borderColor: 'transparent',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color:'#fff', font:{ family:'Cairo' } } }
+        }
+      }
+    });
+  }
+}
+
+/* ---------- Schedule + Grades ---------- */
+async function loadScheduleAndGrades(s){
+  let scheduleData = { sessions: [], classes: [] };
+  try {
+    const snap = await getDoc(doc(db, 'schedule', 'data'));
+    if (snap.exists()) scheduleData = snap.data();
+  } catch(e) {}
+
+  const mySessions = (scheduleData.sessions || []).filter(sess =>
+    String(sess.class) === String(s.class) &&
+    (!s.subjects || s.subjects.length === 0 || s.subjects.includes(sess.subject))
+  );
+
+  /* -- Schedule panel -- */
+  const schedPanel = document.getElementById('panel-schedule');
+  if (mySessions.length === 0) {
+    schedPanel.innerHTML = `<div class="card"><div class="empty">لا يوجد جدول حصص مسجل لهذا الصف حتى الآن.</div></div>`;
+  } else {
+    const byDay = {};
+    mySessions.forEach(sess => { (byDay[sess.day] ??= []).push(sess); });
+    let html = `<div class="card"><h3>🗓️ جدول الحصص الأسبوعي</h3>`;
+    Object.keys(byDay).sort((a,b)=>a-b).forEach(dayIdx => {
+      byDay[dayIdx].sort((a,b)=> (a.startTime||'').localeCompare(b.startTime||''));
+      byDay[dayIdx].forEach(sess => {
+        html += `
+          <div class="session-row">
+            <div>
+              <div class="s-sub">${getSubjectName(sess.subject)}</div>
+              <div class="s-meta">${getTeacherName(sess.teacher)} ${sess.room ? '— قاعة ' + sess.room.toUpperCase() : ''}</div>
+            </div>
+            <div style="text-align:left;">
+              <div class="day-pill">${getDayName(sess.day)}</div>
+              <div class="s-meta">${sess.startTime && sess.endTime ? formatTime(sess.startTime) + ' — ' + formatTime(sess.endTime) : ''}</div>
+            </div>
+          </div>`;
+      });
+    });
+    html += `</div>`;
+    schedPanel.innerHTML = html;
+  }
+
+  /* -- Grades panel -- */
+  let gradesData = {}, examsData = {};
+  try {
+    const gSnap = await getDoc(doc(db, 'grades', 'data'));
+    if (gSnap.exists()) {
+      const d = gSnap.data();
+      gradesData = d.grades || {};
+      examsData  = d.exams  || {};
+    }
+  } catch(e) {}
+
+  const gradesPanel = document.getElementById('panel-grades');
+  let anyGrades = false;
+  let gHtml = '';
+  const subjectPercents = {}; // subjectName -> [percent, ...]
+  mySessions.forEach(sess => {
+    const sid = String(sess.id);
+    const exams = examsData[sid] || [];
+    if (exams.length === 0) return;
+    let rows = '';
+    let hasRow = false;
+    const subjName = getSubjectName(sess.subject);
+    exams.forEach(exam => {
+      const g = (gradesData[sid] || {})[String(exam.id)] || {};
+      const entry = g[String(s.id)];
+      if (entry === undefined) return;
+      hasRow = true; anyGrades = true;
+      const score = entry.score ?? '—';
+      const max = exam.max ?? exam.pass ?? '';
+      const passMark = exam.pass;
+      const passed = (typeof score === 'number' && typeof passMark === 'number') ? score >= passMark : null;
+      const badge = passed === null ? '' :
+        passed ? `<span class="badge green">ناجح</span>` : `<span class="badge red">أقل من النجاح</span>`;
+      if (typeof score === 'number' && typeof max === 'number' && max > 0) {
+        (subjectPercents[subjName] ??= []).push((score / max) * 100);
+      }
+      rows += `
+        <tr>
+          <td>${exam.name || '—'}</td>
+          <td>${EXAM_TYPES[exam.type] || exam.type || '—'}</td>
+          <td>${fDate(exam.date)}</td>
+          <td><strong>${score}</strong> / ${max}</td>
+          <td>${badge}</td>
+          <td>${entry.note || '—'}</td>
+        </tr>`;
+    });
+    if (hasRow) {
+      gHtml += `
+        <div class="subject-block">
+          <h4>${subjName}</h4>
+          <table>
+            <thead><tr><th>الامتحان</th><th>النوع</th><th>التاريخ</th><th>الدرجة</th><th>الحالة</th><th>ملاحظات</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+  });
+
+  gradesPanel.innerHTML = anyGrades
+    ? `<div class="card"><h3>📝 الدرجات والامتحانات</h3>${gHtml}</div>`
+    : `<div class="card"><div class="empty">لا توجد درجات مسجلة حتى الآن.</div></div>`;
+
+  const subjectAverages = {};
+  let allPercents = [];
+  Object.keys(subjectPercents).forEach(subj => {
+    const arr = subjectPercents[subj];
+    subjectAverages[subj] = arr.reduce((a,b) => a+b, 0) / arr.length;
+    allPercents = allPercents.concat(arr);
+  });
+  statsData.subjectAverages = subjectAverages;
+  statsData.overallGradePercent = allPercents.length ? (allPercents.reduce((a,b)=>a+b,0) / allPercents.length) : null;
+  statsReady.grades = true;
+  maybeRenderAssessment();
+}
+
+/* ---------- Attendance ---------- */
+async function loadAttendance(s){
+  const panel = document.getElementById('panel-attendance');
+  try {
+    const snap = await getDocs(collection(db, 'attendance_data', 'default_user', 'attendanceHistory'));
+    const records = [];
+    snap.forEach(d => records.push(d.data()));
+
+    const mine = [];
+    records.forEach(r => {
+      const stEntry = (r.students || []).find(st => String(st.id) === String(s.id));
+      if (stEntry) mine.push({ ...r, myStatus: stEntry.status });
+    });
+
+    mine.sort((a,b) => (b.saveDate || '').localeCompare(a.saveDate || ''));
+
+    const present = mine.filter(r => r.myStatus === 'present').length;
+    const absent  = mine.filter(r => r.myStatus === 'absent').length;
+    const total   = mine.length;
+    const rate    = total ? Math.round((present/total)*100) : 0;
+
+    let rows = mine.map(r => `
+      <tr>
+        <td>${fDate(r.saveDate)}</td>
+        <td>${r.subject || '—'}</td>
+        <td>${r.teacher || '—'}</td>
+        <td>${
+          r.myStatus === 'present' ? '<span class="badge green">حاضر ✔</span>' :
+          r.myStatus === 'absent'  ? '<span class="badge red">غائب ✗</span>' :
+          '<span class="badge amber">لم يُسجَّل</span>'
+        }</td>
+      </tr>`).join('');
+
+    panel.innerHTML = `
+      <div class="card">
+        <h3>✅ ملخص الحضور والغياب</h3>
+        <div class="stat-row">
+          <div class="stat-box"><div class="num" style="color:#4ade80">${present}</div><div class="lbl">حضور</div></div>
+          <div class="stat-box"><div class="num" style="color:#f87171">${absent}</div><div class="lbl">غياب</div></div>
+          <div class="stat-box"><div class="num" style="color:var(--light)">${rate}%</div><div class="lbl">نسبة الحضور</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📋 سجل الحصص</h3>
+        ${total ? `<table><thead><tr><th>التاريخ</th><th>المادة</th><th>المدرس</th><th>الحالة</th></tr></thead><tbody>${rows}</tbody></table>`
+                : `<div class="empty">لا يوجد سجل حضور مسجل حتى الآن.</div>`}
+      </div>`;
+
+    statsData.attendanceRate = total ? rate : null;
+    statsData.presentCount = present;
+    statsData.absentCount  = absent;
+    statsReady.attendance = true;
+    maybeRenderAssessment();
+  } catch(e) {
+    panel.innerHTML = `<div class="card"><div class="empty">تعذر تحميل بيانات الحضور حاليًا.</div></div>`;
+    statsReady.attendance = true;
+    maybeRenderAssessment();
+  }
+}
+
+/* ---------- Finance ---------- */
+async function loadFinance(s){
+  const panel = document.getElementById('panel-finance');
+  try {
+    const finCol = collection(db, 'finance');
+    const snap = await getDocs(finCol);
+    const months = [];
+    snap.forEach(d => {
+      if (d.id.startsWith('month-')) {
+        const key = d.id.replace('month-','');
+        const data = d.data();
+        const info = (data.students || {})[String(s.id)];
+        if (info) months.push({ key, ...info });
+      }
+    });
+    months.sort((a,b) => b.key.localeCompare(a.key));
+
+    if (months.length === 0) {
+      panel.innerHTML = `<div class="card"><div class="empty">لا توجد بيانات مالية مسجلة حتى الآن.</div></div>`;
+      return;
+    }
+
+    let rows = months.map(m => {
+      const price = m.subscriptionPrice || 0;
+      const paid  = m.paid || 0;
+      const status = (paid >= price && price > 0) ? 'paid' : (paid > 0 ? 'pending' : 'overdue');
+      const badge = status === 'paid' ? '<span class="badge green">مدفوع</span>'
+                  : status === 'pending' ? '<span class="badge amber">مدفوع جزئيًا</span>'
+                  : '<span class="badge red">غير مدفوع</span>';
+      return `
+        <tr>
+          <td>${monthLabel(m.key)}</td>
+          <td>${price.toLocaleString()} ج</td>
+          <td>${paid.toLocaleString()} ج</td>
+          <td>${badge}</td>
+        </tr>`;
+    }).join('');
+
+    const latest = months[0];
+    let historyRows = (latest.history || []).slice().reverse().map(h => `
+      <tr>
+        <td>${fDate(h.date)}</td>
+        <td>${(h.amount||0).toLocaleString()} ج</td>
+        <td>${h.method || '—'}</td>
+        <td>${h.notes || '—'}</td>
+      </tr>`).join('');
+
+    panel.innerHTML = `
+      <div class="card">
+        <h3>💳 سجل الاشتراك الشهري</h3>
+        <table><thead><tr><th>الشهر</th><th>قيمة الاشتراك</th><th>المدفوع</th><th>الحالة</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+      </div>
+      ${(latest.history && latest.history.length) ? `
+      <div class="card">
+        <h3>🧾 تفاصيل آخر مدفوعات (${monthLabel(latest.key)})</h3>
+        <table><thead><tr><th>التاريخ</th><th>المبلغ</th><th>طريقة الدفع</th><th>ملاحظات</th></tr></thead>
+        <tbody>${historyRows}</tbody></table>
+      </div>` : ''}
+    `;
+  } catch(e) {
+    panel.innerHTML = `<div class="card"><div class="empty">تعذر تحميل البيانات المالية حاليًا.</div></div>`;
+  }
+}
+
+/* ---------- Books ---------- */
+async function loadBooks(s){
+  const panel = document.getElementById('panel-books');
+  try {
+    const snap = await getDoc(doc(db, 'books', 'data'));
+    const reservations = snap.exists() ? (snap.data().reservations || []) : [];
+    const mine = reservations.filter(r => (r.studentName || '').trim() === (s.name || '').trim());
+
+    if (mine.length === 0) {
+      panel.innerHTML = `<div class="card"><div class="empty">لا توجد كتب محجوزة لهذا الطالب حتى الآن.</div></div>`;
+      return;
+    }
+
+    let rows = mine.map(r => {
+      const statusBadge = r.paymentStatus === 'paid' ? '<span class="badge green">مدفوع بالكامل</span>'
+        : r.paymentStatus === 'partial' ? '<span class="badge amber">مدفوع جزئيًا</span>'
+        : '<span class="badge red">غير مدفوع</span>';
+      return `
+        <tr>
+          <td>${r.bookName || '—'}</td>
+          <td>${r.quantity || 1}</td>
+          <td>${(r.totalPrice||0).toLocaleString()} ج</td>
+          <td>${(r.paidAmount||0).toLocaleString()} ج</td>
+          <td>${(r.remainingAmount||0).toLocaleString()} ج</td>
+          <td>${statusBadge}</td>
+          <td>${fDate(r.date)}</td>
+        </tr>`;
+    }).join('');
+
+    panel.innerHTML = `
+      <div class="card">
+        <h3>📚 الكتب المحجوزة</h3>
+        <table><thead><tr><th>الكتاب</th><th>العدد</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th>تاريخ الحجز</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+      </div>`;
+  } catch(e) {
+    panel.innerHTML = `<div class="card"><div class="empty">تعذر تحميل بيانات الكتب حاليًا.</div></div>`;
+  }
+}
+
+/* ---------- Auto-login if already logged in this session ---------- */
+(async function initAutoLogin(){
+  const savedId = sessionStorage.getItem('parentPortalStudentId');
+  if (!savedId) return;
+  try {
+    const snap = await getDoc(doc(db, 'students', 'data'));
+    const list = snap.exists() ? (snap.data().students || []) : [];
+    const student = list.find(x => String(x.id) === String(savedId));
+    if (student) { currentStudent = student; showDashboard(student); }
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>
