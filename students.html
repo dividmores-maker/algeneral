@@ -657,6 +657,16 @@
                     <input type="tel" id="studentPhone" required placeholder="01xxxxxxxxx" pattern="[0-9]{11}">
                 </div>
                 <div class="form-group">
+                    <label>🏷️ كود الباركود</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input type="text" id="studentBarcode" placeholder="سيتم توليد كود تلقائي" oninput="updateBarcodePreview()" style="flex:1;">
+                        <button type="button" onclick="regenerateBarcodeCode()" style="white-space:nowrap; padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:inherit; cursor:pointer;">🔄 توليد جديد</button>
+                    </div>
+                    <div style="margin-top:8px; background:#111; border-radius:8px; padding:8px; text-align:center;">
+                        <svg id="modalBarcodePreview" style="width:100%; max-height:50px;"></svg>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>👨‍🏫 المدرس المسؤول</label>
                     <select id="studentTeacher">
                         <option value="">⏳ جاري تحميل المدرسين...</option>
@@ -863,6 +873,21 @@
             }
         }
 
+        // ── Barcode preview ──
+        function updateBarcodePreview() {
+            const value = document.getElementById('studentBarcode').value.trim() || ' ';
+            try {
+                JsBarcode('#modalBarcodePreview', value, { format:'CODE128', width:1.6, height:44, displayValue:true, margin:4, background:'transparent', lineColor:'#f5c842', fontOptions:'', fontSize:14 });
+            } catch(e) {
+                console.warn('Barcode preview error:', e);
+            }
+        }
+
+        function regenerateBarcodeCode() {
+            document.getElementById('studentBarcode').value = Date.now().toString();
+            updateBarcodePreview();
+        }
+
         // ── Modal ──
         function openAddModal() {
             editingStudentId = null;
@@ -871,6 +896,8 @@
             document.getElementById('studentAge').value = '';
             document.querySelectorAll('input[name="subjects"]').forEach(cb => cb.checked = false);
             document.getElementById('subjectsError').style.display = 'none';
+            document.getElementById('studentBarcode').value = Date.now().toString();
+            updateBarcodePreview();
             loadTeachersIntoSelect();
             document.getElementById('studentModal').classList.add('open');
             document.body.style.overflow = 'hidden';
@@ -889,6 +916,8 @@
             document.getElementById('studentPhone').value           = student.phone;
             document.getElementById('studentAddress').value         = student.address || '';
             document.getElementById('studentNotes').value           = student.notes || '';
+            document.getElementById('studentBarcode').value         = student.barcode || student.id;
+            updateBarcodePreview();
             // Set teacher after dropdown is populated
             const teacherSelect = document.getElementById('studentTeacher');
             if (student.teacher) {
@@ -933,6 +962,7 @@
                 phone:     document.getElementById('studentPhone').value,
                 address:   document.getElementById('studentAddress').value,
                 notes:     document.getElementById('studentNotes').value,
+                barcode:   document.getElementById('studentBarcode').value.trim() || (editingStudentId || Date.now().toString()),
                 createdAt: editingStudentId ? students.find(s => s.id === editingStudentId)?.createdAt : new Date().toISOString()
             };
             if (editingStudentId) {
@@ -999,7 +1029,7 @@
                             <div class="card-name">${st.name}</div>
                             <div class="card-class">${st.class}</div>
                             <svg id="bc-${st.id}" class="card-barcode-img"></svg>
-                            <div class="card-code">${st.id}</div>
+                            <div class="card-code">${st.barcode || st.id}</div>
                         </div>
                     </div>
                     <div class="card-footer">AL GENERAL © 2026</div>
@@ -1008,7 +1038,7 @@
             setTimeout(() => {
                 filtered.forEach(st => {
                     try {
-                        JsBarcode(`#bc-${st.id}`, String(st.id), { format:'CODE128', width:1.4, height:40, displayValue:false, margin:2, background:'transparent', lineColor:'#f5c842' });
+                        JsBarcode(`#bc-${st.id}`, String(st.barcode || st.id), { format:'CODE128', width:1.4, height:40, displayValue:false, margin:2, background:'transparent', lineColor:'#f5c842' });
                     } catch(e) { console.warn('Barcode error for', st.id, e); }
                 });
             }, 50);
