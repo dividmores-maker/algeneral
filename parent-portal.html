@@ -421,14 +421,14 @@ window.handleLogin = async function(){
   try {
     const snap = await getDoc(doc(db, 'students', 'data'));
     const list = snap.exists() ? (snap.data().students || []) : [];
-    const student = list.find(s => String(s.id) === String(code));
+    const student = list.find(s => String(s.id) === String(code) || (s.barcode && String(s.barcode) === String(code)));
 
     if (!student) {
       errBox.textContent = 'كود الطالب غير صحيح، تأكد من الكود المطبوع على الكارت.';
       errBox.style.display = 'block';
       return;
     }
-    const passKey = student.portalPassword || String(student.id).slice(-4);
+    const passKey = student.portalPassword || String(student.barcode || student.id).slice(-4);
     if (String(passKey) !== secret) {
       errBox.textContent = 'كلمة السر غير صحيحة.';
       errBox.style.display = 'block';

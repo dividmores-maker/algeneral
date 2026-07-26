@@ -972,9 +972,10 @@
                         <label style="font-size:12px;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">كود الجهاز</label>
                         <input type="text" id="codeInput" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:6px;padding:9px;width:100%;" placeholder="مثال: 100234" style="width:100%;padding:9px;border:2px solid #e0e0e0;border-radius:6px;">
                     </div>
-                    <div>
+                    <div style="position:relative;">
                         <label style="font-size:12px;color:rgba(255,255,255,.5);display:block;margin-bottom:4px;">اسم الطالب</label>
-                        <input type="text" id="codeNameInput" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:6px;padding:9px;width:100%;" placeholder="اسم الطالب كما في القائمة" style="width:100%;padding:9px;border:2px solid #e0e0e0;border-radius:6px;">
+                        <input type="text" id="codeNameInput" autocomplete="off" oninput="filterSessionStudentSuggestions()" onfocus="filterSessionStudentSuggestions()" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;border-radius:6px;padding:9px;width:100%;" placeholder="اكتب أول حروف اسم الطالب">
+                        <div id="codeNameSuggestions" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:20;background:#1a1a1a;border:1px solid rgba(212,175,55,.3);border-radius:8px;margin-top:4px;max-height:180px;overflow-y:auto;"></div>
                     </div>
                     <button class="btn btn-success" style="padding:9px 16px;" onclick="addCodeMapping()">حفظ</button>
                 </div>
@@ -1069,6 +1070,19 @@
         }
 
         // ── Mapping helpers ──
+        let _masterStudentsCache = null;
+        async function loadMasterStudents() {
+            if (_masterStudentsCache) return _masterStudentsCache;
+            try {
+                const snap = await db.collection('students').doc('data').get();
+                _masterStudentsCache = snap.exists ? (snap.data().students || []) : [];
+            } catch(e) {
+                console.warn('loadMasterStudents error:', e);
+                _masterStudentsCache = [];
+            }
+            return _masterStudentsCache;
+        }
+
         async function loadMappings() {
             const snap = await userCol('zkCodeMap').get();
             const map = {};
@@ -2339,8 +2353,18 @@
         async function processBarcodeInput(code) {
             const now = new Date();
             const timeShort = now.toTimeString().slice(0, 5);
-            const map = await loadMappings();
-            const studentName = map[String(code)];
+
+            // أولاً: قارن الكود مع كارت الطالب الحقيقي (barcode أو id) من صفحة الطلاب
+            const masterList = await loadMasterStudents();
+            let studentName = null;
+            const matched = masterList.find(s => String(s.barcode || s.id) === String(code) || String(s.id) === String(code));
+            if (matched) studentName = matched.name;
+
+            // ثانياً: لو مفيش تطابق، جرّب الربط اليدوي القديم
+            if (!studentName) {
+                const map = await loadMappings();
+                studentName = map[String(code)];
+            }
 
             if (!studentName) {
                 addBcLogRow(`❓ باركود غير معروف: ${code}`, timeShort, 'notfound');
@@ -2429,6 +2453,36 @@
                 </table>`;
         }
 
+        async function filterSessionStudentSuggestions() {
+            const box = document.getElementById('codeNameSuggestions');
+            const term = document.getElementById('codeNameInput').value.trim();
+            const masterList = await loadMasterStudents();
+            if (!masterList || masterList.length === 0) { box.style.display = 'none'; return; }
+            const matches = term
+                ? masterList.filter(st => st.name && st.name.trim().startsWith(term))
+                : masterList;
+            if (matches.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
+            box.innerHTML = matches.slice(0, 30).map(st => `
+                <div onclick="selectSessionStudentSuggestion('${st.name.replace(/'/g, "\\'")}', '${String(st.barcode || st.id)}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);" onmouseover="this.style.background='rgba(212,175,55,.15)'" onmouseout="this.style.background='transparent'">
+                    <div>${st.name}</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,.4);">${st.class || ''} — كود: ${st.barcode || st.id}</div>
+                </div>
+            `).join('');
+            box.style.display = 'block';
+        }
+
+        function selectSessionStudentSuggestion(name, code) {
+            document.getElementById('codeNameInput').value = name;
+            document.getElementById('codeInput').value = code;
+            document.getElementById('codeNameSuggestions').style.display = 'none';
+        }
+
+        document.addEventListener('click', function(e) {
+            const box = document.getElementById('codeNameSuggestions');
+            if (!box) return;
+            if (e.target.id !== 'codeNameInput' && !box.contains(e.target)) box.style.display = 'none';
+        });
+
         async function addCodeMapping() {
             const code = document.getElementById('codeInput').value.trim();
             const name = document.getElementById('codeNameInput').value.trim();
@@ -2438,6 +2492,7 @@
             await saveMappings(map);
             document.getElementById('codeInput').value = '';
             document.getElementById('codeNameInput').value = '';
+            document.getElementById('codeNameSuggestions').style.display = 'none';
             renderCodeMapList();
             showAlert(`✅ تم ربط الباركود ${code} بالطالب: ${name}`);
         }
@@ -2460,21 +2515,24 @@
             if (!currentSessionId) { alert('افتح حصة أولاً لاستيراد طلابها'); return; }
             const session = sessions.find(s => s.id === currentSessionId);
             if (!session || session.students.length === 0) { alert('لا يوجد طلاب في هذه الحصة'); return; }
+            const masterList = await loadMasterStudents();
             const map = await loadMappings();
             let added = 0;
             session.students.forEach((st, idx) => {
-                const code = String(101 + idx);
-                if (!map[code]) { map[code] = st.name; added++; }
+                const master = masterList.find(m => m.name.trim() === st.name.trim());
+                const code = master ? String(master.barcode || master.id) : String(101 + idx);
+                if (!Object.values(map).includes(st.name)) { map[code] = st.name; added++; }
             });
             await saveMappings(map);
             renderCodeMapList();
-            showAlert(`✅ تم استيراد ${added} طالب — راجع الباركودات وعدّلها لتطابق كروت الطلاب`);
+            showAlert(`✅ تم استيراد ${added} طالب — الأكواد دلوقتي مطابقة لكروت الطلاب الحقيقية لو موجودة`);
         }
 
         // ─── When session opens ────────────────────────
         const _origOpenAttendance = openAttendance;
         openAttendance = function(sessionId) {
             _origOpenAttendance(sessionId);
+            _masterStudentsCache = null;
             bcLogRows = [];
             bcBuffer  = '';
             renderBcLog();
