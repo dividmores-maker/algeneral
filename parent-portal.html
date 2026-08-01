@@ -470,10 +470,29 @@ window.toggleScanner = async function(){
   }
   box.style.display = 'block';
   scannerActive = true;
+
+  // الكاميرا محتاجة اتصال آمن (https) أو localhost، وإلا المتصفح بيرفضها فورًا
+  if (!window.isSecureContext) {
+    alert('المتصفح مش هيسمح بفتح الكاميرا لأن الصفحة مش شغالة على https. لازم ترفع الصفحة على سيرفر بشهادة SSL (زي Firebase Hosting) عشان الكاميرا تشتغل على الموبايل.');
+    scannerActive = false;
+    box.style.display = 'none';
+    return;
+  }
+
   try {
     if (!window.Html5Qrcode) {
-      await loadScript('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js');
+      try {
+        await loadScript('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js');
+      } catch (loadErr) {
+        // مصدر بديل لو unpkg اتحجب أو فشل التحميل
+        try {
+          await loadScript('https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js');
+        } catch (loadErr2) {
+          throw new Error('LOAD_FAILED');
+        }
+      }
     }
+    if (!window.Html5Qrcode) throw new Error('LOAD_FAILED');
     html5Qr = new window.Html5Qrcode('qrReader');
     await html5Qr.start(
       { facingMode: 'environment' },
@@ -488,7 +507,18 @@ window.toggleScanner = async function(){
       () => {}
     );
   } catch(e) {
-    alert('تعذر فتح الكاميرا، من فضلك اكتب الكود يدويًا.');
+    console.error('Camera error:', e);
+    let msg = 'تعذر فتح الكاميرا، من فضلك اكتب الكود يدويًا.';
+    if (e && e.message === 'LOAD_FAILED') {
+      msg = 'تعذر تحميل مكتبة قراءة الباركود من الإنترنت (مشكلة في الشبكة أو النت بطيء). جرب تاني أو اكتب الكود يدويًا.';
+    } else if (e && e.name === 'NotAllowedError') {
+      msg = 'إذن الكاميرا مرفوض. من فضلك افتح إعدادات المتصفح وسمح بالكاميرا لهذا الموقع.';
+    } else if (e && e.name === 'NotFoundError') {
+      msg = 'مفيش كاميرا متاحة على الجهاز ده.';
+    } else if (e && e.message) {
+      msg = 'تعذر فتح الكاميرا: ' + e.message;
+    }
+    alert(msg);
     scannerActive = false;
     box.style.display = 'none';
   }
