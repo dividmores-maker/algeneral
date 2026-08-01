@@ -110,7 +110,6 @@ body{
   color:#fca5a5; font-size:13px; padding:11px 12px; border-radius:11px; margin-bottom:15px; text-align:center;
   animation:riseIn .3s ease both;
 }
-#scannerBox{ display:none; margin-top:15px; border-radius:15px; overflow:hidden; border:1px solid var(--border); }
 #loginSpinner{ display:none; text-align:center; margin-top:15px; color:var(--light); font-size:13px; }
 
 /* ---------- Dashboard ---------- */
@@ -292,9 +291,9 @@ tbody tr:hover{ background:rgba(212,175,55,.05); }
     </div>
 
     <button class="btn" onclick="handleLogin()">دخول 🔓</button>
-    <button class="btn-outline" onclick="toggleScanner()">📷 تصوير الباركود بالكاميرا بدل الكتابة</button>
 
-    <div id="scannerBox"><div id="qrReader" style="width:100%;"></div></div>
+    <p style="text-align:center; margin-top:15px; color:var(--muted); font-size:15px;">أهلًا وسهلًا بيكم في أسرة الجنرال، يسعدنا انضمامكم لينا 💙</p>
+
     <div id="loginSpinner">⏳ جاري التحقق من البيانات...</div>
   </div>
 </div>
@@ -354,8 +353,8 @@ const db  = getFirestore(app);
 
 /* ---------- Reference dictionaries (matching the rest of the system) ---------- */
 const SUBJECTS = {
-  math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية',
-  science:'علوم', social:'دراسات اجتماعية', religion:'تربية دينية', computer:'حاسب آلي', technology:'تكنولوجيا'
+  math:'رياضيات', science:'علوم', studies2:'دراسات', arabic:'عربي',
+  english:'إنجليزي', history:'تاريخ', geography:'جغرافيا'
 };
 const CLASSES = {
   grade1:'الأول الابتدائي', grade2:'الثاني الابتدائي', grade3:'الثالث الابتدائي',
@@ -458,79 +457,6 @@ window.logout = function(){
   document.getElementById('secretCodeInput').value = '';
 };
 
-/* ---------- QR / Barcode camera scan (optional convenience) ---------- */
-let scannerActive = false, html5Qr = null;
-window.toggleScanner = async function(){
-  const box = document.getElementById('scannerBox');
-  if (scannerActive) {
-    scannerActive = false;
-    box.style.display = 'none';
-    if (html5Qr) { try { await html5Qr.stop(); } catch(e){} }
-    return;
-  }
-  box.style.display = 'block';
-  scannerActive = true;
-
-  // الكاميرا محتاجة اتصال آمن (https) أو localhost، وإلا المتصفح بيرفضها فورًا
-  if (!window.isSecureContext) {
-    alert('المتصفح مش هيسمح بفتح الكاميرا لأن الصفحة مش شغالة على https. لازم ترفع الصفحة على سيرفر بشهادة SSL (زي Firebase Hosting) عشان الكاميرا تشتغل على الموبايل.');
-    scannerActive = false;
-    box.style.display = 'none';
-    return;
-  }
-
-  try {
-    if (!window.Html5Qrcode) {
-      try {
-        await loadScript('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js');
-      } catch (loadErr) {
-        // مصدر بديل لو unpkg اتحجب أو فشل التحميل
-        try {
-          await loadScript('https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js');
-        } catch (loadErr2) {
-          throw new Error('LOAD_FAILED');
-        }
-      }
-    }
-    if (!window.Html5Qrcode) throw new Error('LOAD_FAILED');
-    html5Qr = new window.Html5Qrcode('qrReader');
-    await html5Qr.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 250, height: 120 } },
-      (decodedText) => {
-        document.getElementById('studentCodeInput').value = decodedText.trim();
-        html5Qr.stop().catch(()=>{});
-        scannerActive = false;
-        box.style.display = 'none';
-        document.getElementById('secretCodeInput').focus();
-      },
-      () => {}
-    );
-  } catch(e) {
-    console.error('Camera error:', e);
-    let msg = 'تعذر فتح الكاميرا، من فضلك اكتب الكود يدويًا.';
-    if (e && e.message === 'LOAD_FAILED') {
-      msg = 'تعذر تحميل مكتبة قراءة الباركود من الإنترنت (مشكلة في الشبكة أو النت بطيء). جرب تاني أو اكتب الكود يدويًا.';
-    } else if (e && e.name === 'NotAllowedError') {
-      msg = 'إذن الكاميرا مرفوض. من فضلك افتح إعدادات المتصفح وسمح بالكاميرا لهذا الموقع.';
-    } else if (e && e.name === 'NotFoundError') {
-      msg = 'مفيش كاميرا متاحة على الجهاز ده.';
-    } else if (e && e.message) {
-      msg = 'تعذر فتح الكاميرا: ' + e.message;
-    }
-    alert(msg);
-    scannerActive = false;
-    box.style.display = 'none';
-  }
-};
-function loadScript(src){
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
-}
-
 /* ---------- Tabs ---------- */
 document.getElementById('tabsBar').addEventListener('click', (e) => {
   const btn = e.target.closest('.tab-btn');
@@ -579,7 +505,7 @@ function renderOverview(s){
         <div class="info-item"><span class="lbl">الصف</span><span class="val">${getClassName(s.class)}</span></div>
         <div class="info-item"><span class="lbl">تاريخ الميلاد</span><span class="val">${fDate(s.birthdate)}</span></div>
         <div class="info-item"><span class="lbl">السن</span><span class="val">${s.age || '—'}</span></div>
-        <div class="info-item"><span class="lbl">المدرس المسؤول</span><span class="val">${s.teacherName || getTeacherName(s.teacherId) || '—'}</span></div>
+        <div class="info-item"><span class="lbl">المدرس المسؤول</span><span class="val">${s.teacher || s.teacherName || getTeacherName(s.teacherId) || '—'}</span></div>
         <div class="info-item"><span class="lbl">رقم الهاتف</span><span class="val">${s.phone || '—'}</span></div>
       </div>
     </div>
