@@ -1013,8 +1013,16 @@
             </div>
             <form onsubmit="addStudentToSession(event)">
                 <div class="form-group">
-                    <label>اسم الطالب</label>
-                    <input type="text" id="studentName" placeholder="أدخل اسم الطالب" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;font-family:Cairo,sans-serif;" required>
+                    <label>اختر من طلاب الفصل</label>
+                    <select id="studentPicker" style="width:100%;padding:10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;font-family:Cairo,sans-serif;">
+                        <option value="">— اختر طالب —</option>
+                    </select>
+                    <small id="studentPickerHint" style="display:block;margin-top:6px;color:rgba(255,255,255,.5);font-size:11.5px;"></small>
+                </div>
+                <div class="form-group">
+                    <label>أو اسم غير مسجّل في قائمة الطلاب</label>
+                    <input type="text" id="studentName" placeholder="أدخل اسم الطالب" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;font-family:Cairo,sans-serif;">
+                    <small style="display:block;margin-top:6px;color:#fca5a5;font-size:11.5px;">⚠️ لو الطالب مش موجود في قائمة الطلاب الأساسية، حضوره لن يظهر في بوابة أولياء الأمور — سجّله في صفحة الطلاب أولاً.</small>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button type="submit" class="btn" style="flex: 1;">✔ إضافة</button>
@@ -1201,7 +1209,8 @@
 
             sessions.forEach(session => {
                 session.students.forEach(student => {
-                    if (student.id >= nextStudentId) nextStudentId = student.id + 1;
+                    const n = Number(student.id);
+                    if (!isNaN(n) && n >= nextStudentId) nextStudentId = n + 1;
                 });
             });
             renderSessions();
@@ -1211,9 +1220,10 @@
             db.collection('schedule').doc('data').onSnapshot(snap => {
                 if (snap.exists) {
                     console.log('🔄 تحديث الجدول من Firebase، عدد الحصص:', (snap.data().sessions || []).length);
-                    buildSessionsFromSchedule(snap.data());
-                    if (!currentSessionId) renderSessions();
-                    setFirebaseStatus('connected', `🔥 Firebase متصل — ${sessions.length} حصة محملة`);
+                    buildSessionsFromSchedule(snap.data()).then(() => {
+                        if (!currentSessionId) renderSessions();
+                        setFirebaseStatus('connected', `🔥 Firebase متصل — ${sessions.length} حصة محملة`);
+                    });
                 } else {
                     console.warn('⚠️ لا يوجد بيانات جدول في Firebase — أضف حصص من صفحة الجدول');
                     setFirebaseStatus('warning', '⚠️ لا توجد حصص في Firebase — اذهب لصفحة جدول الحصص');
@@ -1224,21 +1234,54 @@
             });
         }
 
+        // Build the real class roster (from the master 'students' collection) for a given
+        // raw schedule session — same matching rule used by the parent portal, so a
+        // student's real id is always what ends up saved in attendance records.
+        function rosterForSession(session, masterList) {
+            return (masterList || []).filter(st =>
+                String(st.class) === String(session.class) &&
+                (!st.subjects || st.subjects.length === 0 || st.subjects.includes(session.subject))
+            ).map(st => ({ id: st.id, name: st.name, status: null }));
+        }
+
+        // Merge the real roster into a session's saved student list: keep any existing
+        // status/barcode data (matched by real student id), add roster members who are
+        // missing, and never invent local ids.
+        function mergeRosterWithExisting(roster, existingStudents) {
+            const existingById = {};
+            (existingStudents || []).forEach(st => { existingById[String(st.id)] = st; });
+            const merged = roster.map(rSt => {
+                const ex = existingById[String(rSt.id)];
+                return ex ? { ...rSt, ...ex } : rSt;
+            });
+            // Keep any existing entries that aren't in the current roster (e.g. class/subject
+            // changed after attendance was already recorded) so history isn't lost.
+            const mergedIds = new Set(merged.map(st => String(st.id)));
+            (existingStudents || []).forEach(st => {
+                if (!mergedIds.has(String(st.id))) merged.push(st);
+            });
+            return merged;
+        }
+
         // Build sessions array from Firestore schedule data
-        function buildSessionsFromSchedule(data) {
+        async function buildSessionsFromSchedule(data) {
             const scheduleSessions = data.sessions || [];
+            const masterList = await loadMasterStudents();
             sessions = scheduleSessions.map(session => {
                 const existingData = window._fbAttMap ? window._fbAttMap[session.id] : null;
+                const roster = rosterForSession(session, masterList);
                 return {
                     id: session.id,
                     subject: getSubjectName(session.subject),
                     class: getClassName(session.class, data.classes),
+                    _rawClass: session.class,
+                    _rawSubject: session.subject,
                     teacher: getTeacherName(session.teacher),
                     day: getDayName(session.day),
                     dayIndex: session.day,
                     time: `${formatTime(session.startTime)} - ${formatTime(session.endTime)}`,
                     room: getRoomName(session.room),
-                    students: existingData ? existingData.students : [],
+                    students: mergeRosterWithExisting(roster, existingData ? existingData.students : []),
                     completed: existingData ? existingData.completed : false
                 };
             });
@@ -1252,7 +1295,7 @@
                     const data = snap.data();
                     const count = (data.sessions || []).length;
                     console.log(`✅ جدول الحصص محمّل: ${count} حصة`);
-                    buildSessionsFromSchedule(data);
+                    await buildSessionsFromSchedule(data);
                     setFirebaseStatus('connected', `🔥 Firebase متصل — ${count} حصة محملة`);
                 } else {
                     console.warn('⚠️ لا يوجد document في schedule/data');
@@ -1570,7 +1613,7 @@
                                 <h3 style="color:#111;font-weight:800;font-size:15px;margin:0;">
                                     ${student.name}
                                 </h3>
-                                <button onclick="openEditStudent(${student.id})"
+                                <button onclick="openEditStudent('${student.id}')"
                                         title="تعديل الاسم"
                                         style="padding:3px 9px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Cairo',sans-serif;
                                                background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;
@@ -1578,7 +1621,7 @@
                                         onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">
                                     ✏️
                                 </button>
-                                <button onclick="deleteStudent(${student.id})"
+                                <button onclick="deleteStudent('${student.id}')"
                                         title="حذف الطالب"
                                         style="padding:3px 9px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Cairo',sans-serif;
                                                background:linear-gradient(135deg,#b91c1c,#ef4444);color:#fff;
@@ -1595,9 +1638,9 @@
                     </div>
                     <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
                         <button class="attendance-btn present ${student.status==='present'?'active':''}"
-                                onclick="markAttendance(${student.id},'present')">✔ حاضر</button>
+                                onclick="markAttendance('${student.id}','present')">✔ حاضر</button>
                         <button class="attendance-btn absent ${student.status==='absent'?'active':''}"
-                                onclick="markAttendance(${student.id},'absent')">✗ غائب</button>
+                                onclick="markAttendance('${student.id}','absent')">✗ غائب</button>
                     </div>
                 `;
 
@@ -1608,7 +1651,7 @@
         // ── Edit student name ──────────────────────────────
         function openEditStudent(studentId) {
             const session = sessions.find(s => s.id === currentSessionId);
-            const student = session.students.find(s => s.id === studentId);
+            const student = session.students.find(s => String(s.id) === String(studentId));
             if (!student) return;
             document.getElementById('editStudentId').value = studentId;
             document.getElementById('editStudentName').value = student.name;
@@ -1618,12 +1661,12 @@
 
         async function saveEditStudent(e) {
             e.preventDefault();
-            const studentId = parseInt(document.getElementById('editStudentId').value);
+            const studentId = document.getElementById('editStudentId').value;
             const newName   = document.getElementById('editStudentName').value.trim();
             if (!newName) return;
 
             const session = sessions.find(s => s.id === currentSessionId);
-            const student = session.students.find(s => s.id === studentId);
+            const student = session.students.find(s => String(s.id) === String(studentId));
             if (!student) return;
 
             const oldName = student.name;
@@ -1639,11 +1682,11 @@
         // ── Delete student ─────────────────────────────────
         async function deleteStudent(studentId) {
             const session = sessions.find(s => s.id === currentSessionId);
-            const student = session.students.find(s => s.id === studentId);
+            const student = session.students.find(s => String(s.id) === String(studentId));
             if (!student) return;
             if (!confirm(`هل تريد حذف الطالب "${student.name}" من هذه الحصة؟`)) return;
 
-            session.students = session.students.filter(s => s.id !== studentId);
+            session.students = session.students.filter(s => String(s.id) !== String(studentId));
             await userCol('attendanceSessions').doc(String(session.id)).set(session);
 
             renderStudents();
@@ -1653,7 +1696,7 @@
 
         async function markAttendance(studentId, status) {
             const session = sessions.find(s => s.id === currentSessionId);
-            const student = session.students.find(s => s.id === studentId);
+            const student = session.students.find(s => String(s.id) === String(studentId));
             student.status = status;
 
             // حفظ في Firestore
@@ -1676,7 +1719,33 @@
             document.getElementById('absentCount').textContent = absent;
         }
 
-        function showAddStudentModal() {
+        async function showAddStudentModal() {
+            const session = sessions.find(s => s.id === currentSessionId);
+            const picker = document.getElementById('studentPicker');
+            const hint = document.getElementById('studentPickerHint');
+            picker.innerHTML = `<option value="">— اختر طالب —</option>`;
+            document.getElementById('studentName').value = '';
+
+            const masterList = await loadMasterStudents();
+            const existingIds = new Set((session.students || []).map(st => String(st.id)));
+            // Match the same class/subject filtering rule used everywhere else so the
+            // picked student's real id is what ends up saved.
+            const roster = rosterForSession(
+                { class: session._rawClass, subject: session._rawSubject },
+                masterList
+            ).filter(st => !existingIds.has(String(st.id)));
+
+            if (roster.length === 0) {
+                hint.textContent = 'كل طلاب هذا الفصل مضافين بالفعل، أو لا يوجد طلاب مسجّلين لهذا الفصل في صفحة الطلاب.';
+            } else {
+                hint.textContent = '';
+                roster.forEach(st => {
+                    const opt = document.createElement('option');
+                    opt.value = String(st.id);
+                    opt.textContent = st.name;
+                    picker.appendChild(opt);
+                });
+            }
             document.getElementById('addStudentModal').classList.add('active');
         }
 
@@ -1686,16 +1755,32 @@
 
         async function addStudentToSession(e) {
             e.preventDefault();
-            const studentName = document.getElementById('studentName').value;
             const session = sessions.find(s => s.id === currentSessionId);
-            const newStudent = { id: nextStudentId++, name: studentName, status: null };
+            const pickedId = document.getElementById('studentPicker').value;
+            const customName = document.getElementById('studentName').value.trim();
+
+            let newStudent;
+            if (pickedId) {
+                // Real student from the master roster — keeps the id parents' records match on.
+                const masterList = await loadMasterStudents();
+                const st = masterList.find(m => String(m.id) === String(pickedId));
+                if (!st) { showAlert('تعذر العثور على الطالب المختار', 'danger'); return; }
+                newStudent = { id: st.id, name: st.name, status: null };
+            } else if (customName) {
+                // Not in the master students list — will NOT show in the parent portal
+                // (no real student id to match against). Flagged so it's easy to spot later.
+                newStudent = { id: `custom-${nextStudentId++}`, name: customName, status: null, unlinked: true };
+            } else {
+                showAlert('اختر طالب من القائمة أو اكتب اسمًا', 'danger');
+                return;
+            }
             session.students.push(newStudent);
 
             if (!window._fbAttMap) window._fbAttMap = {};
             window._fbAttMap[session.id] = session;
             await userCol('attendanceSessions').doc(String(session.id)).set(session);
 
-            showAlert(`تم إضافة الطالب "${studentName}" بنجاح! ✓`);
+            showAlert(`تم إضافة الطالب "${newStudent.name}" بنجاح! ✓`);
             closeModal('addStudentModal');
             document.getElementById('studentName').value = '';
             renderStudents();
@@ -1776,9 +1861,9 @@
                            id="phone-${student.id}"
                            placeholder="01xxxxxxxxx"
                            value="${savedPhone}"
-                           onchange="savePhoneNumber(${student.id}, this.value)"
+                           onchange="savePhoneNumber('${student.id}', this.value)"
                            dir="ltr">
-                    <button class="wa-send-btn" onclick="sendWhatsapp(${student.id})">
+                    <button class="wa-send-btn" onclick="sendWhatsapp('${student.id}')">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                         إرسال
                     </button>
@@ -1811,7 +1896,7 @@
             const session = sessions.find(s => s.id === currentSessionId);
             if (!session) return;
 
-            const student = session.students.find(s => s.id === studentId);
+            const student = session.students.find(s => String(s.id) === String(studentId));
             if (!student) return;
 
             // احفظ الرقم من الـ input أولاً
