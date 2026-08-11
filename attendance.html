@@ -1020,9 +1020,13 @@
                     <small id="studentPickerHint" style="display:block;margin-top:6px;color:rgba(255,255,255,.5);font-size:11.5px;"></small>
                 </div>
                 <div class="form-group">
-                    <label>أو اسم غير مسجّل في قائمة الطلاب</label>
-                    <input type="text" id="studentName" placeholder="أدخل اسم الطالب" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;font-family:Cairo,sans-serif;">
-                    <small style="display:block;margin-top:6px;color:#fca5a5;font-size:11.5px;">⚠️ لو الطالب مش موجود في قائمة الطلاب الأساسية، حضوره لن يظهر في بوابة أولياء الأمور — سجّله في صفحة الطلاب أولاً.</small>
+                    <label>أو اكتب اسم طالب مش مسجّل في أي حصة</label>
+                    <div style="position:relative;">
+                        <input type="text" id="studentName" autocomplete="off" oninput="filterAddStudentSuggestions()" onfocus="filterAddStudentSuggestions()" placeholder="اكتب أول حروف اسم الطالب" style="background:rgba(255,255,255,.07);border:1px solid rgba(212,175,55,.2);color:#fff;font-family:Cairo,sans-serif;width:100%;">
+                        <div id="addStudentSuggestions" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:20;background:#1a1a1a;border:1px solid rgba(212,175,55,.3);border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;"></div>
+                    </div>
+                    <input type="hidden" id="studentNamePickedId" value="">
+                    <small id="studentNameHint" style="display:block;margin-top:6px;color:rgba(255,255,255,.5);font-size:11.5px;">اكتب اسم أي طالب مش مسجّل في أي حصة حاليًا — هيتربط بكوده تلقائيًا.</small>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button type="submit" class="btn" style="flex: 1;">✔ إضافة</button>
@@ -1719,24 +1723,44 @@
             document.getElementById('absentCount').textContent = absent;
         }
 
+        let _addStudentAllPool = [];
+
         async function showAddStudentModal() {
             const session = sessions.find(s => s.id === currentSessionId);
             const picker = document.getElementById('studentPicker');
             const hint = document.getElementById('studentPickerHint');
             picker.innerHTML = `<option value="">— اختر طالب —</option>`;
             document.getElementById('studentName').value = '';
+            document.getElementById('studentNamePickedId').value = '';
+            document.getElementById('addStudentSuggestions').style.display = 'none';
+            document.getElementById('studentNameHint').style.color = 'rgba(255,255,255,.5)';
+            document.getElementById('studentNameHint').textContent = 'اكتب اسم أي طالب مش مسجّل في أي حصة حاليًا — هيتربط بكوده تلقائيًا.';
 
             const masterList = await loadMasterStudents();
             const existingIds = new Set((session.students || []).map(st => String(st.id)));
-            // Match the same class/subject filtering rule used everywhere else so the
-            // picked student's real id is what ends up saved.
+
+            // The dropdown stays limited to this session's own class/subject roster
+            // (matches the auto-filled roster rule used everywhere else).
             const roster = rosterForSession(
                 { class: session._rawClass, subject: session._rawSubject },
                 masterList
             ).filter(st => !existingIds.has(String(st.id)));
 
+            // The typed search is for students who exist in student management but
+            // aren't picked up by ANY session's auto-roster (their class/subject didn't
+            // match a schedule session, so attendance.html never registered them
+            // anywhere). Build the set of ids that already appear in some session,
+            // ignoring unlinked "custom-" entries since those aren't real matches.
+            const registeredIds = new Set();
+            (sessions || []).forEach(s => {
+                (s.students || []).forEach(st => {
+                    if (!st.unlinked) registeredIds.add(String(st.id));
+                });
+            });
+            _addStudentAllPool = masterList.filter(st => !registeredIds.has(String(st.id)));
+
             if (roster.length === 0) {
-                hint.textContent = 'كل طلاب هذا الفصل مضافين بالفعل، أو لا يوجد طلاب مسجّلين لهذا الفصل في صفحة الطلاب.';
+                hint.textContent = 'كل طلاب هذا الفصل مضافين بالفعل تلقائيًا — استخدم خانة البحث تحت لإضافة طالب غير مسجّل في أي حصة.';
             } else {
                 hint.textContent = '';
                 roster.forEach(st => {
@@ -1753,25 +1777,91 @@
             document.getElementById(modalId).classList.remove('active');
         }
 
+        function filterAddStudentSuggestions() {
+            const box = document.getElementById('addStudentSuggestions');
+            const input = document.getElementById('studentName');
+            const term = input.value.trim();
+
+            // Typing a fresh name invalidates any previously picked match.
+            document.getElementById('studentNamePickedId').value = '';
+
+            if (!_addStudentAllPool || _addStudentAllPool.length === 0) { box.style.display = 'none'; return; }
+            const matches = term
+                ? _addStudentAllPool.filter(st => st.name && st.name.includes(term))
+                : [];
+
+            if (matches.length === 0) {
+                box.style.display = 'none';
+                box.innerHTML = '';
+                const hint = document.getElementById('studentNameHint');
+                if (term) {
+                    hint.style.color = '#fca5a5';
+                    hint.textContent = '⚠️ مفيش طالب بهذا الاسم في صفحة الطلاب (أو إنه مسجّل بالفعل في حصة تانية) — لو كملت هيتسجل بدون كود ولن يظهر في بوابة أولياء الأمور.';
+                }
+                return;
+            }
+            box.innerHTML = matches.slice(0, 30).map(st => `
+                <div onmousedown="event.preventDefault(); selectAddStudentSuggestion('${st.name.replace(/'/g, "\\'")}', '${String(st.id)}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);" onmouseover="this.style.background='rgba(212,175,55,.15)'" onmouseout="this.style.background='transparent'">
+                    <div>${st.name}</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,.4);">${st.class || ''} — كود: ${st.barcode || st.id}</div>
+                </div>
+            `).join('');
+            box.style.display = 'block';
+        }
+
+        function selectAddStudentSuggestion(name, id) {
+            document.getElementById('studentName').value = name;
+            document.getElementById('studentNamePickedId').value = id;
+            document.getElementById('addStudentSuggestions').style.display = 'none';
+            const hint = document.getElementById('studentNameHint');
+            hint.style.color = 'rgba(255,255,255,.5)';
+            hint.textContent = '✓ متربط بكود الطالب — هيظهر في بوابة أولياء الأمور والنقاط.';
+            // Selecting from suggestions replaces the dropdown pick, if any.
+            document.getElementById('studentPicker').value = '';
+        }
+
+        document.addEventListener('click', function(e) {
+            const box = document.getElementById('addStudentSuggestions');
+            if (!box) return;
+            if (e.target.id !== 'studentName' && !box.contains(e.target)) box.style.display = 'none';
+        });
+
         async function addStudentToSession(e) {
             e.preventDefault();
             const session = sessions.find(s => s.id === currentSessionId);
-            const pickedId = document.getElementById('studentPicker').value;
+            const pickedId = document.getElementById('studentPicker').value || document.getElementById('studentNamePickedId').value;
             const customName = document.getElementById('studentName').value.trim();
+            const masterList = await loadMasterStudents();
 
             let newStudent;
             if (pickedId) {
                 // Real student from the master roster — keeps the id parents' records match on.
-                const masterList = await loadMasterStudents();
                 const st = masterList.find(m => String(m.id) === String(pickedId));
                 if (!st) { showAlert('تعذر العثور على الطالب المختار', 'danger'); return; }
                 newStudent = { id: st.id, name: st.name, status: null };
             } else if (customName) {
-                // Not in the master students list — will NOT show in the parent portal
-                // (no real student id to match against). Flagged so it's easy to spot later.
-                newStudent = { id: `custom-${nextStudentId++}`, name: customName, status: null, unlinked: true };
+                // Safety net: even if tapping the suggestion didn't register (can happen
+                // on some mobile keyboards), still auto-link if the typed name matches
+                // exactly one real student — so it never silently saves as unlinked.
+                const exactMatches = masterList.filter(m => m.name && m.name.trim() === customName);
+                if (exactMatches.length === 1) {
+                    const st = exactMatches[0];
+                    newStudent = { id: st.id, name: st.name, status: null };
+                } else if (exactMatches.length > 1) {
+                    showAlert('فيه أكتر من طالب بنفس الاسم — اختاره من قائمة الاقتراحات عشان نتأكد من الطالب الصح', 'danger');
+                    return;
+                } else {
+                    // Truly not in the master students list — will NOT show in the parent
+                    // portal (no real student id to match against).
+                    newStudent = { id: `custom-${nextStudentId++}`, name: customName, status: null, unlinked: true };
+                }
             } else {
                 showAlert('اختر طالب من القائمة أو اكتب اسمًا', 'danger');
+                return;
+            }
+
+            if (session.students.some(st => String(st.id) === String(newStudent.id))) {
+                showAlert('الطالب ده مسجل في الحصة بالفعل', 'danger');
                 return;
             }
             session.students.push(newStudent);
@@ -1780,9 +1870,14 @@
             window._fbAttMap[session.id] = session;
             await userCol('attendanceSessions').doc(String(session.id)).set(session);
 
-            showAlert(`تم إضافة الطالب "${newStudent.name}" بنجاح! ✓`);
+            if (newStudent.unlinked) {
+                showAlert(`تم إضافة "${newStudent.name}" لكن من غير كود — لن يظهر في بوابة أولياء الأمور. تأكد إنه مسجل في صفحة الطلاب.`, 'danger');
+            } else {
+                showAlert(`تم إضافة الطالب "${newStudent.name}" وربطه بكوده بنجاح! ✓`);
+            }
             closeModal('addStudentModal');
             document.getElementById('studentName').value = '';
+            document.getElementById('studentNamePickedId').value = '';
             renderStudents();
             updateSummary();
         }
