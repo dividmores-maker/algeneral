@@ -471,12 +471,13 @@ async function loadAllData(students){
   } catch(e) {}
 
   let pointsBaseline = {};
+  let pointsResetDate = null;
   try {
     const snap = await getDoc(doc(db, 'settings', 'pointsSeason'));
-    if (snap.exists()) pointsBaseline = snap.data().baseline || {};
+    if (snap.exists()) { pointsBaseline = snap.data().baseline || {}; pointsResetDate = snap.data().resetDate || null; }
   } catch(e) {}
 
-  return { students, attendanceRecords, scheduleData, gradesData, examsData, financeByStudent, bookReservations, pointsBaseline };
+  return { students, attendanceRecords, scheduleData, gradesData, examsData, financeByStudent, bookReservations, pointsBaseline, pointsResetDate };
 }
 
 /* ---------- Points computation for a single student ---------- */
@@ -486,10 +487,11 @@ function getMySessions(student, scheduleData){
     (!student.subjects || student.subjects.length === 0 || student.subjects.includes(sess.subject))
   );
 }
-function computeAttendance(student, attendanceRecords){
+function computeAttendance(student, attendanceRecords, resetDate){
   let present=0, absent=0;
   const mine = [];
   attendanceRecords.forEach(r => {
+    if (resetDate && (r.saveDate||'') < resetDate) return; // ignore sessions before the last season reset
     const entry = (r.students || []).find(st => String(st.id) === String(student.id));
     if (entry) { mine.push({ date: r.saveDate || '', status: entry.status }); if (entry.status === 'present') present++; else if (entry.status === 'absent') absent++; }
   });
@@ -533,16 +535,17 @@ function computeBooks(student, bookReservations){
   return { count: mine.length };
 }
 function computeStudentPoints(student, data){
-  const att   = computeAttendance(student, data.attendanceRecords);
+  const att   = computeAttendance(student, data.attendanceRecords, data.pointsResetDate);
   const exams = computeExams(student, data.scheduleData, data.gradesData, data.examsData);
   const fin   = computeFinance(student, data.financeByStudent);
   const books = computeBooks(student, data.bookReservations);
 
-  // Season baseline: subtracted from raw counts so a reset zeroes points/challenges
-  // without deleting any historical attendance/exam/finance/book records.
+  // Season baseline: attendance is reset by date-filtering (above); exams/finance/books
+  // don't carry per-record dates here, so those are reset by subtracting a saved baseline
+  // count — without deleting any historical attendance/exam/finance/book records.
   const base = (data.pointsBaseline && data.pointsBaseline[String(student.id)]) || {};
   const adj = {
-    present:        Math.max(0, att.present   - (base.present   || 0)),
+    present:        att.present,
     examsPassed:    Math.max(0, exams.passed  - (base.examsPassed    || 0)),
     examsExcellent: Math.max(0, exams.excellent - (base.examsExcellent || 0)),
     examsTotal:     Math.max(0, exams.total   - (base.examsTotal || 0)),
@@ -562,12 +565,10 @@ function computeStudentPoints(student, data){
 
 /* ---------- Admin: points season reset ---------- */
 async function computeRawCounts(student, data){
-  const att   = computeAttendance(student, data.attendanceRecords);
   const exams = computeExams(student, data.scheduleData, data.gradesData, data.examsData);
   const fin   = computeFinance(student, data.financeByStudent);
   const books = computeBooks(student, data.bookReservations);
   return {
-    present: att.present,
     examsPassed: exams.passed,
     examsExcellent: exams.excellent,
     examsTotal: exams.total,
@@ -578,7 +579,7 @@ async function computeRawCounts(student, data){
 }
 
 window.resetPointsSeason = async function(){
-  if (!confirm('هيتم تصفير نقاط وتحديات كل الطلاب لكل الفصول. البيانات الأصلية (الحضور/الامتحانات/المصروفات/الكتب) هتفضل موجودة زي ما هي. متأكد؟')) return;
+  if (!confirm('هيتم تصفير نقاط وتحديات وشارات كل الطلاب (حضور، امتحانات، مصروفات، كتب). البيانات الأصلية هتفضل موجودة زي ما هي. متأكد؟')) return;
   const btn = document.getElementById('adminResetBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري التصفير...'; }
   try {
@@ -591,9 +592,11 @@ window.resetPointsSeason = async function(){
     for (const s of students) {
       baseline[String(s.id)] = await computeRawCounts(s, data);
     }
-    await setDoc(doc(db, 'settings', 'pointsSeason'), { baseline, resetAt: new Date().toISOString() });
+    const now = new Date();
+    const resetDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    await setDoc(doc(db, 'settings', 'pointsSeason'), { baseline, resetDate, resetAt: now.toISOString() });
 
-    alert('تم تصفير النقاط والتحديات لكل الطلاب ✅');
+    alert('تم تصفير النقاط والتحديات والشارات لكل الطلاب ✅');
     if (currentStudent) await boot(currentStudent, students);
   } catch(e) {
     alert('حصل خطأ أثناء التصفير، حاول مرة أخرى.');
