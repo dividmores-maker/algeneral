@@ -231,6 +231,14 @@ body{
   <div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
 </div>
 <div class="particles" id="particles"></div>
+
+<!-- ============ ADMIN PANEL (shown only with ?admin=1, no login needed) ============ -->
+<div id="adminPanel" style="display:none; position:relative; z-index:20; max-width:900px; margin:14px auto 0; padding:0 16px;">
+  <div style="background:rgba(12,8,0,.7); border:1px solid rgba(239,68,68,.35); border-radius:16px; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; backdrop-filter:blur(12px);">
+    <div style="font-size:12.5px; color:rgba(255,255,255,.6);">🛠️ لوحة تحكم الأدمن — تصفير موسم النقاط لكل الطلاب دفعة واحدة</div>
+    <button id="adminResetBtn" onclick="resetPointsSeason()" style="padding:10px 18px; border:1px solid rgba(239,68,68,.4); background:rgba(239,68,68,.12); color:#fca5a5; border-radius:11px; font-family:'Cairo',sans-serif; font-weight:800; font-size:12.5px; cursor:pointer;">♻️ تصفير نقاط الموسم لكل الطلاب</button>
+  </div>
+</div>
 <script>
 (function(){
   const box = document.getElementById('particles');
@@ -318,7 +326,7 @@ body{
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, doc, getDoc, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
@@ -367,6 +375,10 @@ function getTitleInfo(points){
 
 let currentStudent = null;
 let allData = null; // { students, attendanceRecords, scheduleData, gradesData, examsData, financeByStudent, bookReservations }
+
+if (new URLSearchParams(location.search).get('admin') === '1') {
+  document.getElementById('adminPanel').style.display = 'block';
+}
 
 /* ---------- Login ---------- */
 window.handleLogin = async function(){
@@ -458,7 +470,13 @@ async function loadAllData(students){
     if (snap.exists()) bookReservations = snap.data().reservations || [];
   } catch(e) {}
 
-  return { students, attendanceRecords, scheduleData, gradesData, examsData, financeByStudent, bookReservations };
+  let pointsBaseline = {};
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'pointsSeason'));
+    if (snap.exists()) pointsBaseline = snap.data().baseline || {};
+  } catch(e) {}
+
+  return { students, attendanceRecords, scheduleData, gradesData, examsData, financeByStudent, bookReservations, pointsBaseline };
 }
 
 /* ---------- Points computation for a single student ---------- */
@@ -520,14 +538,69 @@ function computeStudentPoints(student, data){
   const fin   = computeFinance(student, data.financeByStudent);
   const books = computeBooks(student, data.bookReservations);
 
-  const attPts   = att.present * RULES.ATTEND_PRESENT;
-  const examPts  = exams.passed * RULES.EXAM_PASS + exams.excellent * RULES.EXAM_EXCELLENCE_BONUS;
-  const finPts   = fin.paidMonths * RULES.PAYMENT_ON_TIME;
-  const bookPts  = books.count * RULES.BOOK_RESERVED;
+  // Season baseline: subtracted from raw counts so a reset zeroes points/challenges
+  // without deleting any historical attendance/exam/finance/book records.
+  const base = (data.pointsBaseline && data.pointsBaseline[String(student.id)]) || {};
+  const adj = {
+    present:        Math.max(0, att.present   - (base.present   || 0)),
+    examsPassed:    Math.max(0, exams.passed  - (base.examsPassed    || 0)),
+    examsExcellent: Math.max(0, exams.excellent - (base.examsExcellent || 0)),
+    examsTotal:     Math.max(0, exams.total   - (base.examsTotal || 0)),
+    paidMonths:     Math.max(0, fin.paidMonths - (base.paidMonths || 0)),
+    totalMonths:    Math.max(0, fin.totalMonths - (base.totalMonths || 0)),
+    books:          Math.max(0, books.count   - (base.books      || 0)),
+  };
+
+  const attPts   = adj.present * RULES.ATTEND_PRESENT;
+  const examPts  = adj.examsPassed * RULES.EXAM_PASS + adj.examsExcellent * RULES.EXAM_EXCELLENCE_BONUS;
+  const finPts   = adj.paidMonths * RULES.PAYMENT_ON_TIME;
+  const bookPts  = adj.books * RULES.BOOK_RESERVED;
   const total = attPts + examPts + finPts + bookPts;
 
-  return { total, breakdown:{ attendance:attPts, exams:examPts, finance:finPts, books:bookPts }, att, exams, fin, books };
+  return { total, breakdown:{ attendance:attPts, exams:examPts, finance:finPts, books:bookPts }, att, exams, fin, books, adj };
 }
+
+/* ---------- Admin: points season reset ---------- */
+async function computeRawCounts(student, data){
+  const att   = computeAttendance(student, data.attendanceRecords);
+  const exams = computeExams(student, data.scheduleData, data.gradesData, data.examsData);
+  const fin   = computeFinance(student, data.financeByStudent);
+  const books = computeBooks(student, data.bookReservations);
+  return {
+    present: att.present,
+    examsPassed: exams.passed,
+    examsExcellent: exams.excellent,
+    examsTotal: exams.total,
+    paidMonths: fin.paidMonths,
+    totalMonths: fin.totalMonths,
+    books: books.count
+  };
+}
+
+window.resetPointsSeason = async function(){
+  if (!confirm('هيتم تصفير نقاط وتحديات كل الطلاب لكل الفصول. البيانات الأصلية (الحضور/الامتحانات/المصروفات/الكتب) هتفضل موجودة زي ما هي. متأكد؟')) return;
+  const btn = document.getElementById('adminResetBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري التصفير...'; }
+  try {
+    const snap = await getDoc(doc(db, 'students', 'data'));
+    const students = snap.exists() ? (snap.data().students || []) : [];
+    const data = await loadAllData(students);
+    data.pointsBaseline = {}; // ignore any previous baseline: reset against full raw totals
+
+    const baseline = {};
+    for (const s of students) {
+      baseline[String(s.id)] = await computeRawCounts(s, data);
+    }
+    await setDoc(doc(db, 'settings', 'pointsSeason'), { baseline, resetAt: new Date().toISOString() });
+
+    alert('تم تصفير النقاط والتحديات لكل الطلاب ✅');
+    if (currentStudent) await boot(currentStudent, students);
+  } catch(e) {
+    alert('حصل خطأ أثناء التصفير، حاول مرة أخرى.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '♻️ تصفير نقاط الموسم لكل الطلاب'; }
+  }
+};
 
 /* ---------- Rendering ---------- */
 function animateNumber(el, target, duration=1100){
@@ -569,10 +642,10 @@ function renderBreakdown(result){
     <div class="card">
       <h3>📊 تفاصيل النقاط</h3>
       <div class="breakdown-grid">
-        <div class="breakdown-box"><div class="num">${result.breakdown.attendance}</div><div class="lbl">من الحضور هذا الشهر (${result.att.present} حصة)</div></div>
-        <div class="breakdown-box"><div class="num">${result.breakdown.exams}</div><div class="lbl">من الامتحانات (${result.exams.passed} ناجح)</div></div>
-        <div class="breakdown-box"><div class="num">${result.breakdown.finance}</div><div class="lbl">من الالتزام بالمصروف (${result.fin.paidMonths} شهر)</div></div>
-        <div class="breakdown-box"><div class="num">${result.breakdown.books}</div><div class="lbl">من الكتب (${result.books.count} كتاب)</div></div>
+        <div class="breakdown-box"><div class="num">${result.breakdown.attendance}</div><div class="lbl">من الحضور هذا الشهر (${result.adj.present} حصة)</div></div>
+        <div class="breakdown-box"><div class="num">${result.breakdown.exams}</div><div class="lbl">من الامتحانات (${result.adj.examsPassed} ناجح)</div></div>
+        <div class="breakdown-box"><div class="num">${result.breakdown.finance}</div><div class="lbl">من الالتزام بالمصروف (${result.adj.paidMonths} شهر)</div></div>
+        <div class="breakdown-box"><div class="num">${result.breakdown.books}</div><div class="lbl">من الكتب (${result.adj.books} كتاب)</div></div>
       </div>
     </div>`;
 }
@@ -580,10 +653,10 @@ function renderBreakdown(result){
 function renderBadges(result){
   const badges = [
     { earned: result.att.total >= 5 && result.att.rate >= 90, emoji:'🎯', name:'ملتزم', desc:'حضور 90%+' },
-    { earned: result.exams.passed >= 3, emoji:'📝', name:'نجم الامتحانات', desc:'3 امتحانات ناجحة' },
+    { earned: result.adj.examsPassed >= 3, emoji:'📝', name:'نجم الامتحانات', desc:'3 امتحانات ناجحة' },
     { earned: result.exams.avg !== null && result.exams.avg >= 90, emoji:'✨', name:'متفوق', desc:'متوسط درجات 90%+' },
-    { earned: result.fin.allPaid, emoji:'💳', name:'ملتزم بالمصروف', desc:'كل الشهور مدفوعة' },
-    { earned: result.books.count >= 1, emoji:'📚', name:'قارئ', desc:'حجز كتاب واحد على الأقل' },
+    { earned: result.adj.totalMonths > 0 && result.adj.paidMonths === result.adj.totalMonths, emoji:'💳', name:'ملتزم بالمصروف', desc:'كل الشهور مدفوعة' },
+    { earned: result.adj.books >= 1, emoji:'📚', name:'قارئ', desc:'حجز كتاب واحد على الأقل' },
   ];
   document.getElementById('badgesGrid').innerHTML = badges.map(b => `
     <div class="badge-item ${b.earned ? 'earned' : ''}">
@@ -597,8 +670,8 @@ function renderChallenges(result){
   const challenges = [
     { name:'احضر 5 حصص متتالية بدون غياب', emoji:'🔥', progress: result.att.streak, target: 5 },
     { name:'حقق نسبة حضور 90% أو أكتر', emoji:'✅', progress: result.att.rate, target: 90, unit:'%' },
-    { name:'اجتز 3 امتحانات بنجاح', emoji:'📝', progress: result.exams.passed, target: 3 },
-    { name:'احجز كتابين', emoji:'📚', progress: result.books.count, target: 2 },
+    { name:'اجتز 3 امتحانات بنجاح', emoji:'📝', progress: result.adj.examsPassed, target: 3 },
+    { name:'احجز كتابين', emoji:'📚', progress: result.adj.books, target: 2 },
   ];
   document.getElementById('challengesSection').innerHTML = `<div class="card" style="padding:14px;">${
     challenges.map(c => {
