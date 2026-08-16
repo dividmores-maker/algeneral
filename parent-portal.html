@@ -319,7 +319,7 @@ tbody tr:hover{ background:rgba(212,175,55,.05); }
       <button class="tab-btn" data-tab="grades">📝 الدرجات</button>
       <button class="tab-btn" data-tab="attendance">✅ الحضور</button>
       <button class="tab-btn" data-tab="finance">💳 المالية</button>
-      <button class="tab-btn" data-tab="books">📚 الكتب</button>
+      <button class="tab-btn" data-tab="books">📚 الملازم</button>
     </div>
 
     <div class="panel active" id="panel-overview"><div class="loading">⏳ جاري التحميل...</div></div>
@@ -354,13 +354,15 @@ const db  = getFirestore(app);
 /* ---------- Reference dictionaries (matching the rest of the system) ---------- */
 const SUBJECTS = {
   math:'رياضيات', science:'علوم', studies2:'دراسات', arabic:'عربي',
-  english:'إنجليزي', history:'تاريخ', geography:'جغرافيا'
+  english:'إنجليزي', history:'تاريخ', geography:'جغرافيا',
+  religion:'تربية دينية', computer:'حاسب آلي'
 };
 const CLASSES = {
-  grade1:'الأول الابتدائي', grade2:'الثاني الابتدائي', grade3:'الثالث الابتدائي',
-  grade4:'الرابع الابتدائي', grade5:'الخامس الابتدائي', grade6:'السادس الابتدائي',
-  grade7:'الأول الإعدادي', grade8:'الثاني الإعدادي', grade9:'الثالث الإعدادي',
-  grade10:'الأول الثانوي', grade11:'الثاني الثانوي', grade12:'الثالث الثانوي'
+  grade1p:'الصف الأول الابتدائي',  grade2p:'الصف الثاني الابتدائي',
+  grade3p:'الصف الثالث الابتدائي', grade4p:'الصف الرابع الابتدائي',
+  grade5p:'الصف الخامس الابتدائي', grade6p:'الصف السادس الابتدائي',
+  grade7:'الصف الأول الإعدادي',    grade8:'الصف الثاني الإعدادي',   grade9:'الصف الثالث الإعدادي',
+  grade10:'الصف الأول الثانوي',    grade11:'الصف الثاني الثانوي',   grade12:'الصف الثالث الثانوي'
 };
 const TEACHERS = {
   t1:'أ. محمد أحمد', t2:'أ. فاطمة علي', t3:'أ. خالد محمود',
@@ -372,7 +374,7 @@ const EXAM_TYPES = {
 };
 const DAYS = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
 
-const getSubjectName = k => SUBJECTS[k] || k;
+const getSubjectName = k => SUBJECTS[_canonicalSubjectKey(k)] || k;
 const getTeacherName = k => TEACHERS[k] || k;
 const getDayName     = i => DAYS[i] !== undefined ? DAYS[i] : String(i);
 function getClassName(key, customClasses){
@@ -381,6 +383,13 @@ function getClassName(key, customClasses){
     if (f) return f.name;
   }
   return CLASSES[key] || key;
+}
+// schedule_management.html and students.html use different key names for the same
+// subject in a couple of cases (تاريخ = "social" in the schedule but "history" in the
+// student form; دراسات = "studies" vs "studies2") — normalize both sides before comparing.
+function _canonicalSubjectKey(key){
+  const aliases = { social: 'history', studies: 'studies2' };
+  return aliases[key] || key;
 }
 function formatTime(t){
   if (!t) return '';
@@ -672,8 +681,8 @@ async function loadScheduleAndGrades(s){
   } catch(e) {}
 
   const mySessions = (scheduleData.sessions || []).filter(sess =>
-    String(sess.class) === String(s.class) &&
-    (!s.subjects || s.subjects.length === 0 || s.subjects.includes(sess.subject))
+    String(getClassName(sess.class, scheduleData.classes)) === String(s.class) &&
+    (!s.subjects || s.subjects.length === 0 || s.subjects.map(_canonicalSubjectKey).includes(_canonicalSubjectKey(sess.subject)))
   );
 
   /* -- Schedule panel -- */
@@ -923,7 +932,7 @@ async function loadBooks(s){
         : '<span class="badge red">غير مدفوع</span>';
       return `
         <tr>
-          <td>${r.bookName || '—'}</td>
+          <td>${r.grade || '—'}${r.bookCount ? ` (${r.bookCount} كتاب)` : ''}</td>
           <td>${r.quantity || 1}</td>
           <td>${(r.totalPrice||0).toLocaleString()} ج</td>
           <td>${(r.paidAmount||0).toLocaleString()} ج</td>
@@ -935,8 +944,8 @@ async function loadBooks(s){
 
     panel.innerHTML = `
       <div class="card">
-        <h3>📚 الكتب المحجوزة</h3>
-        <table><thead><tr><th>الكتاب</th><th>العدد</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th>تاريخ الحجز</th></tr></thead>
+        <h3>📚 الملازم المحجوزة</h3>
+        <table><thead><tr><th>الباقة</th><th>العدد</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th>تاريخ الحجز</th></tr></thead>
         <tbody>${rows}</tbody></table>
       </div>`;
   } catch(e) {
