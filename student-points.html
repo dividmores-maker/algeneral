@@ -375,7 +375,10 @@ const TITLES = [
   { min:200, label:'أسطورة AL GENERAL',  emoji:'👑' },
   { min:350, label:'الأسطورة الذهبية',    emoji:'💎' }
 ];
-function getTitleInfo(points){
+function getTitleInfo(points, finalsPassed){
+  if (finalsPassed >= 3) {
+    return { min:null, label:'الجنرال', emoji:'🎖️', next:null, special:true };
+  }
   let cur = TITLES[0];
   for (const t of TITLES) if (points >= t.min) cur = t;
   const idx = TITLES.indexOf(cur);
@@ -661,7 +664,7 @@ function renderHero(student, result){
 
   animateNumber(document.getElementById('pointsNum'), result.total);
 
-  const info = getTitleInfo(result.total);
+  const info = getTitleInfo(result.total, result.adj.finalsPassed);
   document.getElementById('currentTitle').textContent = `${info.emoji} ${info.label}`;
   document.getElementById('titleNext').textContent = info.next
     ? `باقيلك ${info.next.min - result.total} نقطة لـ «${info.next.label}» ${info.next.emoji}`
@@ -702,10 +705,15 @@ function renderBadges(result){
 
 function renderChallenges(result){
   const challenges = [
-    { name:'احضر 5 حصص متتالية بدون غياب', emoji:'🔥', progress: result.att.streak, target: 5 },
-    { name:'حقق نسبة حضور 90% أو أكتر', emoji:'✅', progress: result.att.rate, target: 90, unit:'%' },
-    { name:'اجتز 3 امتحانات بنجاح', emoji:'📝', progress: result.adj.examsPassed, target: 3 },
-    { name:'احجز كتابين', emoji:'📚', progress: result.adj.books, target: 2 },
+    { name:'احضر 10 حصص متتالية بدون غياب', emoji:'🔥', progress: result.att.streak, target: 10 },
+    { name:'حقق نسبة حضور 95% أو أكتر', emoji:'✅', progress: result.att.rate, target: 95, unit:'%' },
+    { name:'اجتز 6 امتحانات بنجاح', emoji:'📝', progress: result.adj.examsPassed, target: 6 },
+    { name:'حقق تفوق (90%+) في 3 امتحانات', emoji:'✨', progress: result.adj.examsExcellent, target: 3 },
+    { name:'سلّم 8 واجبات', emoji:'📚', progress: result.adj.homeworkDone, target: 8 },
+    { name:'اجتز امتحانين شاملين بنجاح', emoji:'🎓', progress: result.adj.finalsPassed, target: 2 },
+    { name:'حافظ على سداد المصروف 3 شهور', emoji:'💳', progress: result.adj.paidMonths, target: 3 },
+    { name:'احجز 3 كتب', emoji:'📖', progress: result.adj.books, target: 3 },
+    { name:'اجمع 150 نقطة في الموسم', emoji:'🏆', progress: result.total, target: 150 },
   ];
   document.getElementById('challengesSection').innerHTML = `<div class="card" style="padding:14px;">${
     challenges.map(c => {
