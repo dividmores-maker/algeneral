@@ -370,10 +370,15 @@ const RULES = {
 
 const TITLES = [
   { min:0,   label:'طالب مجتهد',        emoji:'🙂' },
+  { min:30,  label:'مجتهد متميز',        emoji:'⭐' },
   { min:50,  label:'نجم الفصل',          emoji:'🌟' },
+  { min:75,  label:'نجم الفصل الساطع',    emoji:'🌠' },
   { min:100, label:'بطل السنتر',         emoji:'🏆' },
+  { min:150, label:'بطل الفرقة',          emoji:'🥇' },
   { min:200, label:'أسطورة AL GENERAL',  emoji:'👑' },
-  { min:350, label:'الأسطورة الذهبية',    emoji:'💎' }
+  { min:275, label:'حامي اللقب',          emoji:'🛡️' },
+  { min:350, label:'الأسطورة الذهبية',    emoji:'💎' },
+  { min:450, label:'أسطورة الأساطير',     emoji:'🔱' }
 ];
 function getTitleInfo(points, finalsPassed){
   if (finalsPassed >= 3) {
@@ -611,7 +616,7 @@ async function computeRawCounts(student, data){
 }
 
 window.resetPointsSeason = async function(){
-  if (!confirm('هيتم تصفير نقاط وتحديات وشارات كل الطلاب (حضور، واجبات، امتحانات، امتحان شامل، مصروفات، كتب). البيانات الأصلية هتفضل موجودة زي ما هي. متأكد؟')) return;
+  if (!confirm('هيتم تصفير نقاط وتحديات وشارات كل الطلاب (حضور، واجبات، امتحانات، امتحان شامل، مصروفات، ملازم). البيانات الأصلية هتفضل موجودة زي ما هي. متأكد؟')) return;
   const btn = document.getElementById('adminResetBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري التصفير...'; }
   try {
@@ -682,7 +687,7 @@ function renderBreakdown(result){
         <div class="breakdown-box"><div class="num">${result.breakdown.exams}</div><div class="lbl">من الامتحانات (${result.adj.examsPassed} ناجح)</div></div>
         <div class="breakdown-box"><div class="num">${result.breakdown.finals}</div><div class="lbl">من الامتحان الشامل (${result.adj.finalsPassed} ناجح)</div></div>
         <div class="breakdown-box"><div class="num">${result.breakdown.finance}</div><div class="lbl">من الالتزام بالمصروف (${result.adj.paidMonths} شهر)</div></div>
-        <div class="breakdown-box"><div class="num">${result.breakdown.books}</div><div class="lbl">من الكتب (${result.adj.books} كتاب)</div></div>
+        <div class="breakdown-box"><div class="num">${result.breakdown.books}</div><div class="lbl">من الملازم (${result.adj.books} ملزمة)</div></div>
       </div>
     </div>`;
 }
@@ -693,7 +698,7 @@ function renderBadges(result){
     { earned: result.adj.examsPassed >= 3, emoji:'📝', name:'نجم الامتحانات', desc:'3 امتحانات ناجحة' },
     { earned: result.exams.avg !== null && result.exams.avg >= 90, emoji:'✨', name:'متفوق', desc:'متوسط درجات 90%+' },
     { earned: result.adj.totalMonths > 0 && result.adj.paidMonths === result.adj.totalMonths, emoji:'💳', name:'ملتزم بالمصروف', desc:'كل الشهور مدفوعة' },
-    { earned: result.adj.books >= 1, emoji:'📚', name:'قارئ', desc:'حجز كتاب واحد على الأقل' },
+    { earned: result.adj.books >= 1, emoji:'📚', name:'قارئ', desc:'حجز ملزمة واحدة على الأقل' },
   ];
   document.getElementById('badgesGrid').innerHTML = badges.map(b => `
     <div class="badge-item ${b.earned ? 'earned' : ''}">
@@ -707,12 +712,12 @@ function renderChallenges(result){
   const challenges = [
     { name:'احضر 10 حصص متتالية بدون غياب', emoji:'🔥', progress: result.att.streak, target: 10 },
     { name:'حقق نسبة حضور 95% أو أكتر', emoji:'✅', progress: result.att.rate, target: 95, unit:'%' },
-    { name:'اجتز 6 امتحانات بنجاح', emoji:'📝', progress: result.adj.examsPassed, target: 6 },
+    { name:'قفل 6 امتحانات بنجاح', emoji:'📝', progress: result.adj.examsPassed, target: 6 },
     { name:'حقق تفوق (90%+) في 3 امتحانات', emoji:'✨', progress: result.adj.examsExcellent, target: 3 },
     { name:'سلّم 8 واجبات', emoji:'📚', progress: result.adj.homeworkDone, target: 8 },
     { name:'اجتز امتحانين شاملين بنجاح', emoji:'🎓', progress: result.adj.finalsPassed, target: 2 },
     { name:'حافظ على سداد المصروف 3 شهور', emoji:'💳', progress: result.adj.paidMonths, target: 3 },
-    { name:'احجز 3 كتب', emoji:'📖', progress: result.adj.books, target: 3 },
+    { name:'احجز 2 ملزمة', emoji:'📖', progress: result.adj.books, target: 2 },
     { name:'اجمع 150 نقطة في الموسم', emoji:'🏆', progress: result.total, target: 150 },
   ];
   document.getElementById('challengesSection').innerHTML = `<div class="card" style="padding:14px;">${
