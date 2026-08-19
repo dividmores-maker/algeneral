@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حجز الكتب الدراسية - نظام إدارة السنتر</title>
+    <title>حجزالملازم الدراسية - نظام إدارة السنتر</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -416,8 +416,8 @@
             <div class="header-brand">
                 <div class="header-icon">📚</div>
                 <div>
-                    <div class="header-title">حجز الكتب الدراسية</div>
-                    <div class="header-sub">إدارة حجز الكتب للمراحل الدراسية</div>
+                    <div class="header-title">حجز الالدراسية</div>
+                    <div class="header-sub">إدارة حجز الملازم للمراحل الدراسية</div>
                 </div>
             </div>
             <nav class="header-nav">
@@ -438,15 +438,15 @@
         <div class="stats-row">
             <div class="stat-box">
                 <div class="stat-number" id="totalBooks">0</div>
-                <div class="stat-label">إجمالي الكتب</div>
+                <div class="stat-label">إجمالي الملازم</div>
             </div>
             <div class="stat-box">
                 <div class="stat-number" id="availableBooks">0</div>
-                <div class="stat-label">كتب متاحة</div>
+                <div class="stat-label">ملازم متاحة</div>
             </div>
             <div class="stat-box">
                 <div class="stat-number" id="reservedBooks">0</div>
-                <div class="stat-label">كتب محجوزة</div>
+                <div class="stat-label">ملازم محجوزة</div>
             </div>
             <div class="stat-box">
                 <div class="stat-number" id="totalReservations">0</div>
@@ -460,7 +460,7 @@
 
         <div class="content-card">
             <div class="content-header">
-                <h2><span>📖</span> الكتب المتاحة</h2>
+                <h2><span>📖</span> الملازم المتاحة</h2>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn btn-primary" onclick="showReserveModal()">📚 حجز طالب جديد</button>
                     <button class="btn btn-success" onclick="showReservationsModal()">📋 عرض الحجوزات</button>
@@ -1109,7 +1109,7 @@
                 <div class="report-summary">
                     <div class="summary-item"><div class="value">${sortedGrades.length}</div><div class="label">عدد الصفوف</div></div>
                     <div class="summary-item"><div class="value">${totalSt}</div><div class="label">إجمالي الطلاب</div></div>
-                    <div class="summary-item"><div class="value">${totalQty}</div><div class="label">إجمالي الكتب</div></div>
+                    <div class="summary-item"><div class="value">${totalQty}</div><div class="label">إجمالي الملازم</div></div>
                     <div class="summary-item"><div class="value">${totalRev.toLocaleString()} ج</div><div class="label">إجمالي الإيرادات</div></div>
                 </div>`;
 

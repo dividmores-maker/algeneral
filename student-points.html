@@ -181,6 +181,36 @@ body{
 .badge-item.earned .name{ color:var(--gold-soft); }
 .badge-item .desc{ font-size:10.5px; color:var(--white-50); margin-top:4px; opacity:.7; }
 
+/* Titles track */
+.titles-track{ display:flex; flex-direction:column; gap:8px; }
+.title-row{
+  display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:14px;
+  background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.04); transition:all .25s;
+}
+.title-row .t-emoji{ font-size:22px; width:34px; text-align:center; filter:grayscale(1) opacity(.35); flex-shrink:0; }
+.title-row .t-info{ flex:1; min-width:0; }
+.title-row .t-name{ font-size:13px; font-weight:800; color:var(--white-50); }
+.title-row .t-min{ font-size:10.5px; color:var(--white-50); opacity:.65; margin-top:2px; }
+.title-row .t-tag{ font-size:10px; font-weight:800; padding:3px 10px; border-radius:20px; flex-shrink:0; background:rgba(255,255,255,.05); color:var(--white-50); }
+.title-row.unlocked{ background:rgba(255,255,255,.035); border-color:rgba(255,255,255,.07); }
+.title-row.unlocked .t-emoji{ filter:none; }
+.title-row.unlocked .t-name{ color:var(--text); }
+.title-row.current{
+  border-color:var(--border-hi); background:linear-gradient(90deg, rgba(212,160,23,.16), rgba(192,24,42,.05));
+  box-shadow:0 8px 24px rgba(212,160,23,.15);
+}
+.title-row.current .t-emoji{ filter:none; }
+.title-row.current .t-name{ color:var(--gold-soft); }
+.title-row.current .t-tag{ background:linear-gradient(135deg,#f5c842,#d4a017); color:#0d0800; }
+.title-row.unlocked .t-tag{ background:rgba(34,197,94,.15); color:#4ade80; }
+.title-row.special{ border-color:#c0182a; background:linear-gradient(90deg, rgba(192,24,42,.22), rgba(212,160,23,.06)); }
+.titles-toggle-btn{
+  width:100%; margin-top:12px; padding:11px; border-radius:13px; border:1px solid var(--glass-border);
+  background:rgba(255,255,255,.03); color:var(--gold-soft); font-family:'Cairo',sans-serif;
+  font-weight:800; font-size:12.5px; cursor:pointer; transition:all .2s;
+}
+.titles-toggle-btn:hover{ background:rgba(212,160,23,.1); border-color:var(--border-hi); }
+
 /* Challenges */
 .challenge{
   background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.04); border-radius:14px;
@@ -313,6 +343,12 @@ body{
 
     <div id="breakdownSection"><div class="loading">⏳ جاري حساب النقاط...</div></div>
 
+    <div class="section-header"><div class="section-line"></div><div class="section-label">مستويات الألقاب</div><div class="section-line"></div></div>
+    <div class="card">
+      <div class="titles-track" id="titlesTrack"><div class="loading">⏳ جاري التحميل...</div></div>
+      <button class="titles-toggle-btn" id="titlesToggleBtn">عرض كل الألقاب ▾</button>
+    </div>
+
     <div class="section-header"><div class="section-line"></div><div class="section-label">الألقاب والشارات</div><div class="section-line"></div></div>
     <div class="card"><div class="badges-grid" id="badgesGrid"><div class="loading">⏳ جاري التحميل...</div></div></div>
 
@@ -370,15 +406,27 @@ const RULES = {
 
 const TITLES = [
   { min:0,   label:'طالب مجتهد',        emoji:'🙂' },
+  { min:15,  label:'طالب واعد',          emoji:'🌱' },
   { min:30,  label:'مجتهد متميز',        emoji:'⭐' },
+  { min:40,  label:'صاعد بقوة',          emoji:'📈' },
   { min:50,  label:'نجم الفصل',          emoji:'🌟' },
+  { min:62,  label:'نجم صاعد',           emoji:'☄️' },
   { min:75,  label:'نجم الفصل الساطع',    emoji:'🌠' },
+  { min:88,  label:'محارب العلم',        emoji:'⚔️' },
   { min:100, label:'بطل السنتر',         emoji:'🏆' },
+  { min:125, label:'بطل مميز',           emoji:'🎯' },
   { min:150, label:'بطل الفرقة',          emoji:'🥇' },
+  { min:175, label:'فارس المعرفة',       emoji:'🐎' },
   { min:200, label:'أسطورة AL GENERAL',  emoji:'👑' },
+  { min:235, label:'قائد الصفوف',        emoji:'🎖️' },
   { min:275, label:'حامي اللقب',          emoji:'🛡️' },
+  { min:310, label:'نخبة السنتر',         emoji:'🌌' },
   { min:350, label:'الأسطورة الذهبية',    emoji:'💎' },
-  { min:450, label:'أسطورة الأساطير',     emoji:'🔱' }
+  { min:400, label:'ملك التفوق',          emoji:'👑' },
+  { min:450, label:'أسطورة الأساطير',     emoji:'🔱' },
+  { min:525, label:'المايسترو',           emoji:'🎼' },
+  { min:600, label:'الفينيق الذهبي',      emoji:'🐦‍🔥' },
+  { min:700, label:'خالد الذكر',          emoji:'🏛️' }
 ];
 function getTitleInfo(points, finalsPassed){
   if (finalsPassed >= 3) {
@@ -589,7 +637,7 @@ function computeStudentPoints(student, data){
 
   const attPts      = adj.present * RULES.ATTEND_PRESENT;
   const homeworkPts = adj.homeworkDone * RULES.HOMEWORK_DONE;
-  const examPts     = adj.examsPassed * RULES.EXAM_PASS + adj.examsExcellent * RULES.EXAM_EXCELLENCE_BONUS;
+  const examPts     = adj.examsPassed * RULES.EXAM_PASS; // بونص التفوق اتشال، الامتحان الناجح ثابت 10 نقط
   const finalPts    = adj.finalsPassed * RULES.FINAL_EXAM_PASS;
   const finPts      = adj.paidMonths * RULES.PAYMENT_ON_TIME;
   const bookPts     = adj.books * RULES.BOOK_RESERVED;
@@ -674,6 +722,64 @@ function renderHero(student, result){
   document.getElementById('titleNext').textContent = info.next
     ? `باقيلك ${info.next.min - result.total} نقطة لـ «${info.next.label}» ${info.next.emoji}`
     : 'وصلت لأعلى لقب 🎉';
+}
+
+function renderTitlesTrack(result){
+  const points = result.total;
+  const isGeneral = result.adj.finalsPassed >= 3;
+
+  const currentIdx = TITLES.reduce((acc, t, i) => points >= t.min ? i : acc, 0);
+
+  function rowHtml(t, isCurrent){
+    const unlocked = points >= t.min;
+    const cls = isCurrent ? 'current' : (unlocked ? 'unlocked' : '');
+    const tag = isCurrent ? 'الحالي' : (unlocked ? 'مفتوح ✓' : `${t.min} نقطة`);
+    return `
+      <div class="title-row ${cls}">
+        <div class="t-emoji">${t.emoji}</div>
+        <div class="t-info">
+          <div class="t-name">${t.label}</div>
+          <div class="t-min">${t.min} نقطة أو أكتر</div>
+        </div>
+        <div class="t-tag">${tag}</div>
+      </div>`;
+  }
+
+  const generalRow = isGeneral ? `
+      <div class="title-row current special">
+        <div class="t-emoji">🎖️</div>
+        <div class="t-info">
+          <div class="t-name">الجنرال</div>
+          <div class="t-min">لقب خاص · 3 امتحانات شاملة ناجحة</div>
+        </div>
+        <div class="t-tag">الحالي</div>
+      </div>` : '';
+
+  // Nearby view: current title, 2 before, 2 after (fills up if near an edge)
+  let start = Math.max(0, currentIdx - 2);
+  let end = Math.min(TITLES.length - 1, start + 4);
+  start = Math.max(0, end - 4);
+  const nearbyIdxs = [];
+  for (let i = start; i <= end; i++) nearbyIdxs.push(i);
+
+  const fullHtml = TITLES.map((t, i) => rowHtml(t, !isGeneral && i === currentIdx)).join('') + generalRow;
+  const nearbyHtml = nearbyIdxs.map(i => rowHtml(TITLES[i], !isGeneral && i === currentIdx)).join('')
+    + (isGeneral ? generalRow : '');
+
+  const el = document.getElementById('titlesTrack');
+  el.dataset.fullHtml = fullHtml;
+  el.dataset.nearbyHtml = nearbyHtml;
+  el.innerHTML = nearbyHtml;
+
+  const btn = document.getElementById('titlesToggleBtn');
+  btn.textContent = 'عرض كل الألقاب ▾';
+  btn.dataset.expanded = 'false';
+  btn.onclick = () => {
+    const expanded = btn.dataset.expanded === 'true';
+    el.innerHTML = expanded ? el.dataset.nearbyHtml : el.dataset.fullHtml;
+    btn.textContent = expanded ? 'عرض كل الألقاب ▾' : 'عرض الأقرب فقط ▴';
+    btn.dataset.expanded = expanded ? 'false' : 'true';
+  };
 }
 
 function renderBreakdown(result){
@@ -775,6 +881,7 @@ async function boot(student, students){
   const result = computeStudentPoints(student, data);
 
   renderHero(student, result);
+  renderTitlesTrack(result);
   renderBreakdown(result);
   renderBadges(result);
   renderChallenges(result);
