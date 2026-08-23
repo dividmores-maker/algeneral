@@ -396,7 +396,7 @@ function _canonicalSubjectKey(key){
 const RULES = {
   ATTEND_PRESENT: 2,
   HOMEWORK_DONE: 5,          // exam.type === 'homework'
-  EXAM_PASS: 10,             // regular exams (written/oral/quiz/practical/project/midterm)
+  // EXAM_PASS removed: نقاط الامتحانات العادية بقت = الدرجة الفعلية للطالب (شرط: ناجح + جاب نص الدرجة على الأقل)
   FINAL_EXAM_PASS: 30,       // exam.type === 'final' (امتحان شامل)
   EXAM_EXCELLENCE_BONUS: 5,   // extra if score/max >= 90%
   EXAM_EXCELLENCE_MIN: 90,
@@ -417,7 +417,6 @@ const TITLES = [
   { min:125, label:'بطل مميز',           emoji:'🎯' },
   { min:150, label:'بطل الفرقة',          emoji:'🥇' },
   { min:175, label:'فارس المعرفة',       emoji:'🐎' },
-  { min:200, label:'أسطورة AL GENERAL',  emoji:'👑' },
   { min:235, label:'قائد الصفوف',        emoji:'🎖️' },
   { min:275, label:'حامي اللقب',          emoji:'🛡️' },
   { min:310, label:'نخبة السنتر',         emoji:'🌌' },
@@ -426,7 +425,8 @@ const TITLES = [
   { min:450, label:'أسطورة الأساطير',     emoji:'🔱' },
   { min:525, label:'المايسترو',           emoji:'🎼' },
   { min:600, label:'الفينيق الذهبي',      emoji:'🐦‍🔥' },
-  { min:700, label:'خالد الذكر',          emoji:'🏛️' }
+  { min:700, label:'خالد الذكر',          emoji:'🏛️' },
+  { min:1000, label:'أسطورة AL GENERAL', emoji:'👑' }
 ];
 function getTitleInfo(points, finalsPassed){
   if (finalsPassed >= 3) {
@@ -573,6 +573,7 @@ function computeExams(student, scheduleData, gradesData, examsData){
   let passed=0, total=0, excellent=0; const percents=[];
   let homeworkDone=0, homeworkTotal=0;
   let finalsPassed=0, finalsTotal=0;
+  let examScoreSum=0; // sum of actual scores earned on passed regular exams (points = grade, not a fixed value)
   mySessions.forEach(sess => {
     const sid = String(sess.id);
     const exams = examsData[sid] || [];
@@ -582,6 +583,8 @@ function computeExams(student, scheduleData, gradesData, examsData){
       if (entry === undefined) return;
       const score = entry.score, max = exam.max, passMark = exam.pass;
       const didPass = typeof score === 'number' && typeof passMark === 'number' && score >= passMark;
+      // "معدي النص": must also clear half of the exam's total mark
+      const clearedHalf = typeof score === 'number' && typeof max === 'number' && max > 0 && score >= max/2;
 
       if (exam.type === 'homework') {
         homeworkTotal++;
@@ -591,7 +594,10 @@ function computeExams(student, scheduleData, gradesData, examsData){
         if (didPass) finalsPassed++;
       } else {
         total++;
-        if (didPass) passed++;
+        if (didPass) {
+          passed++;
+          if (clearedHalf) examScoreSum += score;
+        }
       }
 
       if (typeof score === 'number' && typeof max === 'number' && max > 0) {
@@ -601,7 +607,7 @@ function computeExams(student, scheduleData, gradesData, examsData){
     });
   });
   const avg = percents.length ? (percents.reduce((a,b)=>a+b,0)/percents.length) : null;
-  return { passed, total, excellent, avg, homeworkDone, homeworkTotal, finalsPassed, finalsTotal };
+  return { passed, total, excellent, avg, homeworkDone, homeworkTotal, finalsPassed, finalsTotal, examScoreSum };
 }
 function computeFinance(student, financeByStudent){
   const months = financeByStudent[String(student.id)] || [];
@@ -628,6 +634,7 @@ function computeStudentPoints(student, data){
     examsPassed:    Math.max(0, exams.passed  - (base.examsPassed    || 0)),
     examsExcellent: Math.max(0, exams.excellent - (base.examsExcellent || 0)),
     examsTotal:     Math.max(0, exams.total   - (base.examsTotal || 0)),
+    examsScoreSum:  Math.max(0, exams.examScoreSum - (base.examsScoreSum || 0)),
     homeworkDone:   Math.max(0, exams.homeworkDone - (base.homeworkDone || 0)),
     finalsPassed:   Math.max(0, exams.finalsPassed - (base.finalsPassed || 0)),
     paidMonths:     Math.max(0, fin.paidMonths - (base.paidMonths || 0)),
@@ -637,7 +644,7 @@ function computeStudentPoints(student, data){
 
   const attPts      = adj.present * RULES.ATTEND_PRESENT;
   const homeworkPts = adj.homeworkDone * RULES.HOMEWORK_DONE;
-  const examPts     = adj.examsPassed * RULES.EXAM_PASS; // بونص التفوق اتشال، الامتحان الناجح ثابت 10 نقط
+  const examPts     = adj.examsScoreSum; // نقاط الامتحان = الدرجة الفعلية اللي جابها (بشرط ناجح ومعدي نص الدرجة)
   const finalPts    = adj.finalsPassed * RULES.FINAL_EXAM_PASS;
   const finPts      = adj.paidMonths * RULES.PAYMENT_ON_TIME;
   const bookPts     = adj.books * RULES.BOOK_RESERVED;
@@ -655,6 +662,7 @@ async function computeRawCounts(student, data){
     examsPassed: exams.passed,
     examsExcellent: exams.excellent,
     examsTotal: exams.total,
+    examsScoreSum: exams.examScoreSum,
     homeworkDone: exams.homeworkDone,
     finalsPassed: exams.finalsPassed,
     paidMonths: fin.paidMonths,
