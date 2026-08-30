@@ -394,7 +394,7 @@ function _canonicalSubjectKey(key){
 
 /* ---------- Points rules (adjustable here) ---------- */
 const RULES = {
-  ATTEND_PRESENT: 2,
+  // الحضور والغياب بيتسجلوا وبيتعرضوا بس مش بيدوا ولا بيخصموا نقاط
   HOMEWORK_DONE: 5,          // exam.type === 'homework'
   // EXAM_PASS removed: نقاط الامتحانات العادية بقت = الدرجة الفعلية للطالب (شرط: ناجح + جاب نص الدرجة على الأقل)
   FINAL_EXAM_PASS: 30,       // exam.type === 'final' (امتحان شامل)
@@ -642,15 +642,15 @@ function computeStudentPoints(student, data){
     books:          Math.max(0, books.count   - (base.books      || 0)),
   };
 
-  const attPts      = adj.present * RULES.ATTEND_PRESENT;
   const homeworkPts = adj.homeworkDone * RULES.HOMEWORK_DONE;
   const examPts     = adj.examsScoreSum; // نقاط الامتحان = الدرجة الفعلية اللي جابها (بشرط ناجح ومعدي نص الدرجة)
   const finalPts    = adj.finalsPassed * RULES.FINAL_EXAM_PASS;
   const finPts      = adj.paidMonths * RULES.PAYMENT_ON_TIME;
   const bookPts     = adj.books * RULES.BOOK_RESERVED;
-  const total = attPts + homeworkPts + examPts + finalPts + finPts + bookPts;
+  // الحضور والغياب معروضين للعلم بس، مش بيدوا نقاط ولا بيخصموا منها
+  const total = homeworkPts + examPts + finalPts + finPts + bookPts;
 
-  return { total, breakdown:{ attendance:attPts, homework:homeworkPts, exams:examPts, finals:finalPts, finance:finPts, books:bookPts }, att, exams, fin, books, adj };
+  return { total, breakdown:{ homework:homeworkPts, exams:examPts, finals:finalPts, finance:finPts, books:bookPts }, att, exams, fin, books, adj };
 }
 
 /* ---------- Admin: points season reset ---------- */
@@ -796,7 +796,7 @@ function renderBreakdown(result){
     <div class="card">
       <h3>📊 تفاصيل النقاط</h3>
       <div class="breakdown-grid">
-        <div class="breakdown-box"><div class="num">${result.breakdown.attendance}</div><div class="lbl">من الحضور هذا الشهر (${result.adj.present} حصة)</div></div>
+        <div class="breakdown-box"><div class="num">${result.att.present}✅ / ${result.att.absent}❌</div><div class="lbl">الحضور والغياب (${result.att.rate}% نسبة حضور — للعلم فقط، مش بتأثر على النقاط)</div></div>
         <div class="breakdown-box"><div class="num">${result.breakdown.homework}</div><div class="lbl">من الواجبات (${result.adj.homeworkDone} واجب)</div></div>
         <div class="breakdown-box"><div class="num">${result.breakdown.exams}</div><div class="lbl">من الامتحانات (${result.adj.examsPassed} ناجح)</div></div>
         <div class="breakdown-box"><div class="num">${result.breakdown.finals}</div><div class="lbl">من الامتحان الشامل (${result.adj.finalsPassed} ناجح)</div></div>
