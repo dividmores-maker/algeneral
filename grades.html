@@ -943,7 +943,7 @@ let _saveDeb;
 async function _doSave() {
     setStatus('saving', '💾 جاري الحفظ...');
     try {
-        await db.collection('grades').doc('data').set({ exams: examsData, grades: gradesData, parentPhones });
+        await db.collection('grades').doc('data').set({ exams: examsData, grades: gradesData, parentPhones }, { merge: true });
         setStatus('connected', '🔥 Firebase — تم الحفظ ✔');
         const el = document.getElementById('saveInd');
         if (el) { el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2200); }
