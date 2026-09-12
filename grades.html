@@ -636,6 +636,7 @@
                 <div class="sec-sub"   id="sec3Sub">—</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-gold btn-sm" id="lockBtn" onclick="toggleLockExam()">🔒 قفل الامتحان</button>
                 <button class="btn btn-green btn-sm" onclick="saveAll()">💾 حفظ الكل</button>
                 <button class="btn btn-navy btn-sm"  onclick="openReport()">📊 تقرير</button>
                 <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ طباعة</button>
@@ -1044,15 +1045,17 @@ function renderExams() {
         return;
     }
     con.innerHTML = list.map(exam => {
-        const gMap    = ((gradesData[curSessId] || {})[String(exam.id)]) || {};
-        const entered = Object.values(gMap).filter(g => g.score !== '' && g.score !== null && g.score !== undefined).length;
-        const pct   = students.length ? Math.round((entered / students.length) * 100) : 0;
+        const isLocked = !!exam.locked;
+        const srcMap   = isLocked ? (exam.snapshot || {}) : (((gradesData[curSessId] || {})[String(exam.id)]) || {});
+        const total    = isLocked ? Object.keys(exam.snapshot || {}).length : students.length;
+        const entered  = Object.values(srcMap).filter(g => g.score !== '' && g.score !== null && g.score !== undefined).length;
+        const pct   = total ? Math.round((entered / total) * 100) : 0;
         const pCol  = pct >= 80 ? '#34d399' : pct >= 50 ? '#fbbf24' : '#f87171';
         return `
         <div class="exam-row" onclick="openExam(${exam.id})">
-            <div class="exam-ico">📝</div>
+            <div class="exam-ico">${isLocked ? '🔒' : '📝'}</div>
             <div style="flex:1;">
-                <div class="exam-name">${exam.name}</div>
+                <div class="exam-name">${exam.name} ${isLocked ? '<span style="font-size:11px;color:#f5c842;font-weight:700;">(مقفول)</span>' : ''}</div>
                 <div class="exam-meta">
                     ${EXAM_TYPES[exam.type] || exam.type || ''}
                     ${exam.max  ? ' · الدرجة الكاملة: ' + exam.max : ''}
@@ -1061,7 +1064,7 @@ function renderExams() {
                 </div>
             </div>
             <div class="exam-prog">
-                <div class="exam-prog-n" style="color:${pCol};">${entered}/${students.length}</div>
+                <div class="exam-prog-n" style="color:${pCol};">${entered}/${total}</div>
                 <div class="exam-prog-l">درجة مُدخَلة</div>
             </div>
             <div style="display:flex;gap:7px;" onclick="event.stopPropagation()">
@@ -1124,7 +1127,11 @@ async function saveExam() {
 }
 
 async function deleteExam(examId) {
-    if (!confirm('هل تريد حذف هذا الامتحان وجميع درجاته؟')) return;
+    const exam = (examsData[curSessId] || []).find(e => e.id === examId);
+    const msg  = (exam && exam.locked)
+        ? 'هذا الامتحان مقفول ونسخته النهائية محفوظة — هل تريد حذفه نهائياً مع كل درجاته؟'
+        : 'هل تريد حذف هذا الامتحان وجميع درجاته؟';
+    if (!confirm(msg)) return;
     examsData[curSessId] = (examsData[curSessId] || []).filter(e => e.id !== examId);
     if (gradesData[curSessId]) delete gradesData[curSessId][String(examId)];
     await _doSave();
@@ -1149,11 +1156,89 @@ function openExam(examId) {
     renderGrades();
 }
 
+function toggleLockExam() {
+    const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    if (!exam) return;
+    if (!exam.locked) {
+        if (!confirm('هل أنت متأكد من قفل الامتحان؟\n\nهيتم حفظ الدرجات نسخة نهائية ثابتة، ومش هتتأثر أبداً حتى لو اتغيّرت بيانات الطلاب أو الحضور بعد كده.\nتقدر تفتح القفل تاني في أي وقت لو احتجت تعدّل.')) return;
+        const students = studentsMap[curSessId] || [];
+        const gMap = ((gradesData[curSessId] || {})[String(exam.id)]) || {};
+        const snapshot = {};
+        students.forEach(st => {
+            const g = gMap[String(st.id)] || { score:'', note:'' };
+            snapshot[st.name] = {
+                score: (g.score !== undefined && g.score !== null) ? g.score : '',
+                note:  g.note || '',
+                phone: parentPhones[String(st.id)] || ''
+            };
+        });
+        exam.locked   = true;
+        exam.snapshot = snapshot;
+        exam.lockedAt = new Date().toISOString();
+        toast('🔒 تم قفل الامتحان — الدرجات محفوظة نهائياً');
+    } else {
+        if (!confirm('هل تريد فتح القفل؟\nهيرجع الامتحان قابل للتعديل تاني (النسخة النهائية هتفضل محفوظة لحد ما تعمل تعديل وتقفله من جديد).')) return;
+        exam.locked = false;
+        toast('🔓 تم فتح القفل');
+    }
+    _doSave();
+    renderExams();
+    openExam(exam.id);
+}
+
 /* ── Section 3: Grades ── */
 function renderGrades() {
     const exam     = (examsData[curSessId] || []).find(e => e.id === curExamId);
-    const students = studentsMap[curSessId] || [];
     const tbody    = document.getElementById('grBody');
+    const lockBtn  = document.getElementById('lockBtn');
+    if (lockBtn && exam) {
+        lockBtn.innerHTML = exam.locked ? '🔓 فتح القفل' : '🔒 قفل الامتحان';
+        lockBtn.className = 'btn btn-sm ' + (exam.locked ? 'btn-ghost' : 'btn-gold');
+    }
+
+    if (exam && exam.locked) {
+        const snap  = exam.snapshot || {};
+        const names = Object.keys(snap);
+        document.getElementById('tblCount').textContent = `${names.length} طالب · 🔒 مقفول نهائياً`;
+        if (!names.length) {
+            tbody.innerHTML = `<tr><td colspan="9" style="padding:40px;text-align:center;color:var(--muted);">لا توجد بيانات محفوظة</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = names.map((name, idx) => {
+            const g        = snap[name] || { score:'', note:'', phone:'' };
+            const score    = (g.score !== '' && g.score !== null && g.score !== undefined) ? g.score : '';
+            const hasScore = score !== '' && !isNaN(parseFloat(score));
+            const fScore   = hasScore ? parseFloat(score) : 0;
+            const pct      = hasScore ? Math.round((fScore / exam.max) * 100) : 0;
+            const ltr      = hasScore ? letterGrade(fScore, exam.max, exam.pass || 50) : 'X';
+            const col      = hasScore ? gradeColor(fScore, exam.max) : '#64748b';
+            const initials = name.split(' ').slice(0,2).map(n => n[0] || '').join('');
+            return `<tr>
+                <td style="color:var(--muted);font-weight:600;font-size:12px;">${idx+1}</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:9px;">
+                        <div class="st-avatar">${initials}</div>
+                        <div class="st-name">${name}</div>
+                    </div>
+                </td>
+                <td><input type="number" class="gi ${hasScore ? 'ok' : ''}" value="${score}" disabled></td>
+                <td style="color:var(--muted);font-weight:700;">${exam.max}</td>
+                <td>
+                    <div class="pct-num" style="color:${col};">${hasScore ? pct+'%' : '&#8212;'}</div>
+                    <div class="mini-bar"><div class="mini-fill" style="width:${pct}%;background:${col};"></div></div>
+                </td>
+                <td><span class="ltr ${ltr}">${ltr === 'X' ? '&#8212;' : ltr}</span></td>
+                <td><input type="text" class="note-i" value="${g.note || ''}" disabled></td>
+                <td><input type="tel" class="phone-i" value="${g.phone || ''}" disabled></td>
+                <td>
+                    <button class="btn-wa" onclick="sendToParentLocked('${name.replace(/'/g,"\\'")}')">📲 إرسال</button>
+                </td>
+            </tr>`;
+        }).join('');
+        return;
+    }
+
+    const students = studentsMap[curSessId] || [];
     document.getElementById('tblCount').textContent = `${students.length} طالب`;
     if (!students.length) {
         tbody.innerHTML = `<tr><td colspan="9" style="padding:55px;text-align:center;color:var(--muted);">
@@ -1256,6 +1341,8 @@ function clearGrade(stId) {
 }
 
 async function saveAll() {
+    const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    if (exam && exam.locked) { toast('❌ الامتحان مقفول — افتح القفل الأول للتعديل', 'danger'); return; }
     (studentsMap[curSessId] || []).forEach(st => autoSave(st.id));
     await _doSave();
     toast('تم حفظ جميع الدرجات ✔');
@@ -1269,6 +1356,8 @@ function filterGrades() {
 }
 
 function sortG(by) {
+    const exam0 = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    if (exam0 && exam0.locked) { toast('❌ الامتحان مقفول — الترتيب متاح بعد فتح القفل', 'danger'); return; }
     const students = [...(studentsMap[curSessId] || [])];
     const exam     = (examsData[curSessId] || []).find(e => e.id === curExamId);
     const gMap     = ((gradesData[curSessId] || {})[String(curExamId)]) || {};
@@ -1289,14 +1378,25 @@ function sortG(by) {
 /* ── Report ── */
 function openReport() {
     const exam     = (examsData[curSessId] || []).find(e => e.id === curExamId);
-    const students = studentsMap[curSessId] || [];
     const sess     = allSessions.find(s => s.sid === curSessId);
-    const gMap     = ((gradesData[curSessId] || {})[String(curExamId)]) || {};
-    const scores = students
-        .map(st => (gMap[String(st.id)] || {}).score)
-        .filter(s => s !== '' && s !== null && s !== undefined && !isNaN(parseFloat(s)))
-        .map(Number);
-    const total   = students.length;
+    let total, scores;
+    if (exam.locked) {
+        const snap  = exam.snapshot || {};
+        const names = Object.keys(snap);
+        total  = names.length;
+        scores = names
+            .map(n => snap[n].score)
+            .filter(s => s !== '' && s !== null && s !== undefined && !isNaN(parseFloat(s)))
+            .map(Number);
+    } else {
+        const students = studentsMap[curSessId] || [];
+        const gMap     = ((gradesData[curSessId] || {})[String(curExamId)]) || {};
+        total  = students.length;
+        scores = students
+            .map(st => (gMap[String(st.id)] || {}).score)
+            .filter(s => s !== '' && s !== null && s !== undefined && !isNaN(parseFloat(s)))
+            .map(Number);
+    }
     const entered = scores.length;
     const avg     = entered ? (scores.reduce((a,b)=>a+b,0)/entered).toFixed(1) : '—';
     const hi      = entered ? Math.max(...scores) : '—';
@@ -1346,6 +1446,10 @@ function openReport() {
         <div style="margin-top:12px;padding:9px 13px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;font-size:12px;color:#fbbf24;">
             ⚠️ ${total - entered} طالب لم تُدخَل درجتهم بعد
         </div>` : ''}
+        ${exam.locked ? `
+        <div style="margin-top:12px;padding:9px 13px;background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.3);border-radius:8px;font-size:12px;color:#f5c842;">
+            🔒 هذا التقرير من نسخة نهائية مقفولة ولن تتغيّر
+        </div>` : ''}
     `;
     openOv('reportModal');
 }
@@ -1358,6 +1462,23 @@ function savePhone(stId) {
     parentPhones[String(stId)] = val;
     scheduleSave();
     if (val) toast('تم حفظ رقم ولي الأمر ✔');
+}
+
+function sendToParentLocked(name) {
+    const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    const sess = allSessions.find(s => s.sid === curSessId);
+    const g    = (exam.snapshot || {})[name];
+    if (!g || !exam) return;
+    if (!g.phone) { toast('❌ لم يتم حفظ رقم ولي الأمر لهذا الطالب', 'danger'); return; }
+    if (g.score === '' || g.score === null || g.score === undefined || isNaN(parseFloat(g.score))) { toast('❌ لا توجد درجة محفوظة لهذا الطالب', 'danger'); return; }
+    const pct  = Math.round((parseFloat(g.score) / exam.max) * 100);
+    const ltr  = letterGrade(parseFloat(g.score), exam.max, exam.pass || 50);
+    const gradeLabels = { A:'ممتاز', B:'جيد جداً', C:'جيد', D:'مقبول', F:'ضعيف' };
+    const msg = `مرحباً ولي أمر الطالب/ة: ${name}\n\nنتيجة الامتحان:\n📚 المادة: ${sess?.subject || ''}\n📝 الامتحان: ${exam.name}\n✏️ الدرجة: ${g.score} / ${exam.max}\n📊 النسبة: ${pct}%\n🏅 التقدير: ${gradeLabels[ltr]||ltr}${g.note ? '\n📌 ملاحظة: ' + g.note : ''}\n\nمع تحياتنا`;
+    let normalized = g.phone.replace(/[\s\-()]/g, '');
+    if (normalized.startsWith('0')) normalized = '966' + normalized.slice(1);
+    if (!normalized.startsWith('+')) normalized = '+' + normalized;
+    window.open(`https://wa.me/${normalized.replace('+','')}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function sendToParent(stId) {
