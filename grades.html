@@ -488,6 +488,21 @@
         #toast.danger  { background:rgba(239,68,68,.25);  color:#f87171; border:1px solid rgba(239,68,68,.4);  box-shadow:0 8px 28px rgba(0,0,0,.4); }
         @keyframes tsUp { from{transform:translateY(14px);opacity:0} to{transform:translateY(0);opacity:1} }
 
+        /* ══ EXAM LOG ═══════════════════════════════════ */
+        .log-row {
+            background: rgba(255,255,255,.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px; margin-bottom: 10px; overflow:hidden;
+            border-right: 3px solid #d4a017;
+        }
+        .log-row-hd { display:flex; align-items:center; gap:12px; padding:13px 16px; cursor:pointer; transition:background .18s; }
+        .log-row-hd:hover { background:rgba(212,160,23,.06); }
+        .log-ico { width:38px; height:38px; border-radius:10px; flex-shrink:0; background:linear-gradient(135deg,#c0182a,#d4a017); display:flex; align-items:center; justify-content:center; font-size:16px; }
+        .log-title { font-size:14px; font-weight:800; color:var(--white); }
+        .log-meta  { font-size:11.5px; color:var(--muted); margin-top:3px; }
+        .log-toggle { color:var(--muted); font-size:12px; padding:0 4px; }
+        .log-row-body { padding:0 16px 16px; border-top:1px dashed rgba(212,160,23,.2); margin-top:2px; padding-top:14px; }
+
         /* ══ EMPTY STATE ════════════════════════════════ */
         .empty { text-align:center; padding:55px 20px; color:var(--muted); }
         .empty-ico   { font-size:56px; margin-bottom:13px; }
@@ -555,6 +570,7 @@
     </div>
     <div class="tb-actions">
         <button class="btn btn-gold btn-sm" id="btnAddExam" style="display:none" onclick="openAddExamModal()">➕ امتحان جديد</button>
+        <button class="btn btn-outline btn-sm" onclick="openExamLog()">📜 سجل الامتحانات</button>
         <a href="index.html" class="btn btn-outline btn-sm">🏠 الرئيسية</a>
     </div>
 </div>
@@ -736,6 +752,23 @@
     </div>
 </div>
 
+<!-- ══ MODAL: Exam Log (permanent history) ══ -->
+<div class="ov" id="examLogModal">
+    <div class="mb wide">
+        <div class="mh">
+            <div class="mh-title">📜 سجل الامتحانات</div>
+            <button class="mclose" onclick="closeOv('examLogModal')">✕</button>
+        </div>
+        <div class="mc">
+            <input type="text" class="fc" id="logSearch" placeholder="🔍 بحث باسم الامتحان / المادة / الفصل..." oninput="filterExamLog()" style="margin-bottom:14px;">
+            <div id="examLogContent"></div>
+        </div>
+        <div class="mf">
+            <button class="btn btn-ghost" style="flex:1;" onclick="closeOv('examLogModal')">إغلاق</button>
+        </div>
+    </div>
+</div>
+
 <!-- ══ MODAL: Report ══ -->
 <div class="ov" id="reportModal">
     <div class="mb wide">
@@ -868,6 +901,8 @@ let parentPhones  = {};
 let curSessId     = null;
 let curExamId     = null;
 let sortDir       = {};
+let examLog       = [];
+let logOpenIds    = new Set();
 
 /* ── Firebase Load ── */
 async function loadAll() {
@@ -915,6 +950,7 @@ async function loadAll() {
             examsData    = d.exams  || {};
             gradesData   = d.grades || {};
             parentPhones = d.parentPhones || {};
+            examLog      = d.log    || [];
         }
     } catch(e) { console.warn('Grades load:', e); }
 
@@ -944,7 +980,7 @@ let _saveDeb;
 async function _doSave() {
     setStatus('saving', '💾 جاري الحفظ...');
     try {
-        await db.collection('grades').doc('data').set({ exams: examsData, grades: gradesData, parentPhones }, { merge: true });
+        await db.collection('grades').doc('data').set({ exams: examsData, grades: gradesData, parentPhones, log: examLog }, { merge: true });
         setStatus('connected', '🔥 Firebase — تم الحفظ ✔');
         const el = document.getElementById('saveInd');
         if (el) { el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2200); }
@@ -1344,9 +1380,141 @@ async function saveAll() {
     const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
     if (exam && exam.locked) { toast('❌ الامتحان مقفول — افتح القفل الأول للتعديل', 'danger'); return; }
     (studentsMap[curSessId] || []).forEach(st => autoSave(st.id));
+    recordExamLog();
     await _doSave();
-    toast('تم حفظ جميع الدرجات ✔');
+    toast('تم حفظ جميع الدرجات ✔ وتسجيلها في السجل');
 }
+
+/* ── Exam Log (permanent history — one entry per exam, updated on every save) ── */
+function recordExamLog() {
+    const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
+    const sess = allSessions.find(s => s.sid === curSessId);
+    if (!exam) return;
+    const students = studentsMap[curSessId] || [];
+    const gMap = ((gradesData[curSessId] || {})[String(curExamId)]) || {};
+    const snapshot = {};
+    students.forEach(st => {
+        const g = gMap[String(st.id)] || {};
+        snapshot[st.name] = { score: (g.score ?? ''), note: g.note || '' };
+    });
+    const scores = students
+        .map(st => (gMap[String(st.id)] || {}).score)
+        .filter(s => s !== '' && s !== null && s !== undefined && !isNaN(parseFloat(s)))
+        .map(Number);
+    const entered = scores.length;
+    const avg = entered ? +(scores.reduce((a,b)=>a+b,0)/entered).toFixed(1) : null;
+    const hi  = entered ? Math.max(...scores) : null;
+    const lo  = entered ? Math.min(...scores) : null;
+    const p   = exam.pass || 50;
+    const passed = scores.filter(s => (s/exam.max)*100 >= p).length;
+    const failed = scores.filter(s => (s/exam.max)*100 <  p).length;
+
+    const entry = {
+        sessId: curSessId,
+        examId: curExamId,
+        examName: exam.name,
+        subject: sess?.subject || '',
+        class: sess?.class || '',
+        teacher: sess?.teacher || '',
+        max: exam.max,
+        pass: p,
+        total: students.length,
+        entered, avg, hi, lo, passed, failed,
+        snapshot,
+        updatedAt: new Date().toISOString()
+    };
+
+    const idx = examLog.findIndex(l => l.sessId === curSessId && l.examId === curExamId);
+    if (idx !== -1) {
+        entry.logId = examLog[idx].logId;
+        entry.createdAt = examLog[idx].createdAt || examLog[idx].ts || entry.updatedAt;
+        examLog[idx] = entry;
+    } else {
+        entry.logId = Date.now() + '_' + Math.random().toString(36).slice(2,7);
+        entry.createdAt = entry.updatedAt;
+        examLog.push(entry);
+    }
+}
+
+function fDateTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const day = String(d.getDate()).padStart(2,'0');
+    const mon = String(d.getMonth()+1).padStart(2,'0');
+    let h = d.getHours(); const m = String(d.getMinutes()).padStart(2,'0');
+    const ap = h >= 12 ? 'مساءً' : 'صباحاً';
+    h = h % 12; if (h === 0) h = 12;
+    return `${day}/${mon}/${d.getFullYear()} — ${h}:${m} ${ap}`;
+}
+
+function openExamLog() {
+    renderExamLog();
+    openOv('examLogModal');
+}
+
+function toggleLogEntry(logId) {
+    if (logOpenIds.has(logId)) logOpenIds.delete(logId); else logOpenIds.add(logId);
+    renderExamLog();
+}
+
+function renderExamLog() {
+    const wrap = document.getElementById('examLogContent');
+    if (!examLog.length) {
+        wrap.innerHTML = `
+        <div class="empty">
+            <div class="empty-ico">📜</div>
+            <div class="empty-title">لا يوجد سجل بعد</div>
+            <div class="empty-sub">هيتسجل هنا كل مرة تدوس فيها "حفظ الكل" في صفحة الدرجات</div>
+        </div>`;
+        return;
+    }
+    const q = (document.getElementById('logSearch')?.value || '').toLowerCase();
+    const ordered = [...examLog].sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).filter(l =>
+        !q || (l.examName + ' ' + l.subject + ' ' + l.class).toLowerCase().includes(q)
+    );
+    wrap.innerHTML = ordered.map(l => {
+        const open = logOpenIds.has(l.logId);
+        const rows = Object.keys(l.snapshot || {}).map(name => {
+            const g = l.snapshot[name];
+            const hasScore = g.score !== '' && g.score !== null && g.score !== undefined && !isNaN(parseFloat(g.score));
+            const ltr = hasScore ? letterGrade(parseFloat(g.score), l.max, l.pass) : 'X';
+            return `<tr>
+                <td class="st-name">${name}</td>
+                <td>${hasScore ? g.score : '—'} / ${l.max}</td>
+                <td><span class="ltr ${ltr}">${ltr}</span></td>
+                <td style="font-size:12px;color:var(--muted);">${g.note || ''}</td>
+            </tr>`;
+        }).join('');
+        return `
+        <div class="log-row">
+            <div class="log-row-hd" onclick="toggleLogEntry('${l.logId}')">
+                <div class="log-ico">📝</div>
+                <div style="flex:1;">
+                    <div class="log-title">${l.examName} <span style="color:var(--muted);font-weight:600;">— ${l.subject} · ${l.class}</span></div>
+                    <div class="log-meta">🕒 آخر تحديث ${fDateTime(l.updatedAt)} &nbsp;·&nbsp; ${l.entered}/${l.total} درجة مُدخلة${l.avg!==null ? ' &nbsp;·&nbsp; متوسط '+l.avg : ''}</div>
+                </div>
+                <div class="log-toggle">${open ? '▲' : '▼'}</div>
+            </div>
+            ${open ? `
+            <div class="log-row-body">
+                <div class="rg" style="margin-bottom:14px;">
+                    <div class="rc"><div class="rc-n">${l.total}</div><div class="rc-l">إجمالي الطلاب</div></div>
+                    <div class="rc" style="border-top-color:#34d399;"><div class="rc-n" style="color:#34d399;">${l.avg ?? '—'}</div><div class="rc-l">المتوسط</div></div>
+                    <div class="rc" style="border-top-color:#60a5fa;"><div class="rc-n" style="color:#60a5fa;">${l.passed}</div><div class="rc-l">ناجح</div></div>
+                    <div class="rc" style="border-top-color:#f87171;"><div class="rc-n" style="color:#f87171;">${l.failed}</div><div class="rc-l">راسب</div></div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead><tr><th>الطالب</th><th>الدرجة</th><th>التقدير</th><th>ملاحظة</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function filterExamLog() { renderExamLog(); }
 
 function filterGrades() {
     const q = document.getElementById('grSearch').value.toLowerCase();

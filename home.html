@@ -1138,8 +1138,18 @@
         // Comment out for preview
         // const isLoggedIn = sessionStorage.getItem('isLoggedIn');
         // if (isLoggedIn !== 'true') window.location.href = 'login.html';
+        applyStatsBarPermission();
         startClock();
     };
+
+    /* ── إظهار شريط الإحصائيات فقط لـ admin أو RAMY ABO NOUR ── */
+    function applyStatsBarPermission() {
+        const ALLOWED_USERS = ['admin', 'RAMY ABO NOUR'];
+        const currentUser = (sessionStorage.getItem('currentUser') || '').trim();
+        const statsBar = document.querySelector('.stats-bar');
+        if (!statsBar) return;
+        statsBar.style.display = ALLOWED_USERS.includes(currentUser) ? '' : 'none';
+    }
 
     function logout() {
         sessionStorage.removeItem('isLoggedIn');
