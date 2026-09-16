@@ -904,6 +904,51 @@ let sortDir       = {};
 let examLog       = [];
 let logOpenIds    = new Set();
 
+/* ── One-time migration: old single grades/data doc → split collections ──
+   The old model kept ALL sessions/exams/grades/log/phones inside ONE document
+   (grades/data). As the center grew, that single document's distinct field
+   paths (session→exam→student keys) exceeded Firestore's per-document index
+   entry limit, causing "too many index entries" on any new write.
+   This splits the data across:
+     grades_by_session/{sessId}  → { exams: [...], grades: {...} }  (one doc per class/session)
+     grades_log/{sessId_examId}  → one exam-log entry per document
+     grades_meta/phones          → { parentPhones: {...} }
+   so each document only ever holds one session's worth of data. */
+async function migrateGradesIfNeeded() {
+    try {
+        const flag = await db.collection('grades_meta').doc('migration').get();
+        if (flag.exists && flag.data().done) return;
+        const oldSnap = await db.collection('grades').doc('data').get();
+        if (!oldSnap.exists) {
+            await db.collection('grades_meta').doc('migration').set({ done: true, migratedAt: new Date().toISOString() });
+            return;
+        }
+        const d      = oldSnap.data();
+        const exams  = d.exams  || {};
+        const grades = d.grades || {};
+        const log    = d.log    || [];
+        const phones = d.parentPhones || {};
+
+        const sessIds = new Set([...Object.keys(exams), ...Object.keys(grades)]);
+        const writes = [];
+        sessIds.forEach(sid => {
+            writes.push(db.collection('grades_by_session').doc(sid).set({
+                exams:  exams[sid]  || [],
+                grades: grades[sid] || {}
+            }));
+        });
+        log.forEach(entry => {
+            writes.push(db.collection('grades_log').doc(`${entry.sessId}_${entry.examId}`).set(entry));
+        });
+        writes.push(db.collection('grades_meta').doc('phones').set({ parentPhones: phones }));
+        await Promise.all(writes);
+        await db.collection('grades_meta').doc('migration').set({ done: true, migratedAt: new Date().toISOString() });
+        console.log('✔ Grades data migrated to split collections:', sessIds.size, 'sessions,', log.length, 'log entries');
+    } catch(e) {
+        console.warn('Migration warning:', e);
+    }
+}
+
 /* ── Firebase Load ── */
 async function loadAll() {
     setStatus('connecting', '🔌 جاري تحميل البيانات من Firebase...');
@@ -943,15 +988,20 @@ async function loadAll() {
         });
     } catch(e) { console.warn('Students load:', e); }
 
+    await migrateGradesIfNeeded();
     try {
-        const snap = await db.collection('grades').doc('data').get();
-        if (snap.exists) {
-            const d = snap.data();
-            examsData    = d.exams  || {};
-            gradesData   = d.grades || {};
-            parentPhones = d.parentPhones || {};
-            examLog      = d.log    || [];
-        }
+        const snap = await db.collection('grades_by_session').get();
+        examsData = {}; gradesData = {};
+        snap.forEach(doc => {
+            const d = doc.data();
+            examsData[doc.id]  = d.exams  || [];
+            gradesData[doc.id] = d.grades || {};
+        });
+        const phonesSnap = await db.collection('grades_meta').doc('phones').get();
+        parentPhones = phonesSnap.exists ? (phonesSnap.data().parentPhones || {}) : {};
+        const logSnap = await db.collection('grades_log').get();
+        examLog = [];
+        logSnap.forEach(doc => examLog.push(doc.data()));
     } catch(e) { console.warn('Grades load:', e); }
 
     renderSessions();
@@ -976,17 +1026,44 @@ async function loadAll() {
     }, err => { setStatus('error', '❌ ' + err.message); });
 }
 
+/* Each session (class) now owns its own document, so a write only ever
+   touches that one session's exams + grades — never the whole center's data. */
 let _saveDeb;
-async function _doSave() {
+async function saveSessionData(sessId) {
+    if (!sessId) return;
     setStatus('saving', '💾 جاري الحفظ...');
     try {
-        await db.collection('grades').doc('data').set({ exams: examsData, grades: gradesData, parentPhones, log: examLog }, { merge: true });
+        await db.collection('grades_by_session').doc(sessId).set({
+            exams:  examsData[sessId]  || [],
+            grades: gradesData[sessId] || {}
+        });
         setStatus('connected', '🔥 Firebase — تم الحفظ ✔');
         const el = document.getElementById('saveInd');
         if (el) { el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2200); }
     } catch(e) { setStatus('error', '❌ خطأ في الحفظ: ' + e.message); }
 }
-function scheduleSave() { clearTimeout(_saveDeb); _saveDeb = setTimeout(_doSave, 700); }
+function scheduleSessionSave(sessId) {
+    clearTimeout(_saveDeb);
+    _saveDeb = setTimeout(() => saveSessionData(sessId), 700);
+}
+
+let _phoneSaveDeb;
+async function savePhonesData() {
+    try {
+        await db.collection('grades_meta').doc('phones').set({ parentPhones }, { merge: true });
+    } catch(e) { console.warn('Phones save:', e); }
+}
+function schedulePhonesSave() {
+    clearTimeout(_phoneSaveDeb);
+    _phoneSaveDeb = setTimeout(savePhonesData, 700);
+}
+
+async function saveLogEntry(entry) {
+    if (!entry) return;
+    try {
+        await db.collection('grades_log').doc(`${entry.sessId}_${entry.examId}`).set(entry);
+    } catch(e) { console.warn('Log save:', e); }
+}
 
 function updateStats() {
     document.getElementById('stSess').textContent = allSessions.length;
@@ -1156,7 +1233,7 @@ async function saveExam() {
         examsData[curSessId].push({ id: Date.now(), name, max, date, type, pass, notes });
         toast('تم إضافة الامتحان ✔');
     }
-    await _doSave();
+    await saveSessionData(curSessId);
     closeOv('examModal');
     renderExams();
     updateStats();
@@ -1170,7 +1247,9 @@ async function deleteExam(examId) {
     if (!confirm(msg)) return;
     examsData[curSessId] = (examsData[curSessId] || []).filter(e => e.id !== examId);
     if (gradesData[curSessId]) delete gradesData[curSessId][String(examId)];
-    await _doSave();
+    await saveSessionData(curSessId);
+    db.collection('grades_log').doc(`${curSessId}_${examId}`).delete().catch(() => {});
+    examLog = examLog.filter(l => !(l.sessId === curSessId && l.examId === examId));
     renderExams();
     updateStats();
     toast('تم حذف الامتحان');
@@ -1217,7 +1296,7 @@ function toggleLockExam() {
         exam.locked = false;
         toast('🔓 تم فتح القفل');
     }
-    _doSave();
+    saveSessionData(curSessId);
     renderExams();
     openExam(exam.id);
 }
@@ -1362,7 +1441,7 @@ function autoSave(stId) {
     if (!gradesData[curSessId]) gradesData[curSessId] = {};
     if (!gradesData[curSessId][String(curExamId)]) gradesData[curSessId][String(curExamId)] = {};
     gradesData[curSessId][String(curExamId)][String(stId)] = { score, note };
-    scheduleSave();
+    scheduleSessionSave(curSessId);
     updateStats();
 }
 
@@ -1380,8 +1459,8 @@ async function saveAll() {
     const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
     if (exam && exam.locked) { toast('❌ الامتحان مقفول — افتح القفل الأول للتعديل', 'danger'); return; }
     (studentsMap[curSessId] || []).forEach(st => autoSave(st.id));
-    recordExamLog();
-    await _doSave();
+    const entry = recordExamLog();
+    await Promise.all([saveSessionData(curSessId), saveLogEntry(entry)]);
     toast('تم حفظ جميع الدرجات ✔ وتسجيلها في السجل');
 }
 
@@ -1434,6 +1513,7 @@ function recordExamLog() {
         entry.createdAt = entry.updatedAt;
         examLog.push(entry);
     }
+    return entry;
 }
 
 function fDateTime(iso) {
@@ -1628,7 +1708,7 @@ function savePhone(stId) {
     if (!inp) return;
     const val = inp.value.trim();
     parentPhones[String(stId)] = val;
-    scheduleSave();
+    schedulePhonesSave();
     if (val) toast('تم حفظ رقم ولي الأمر ✔');
 }
 

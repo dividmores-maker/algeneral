@@ -713,15 +713,17 @@ async function loadScheduleAndGrades(s){
     schedPanel.innerHTML = html;
   }
 
-  /* -- Grades panel -- */
+  /* -- Grades panel --
+     Grades now live split across grades_by_session/{sessId} docs
+     (one per class/session) instead of the old single grades/data doc. */
   let gradesData = {}, examsData = {};
   try {
-    const gSnap = await getDoc(doc(db, 'grades', 'data'));
-    if (gSnap.exists()) {
-      const d = gSnap.data();
-      gradesData = d.grades || {};
-      examsData  = d.exams  || {};
-    }
+    const gbsSnap = await getDocs(collection(db, 'grades_by_session'));
+    gbsSnap.forEach(d => {
+      const data = d.data();
+      examsData[d.id]  = data.exams  || [];
+      gradesData[d.id] = data.grades || {};
+    });
   } catch(e) {}
 
   const gradesPanel = document.getElementById('panel-grades');
