@@ -224,6 +224,26 @@
             box-shadow: 0 8px 24px rgba(239,68,68,.35);
         }
 
+
+        .settings-btn {
+            display: none; align-items: center; gap: 7px;
+            padding: 9px 20px;
+            background: rgba(212,175,55,.1);
+            border: 1px solid rgba(212,175,55,.3);
+            border-radius: 12px;
+            color: var(--purple-hi);
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px; font-weight: 700;
+            cursor: pointer; text-decoration: none;
+            transition: all .25s;
+        }
+        .settings-btn:hover {
+            background: rgba(212,175,55,.2);
+            border-color: var(--border-hi);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(212,175,55,.25);
+        }
+
         /* ════════════════════════ STATS BAR ════════════════════════ */
         .stats-bar {
             display: grid;
@@ -530,6 +550,16 @@
             .stat-trend { display: none; }
         }
     </style>
+<script>
+/* إخفاء الكروت فوراً لغير الأدمن لحد ما الصلاحيات تتحمّل */
+(function () {
+    if ((sessionStorage.getItem('currentUser') || '').trim() === 'admin') return;
+    var st = document.createElement('style');
+    st.id = 'permPending';
+    st.textContent = '.nav-card,.stats-bar{visibility:hidden!important}';
+    document.head.appendChild(st);
+})();
+</script>
 </head>
 <body>
 
@@ -603,6 +633,7 @@
                 </svg>
                 <div class="notif-badge"></div>
             </div>
+            <a href="settings.html" id="settingsBtn" class="settings-btn" title="الإعدادات والصلاحيات">⚙️ الإعدادات</a>
             <button class="logout-btn" onclick="logout()">
                 <svg class="icon-3d" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <defs>
@@ -1123,7 +1154,7 @@
         <div class="footer-meta">
             <a href="#" class="footer-link">الدعم الفني</a>
             <div class="footer-dot"></div>
-            <a href="#" class="footer-link">الإعدادات</a>
+            <a href="settings.html" class="footer-link" id="footerSettings" style="display:none">الإعدادات</a>
             <div class="footer-dot"></div>
             <a href="#" class="footer-link">سياسة الخصوصية</a>
         </div>
@@ -1323,5 +1354,46 @@
 })();
 </script>
 
+
+<script>
+/* ── الإعدادات والصلاحيات (settings.html) ── */
+(function () {
+    const ADMIN_USERS = ['admin'];
+    const user = (sessionStorage.getItem('currentUser') || '').trim();
+    const isAdmin = ADMIN_USERS.includes(user);
+
+    // زرار الإعدادات للأدمن فقط
+    if (isAdmin) {
+        document.getElementById('settingsBtn').style.display = 'inline-flex';
+        document.getElementById('footerSettings').style.display = '';
+    }
+
+    // تطبيق الصلاحيات المحفوظة على الكروت
+    const reveal = () => { const e = document.getElementById('permPending'); if (e) e.remove(); };
+    setTimeout(reveal, 5000); // أمان: لو الاتصال بطيء
+    firebase.firestore().collection('settings').doc('config').onSnapshot(snap => {
+        let cfg = {};
+        try { cfg = JSON.parse((snap.data() || {}).json || '{}'); } catch (e) {}
+        try { localStorage.setItem('guardCfg', (snap.data() || {}).json || ''); } catch (e) {}
+
+        if (cfg.centerName) {
+            const t = document.querySelector('.logo-tagline');
+            if (t) t.textContent = cfg.centerName;
+        }
+        if (isAdmin) return;
+
+        const perms = (cfg.users || {})[user];
+        if (perms) {
+            document.querySelectorAll('.nav-card').forEach(card => {
+                const page = (card.getAttribute('href') || '').split('/').pop();
+                card.style.display = perms[page] === false ? 'none' : '';
+            });
+            const stats = document.querySelector('.stats-bar');
+            if (stats && perms.stats !== undefined) stats.style.display = perms.stats ? '' : 'none';
+        }
+        reveal();
+    }, err => { console.error('settings error', err); reveal(); });
+})();
+</script>
 </body>
 </html>

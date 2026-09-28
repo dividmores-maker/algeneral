@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الإعدادات والصلاحيات - سنتر الجنرال</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#080808;--gold:#d4a017;--gold-hi:#f5c842;--gold-soft:#e8c96a;--red:#e8203a;--card:rgba(15,10,0,.8);--bd:rgba(212,160,23,.22);--mut:rgba(255,255,255,.55)}
+body{font-family:'Cairo',sans-serif;color:#fff;min-height:100vh;
+background:radial-gradient(ellipse 70% 40% at 50% -5%,rgba(212,160,23,.28),transparent 60%),radial-gradient(ellipse 45% 35% at 90% 90%,rgba(192,24,42,.2),transparent 55%),var(--bg);padding:24px 16px 60px}
+.wrap{max-width:1100px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.top h1{font-size:24px;font-weight:900}
+.top h1 span{background:linear-gradient(135deg,var(--gold-hi),var(--gold-soft),#ff6070);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.btn{font-family:inherit;font-weight:700;font-size:14px;padding:10px 20px;border-radius:12px;border:1px solid var(--bd);background:rgba(212,160,23,.08);color:var(--gold-soft);cursor:pointer;text-decoration:none;transition:.2s;display:inline-block}
+.btn:hover{transform:translateY(-2px);border-color:var(--gold)}
+.btn.primary{background:linear-gradient(135deg,#c0182a,#9b0d1e 45%,var(--gold));color:#fff;border:none;box-shadow:0 4px 20px rgba(192,24,42,.4)}
+.tabs{display:flex;gap:8px;margin-bottom:18px}
+.tab{padding:10px 22px;border-radius:12px;border:1px solid var(--bd);background:transparent;color:var(--mut);font:700 14px 'Cairo';cursor:pointer}
+.tab.on{background:rgba(212,160,23,.14);color:var(--gold-hi);border-color:var(--gold)}
+.panel{display:none;background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:22px;backdrop-filter:blur(14px)}
+.panel.on{display:block}
+.hint{font-size:13px;color:var(--mut);margin-bottom:16px;line-height:1.8}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:1000px}
+th,td{padding:12px 8px;text-align:center;border-bottom:1px solid rgba(212,160,23,.1);font-size:13px}
+th{color:var(--gold-soft);font-weight:700;white-space:nowrap}
+td.user{text-align:right;font-weight:700;white-space:nowrap}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(232,32,58,.15);color:#ff8090;margin-right:6px}
+.sw{position:relative;display:inline-block;width:38px;height:21px}
+.sw input{opacity:0;width:0;height:0}
+.sw i{position:absolute;inset:0;background:rgba(255,255,255,.12);border-radius:20px;cursor:pointer;transition:.2s}
+.sw i::after{content:'';position:absolute;top:3px;right:3px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.2s}
+.sw input:checked+i{background:var(--gold)}
+.sw input:checked+i::after{right:20px}
+.sw input:disabled+i{opacity:.45;cursor:not-allowed}
+.mini{font:600 12px 'Cairo';padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--gold-soft);cursor:pointer}
+.field{max-width:420px;margin-bottom:18px}
+.field label{display:block;font-size:13px;font-weight:700;margin-bottom:8px;color:rgba(255,255,255,.75)}
+.field input{width:100%;padding:12px 14px;background:rgba(212,160,23,.05);border:1px solid var(--bd);border-radius:12px;color:#fff;font:14px 'Cairo';outline:none}
+.field input:focus{border-color:var(--gold)}
+.bar{display:flex;gap:10px;align-items:center;margin-top:20px;flex-wrap:wrap}
+#msg{font-size:13px;font-weight:700}
+.ok{color:var(--gold-soft)}.err{color:#ff8090}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>⚙️ <span>الإعدادات والصلاحيات</span></h1>
+    <a href="home.html" class="btn">→ الرجوع للرئيسية</a>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-p="perm">🔐 صلاحيات المستخدمين</button>
+    <button class="tab" data-p="gen">🏫 إعدادات عامة</button>
+  </div>
+
+  <div class="panel on" id="perm">
+    <p class="hint">فعّل الصفحات المسموح لكل مستخدم يفتحها. الأدمن عنده كل الصلاحيات دايماً. لو مفيش إعدادات محفوظة لمستخدم، بيفضل زي ما هو (كل الصفحات متاحة).</p>
+    <div class="scroll"><table id="tbl"></table></div>
+  </div>
+
+  <div class="panel" id="gen">
+    <div class="field">
+      <label for="centerName">اسم السنتر (يظهر في الصفحة الرئيسية)</label>
+      <input id="centerName" placeholder="سنتر الجنرال">
+    </div>
+  </div>
+
+  <div class="bar">
+    <button class="btn primary" id="saveBtn">💾 حفظ التغييرات</button>
+    <span id="msg"></span>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+/* ── صلاحية الدخول: للأدمن فقط ── */
+const ADMIN_USERS = ['admin'];
+const me = (sessionStorage.getItem('currentUser') || '').trim();
+if (sessionStorage.getItem('isLoggedIn') !== 'true' || !ADMIN_USERS.includes(me)) {
+  location.replace('home.html');
+}
+
+/* ── المستخدمون (نفس القائمة الموجودة في login.html) ── */
+const USERS = ['admin', 'RAMY ABO NOUR', 'ASSISTANT1', 'ASSISTANT2', 'GOMANA'];
+const PAGES = [
+  ['dashboard.html', 'لوحة التحكم'], ['schedule_management.html', 'الجدول'],
+  ['attendance.html', 'الحضور'], ['teachers.html', 'المدرسين'],
+  ['students.html', 'الطلاب'], ['finance.html', 'المالية'],
+  ['books.html', 'الملازم'], ['grades.html', 'الدرجات'], ['reports.html', 'التقارير']
+];
+const STATS = 'stats'; // شريط الإحصائيات في الرئيسية
+/* إخفاء إحصائيات داخل صفحات معيّنة — المفتاح = stats_ + اسم الصفحة (تتطبق عن طريق guard.js) */
+const PAGE_STATS = [['stats_students', 'إحصائيات الطلاب'], ['stats_finance', 'إحصائيات المالية']];
+
+firebase.initializeApp({
+  apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg", authDomain: "al-gnarl.firebaseapp.com",
+  projectId: "al-gnarl", storageBucket: "al-gnarl.firebasestorage.app",
+  messagingSenderId: "288765966471", appId: "1:288765966471:web:63358febfb82843c2fa022"
+});
+const ref = firebase.firestore().collection('settings').doc('config');
+
+let cfg = { users: {}, centerName: '' };
+const isAdm = u => ADMIN_USERS.includes(u);
+const allowed = (u, k) => isAdm(u) || !cfg.users[u] || cfg.users[u][k] !== false;
+
+function render() {
+  const t = document.getElementById('tbl');
+  let h = '<tr><th style="text-align:right">المستخدم</th>' +
+    PAGES.map(p => `<th>${p[1]}</th>`).join('') + '<th>إحصائيات الرئيسية</th>' + PAGE_STATS.map(p => `<th>${p[1]}</th>`).join('') + '<th></th></tr>';
+  USERS.forEach((u, i) => {
+    const dis = isAdm(u) ? 'disabled' : '';
+    h += `<tr><td class="user">${u}${isAdm(u) ? '<span class="badge">أدمن</span>' : ''}</td>` +
+      [...PAGES.map(p => p[0]), STATS, ...PAGE_STATS.map(p => p[0])].map(k =>
+        `<td><label class="sw"><input type="checkbox" data-u="${i}" data-k="${k}" ${allowed(u, k) ? 'checked' : ''} ${dis}><i></i></label></td>`
+      ).join('') +
+      `<td>${isAdm(u) ? '' : `<button class="mini" data-all="${i}">الكل</button>`}</td></tr>`;
+  });
+  t.innerHTML = h;
+}
+
+document.getElementById('tbl').addEventListener('click', e => {
+  const i = e.target.dataset.all;
+  if (i === undefined) return;
+  const boxes = [...document.querySelectorAll(`input[data-u="${i}"]`)];
+  const on = boxes.some(b => !b.checked);
+  boxes.forEach(b => b.checked = on);
+});
+
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab,.panel').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  document.getElementById(b.dataset.p).classList.add('on');
+});
+
+function say(t, cls) {
+  const m = document.getElementById('msg');
+  m.textContent = t; m.className = cls;
+  setTimeout(() => m.textContent = '', 3500);
+}
+
+document.getElementById('saveBtn').onclick = async () => {
+  const users = {};
+  USERS.forEach((u, i) => {
+    if (isAdm(u)) return;
+    users[u] = {};
+    document.querySelectorAll(`input[data-u="${i}"]`).forEach(b => users[u][b.dataset.k] = b.checked);
+  });
+  cfg = { users, centerName: document.getElementById('centerName').value.trim() };
+  try {
+    await ref.set({ json: JSON.stringify(cfg), updatedAt: Date.now(), updatedBy: me });
+    say('✅ تم الحفظ', 'ok');
+  } catch (err) {
+    console.error(err);
+    say('⚠️ فشل الحفظ — راجع قواعد Firestore', 'err');
+  }
+};
+
+ref.get().then(s => {
+  if (s.exists && s.data().json) { try { cfg = JSON.parse(s.data().json); } catch (e) {} }
+  cfg.users = cfg.users || {};
+  document.getElementById('centerName').value = cfg.centerName || '';
+  render();
+}).catch(() => { render(); say('⚠️ تعذر تحميل الإعدادات المحفوظة', 'err'); });
+</script>
+</body>
+</html>
