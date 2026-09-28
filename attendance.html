@@ -604,8 +604,9 @@
             font-size: 13px;
             text-align: center;
             direction: ltr;
-            background: rgba(255,255,255,.07);
-            color: #fff;
+            background: #fff;
+            color: #000;
+            font-weight: 700;
         }
         .wa-send-btn {
             background: #25D366;
@@ -1897,6 +1898,24 @@
             await batch.commit();
         }
 
+        // أرقام الطلاب الفعلية: من إدارة الطلاب أولاً، ولو مفيش رقم هناك نستخدم الرقم المحفوظ يدوياً
+        let _masterPhonesById = {};
+        async function loadEffectivePhones() {
+            const saved = await loadParentPhones();
+            _masterPhonesById = {};
+            try {
+                const snap = await db.collection('students').doc('data').get();
+                const list = snap.exists ? (snap.data().students || []) : [];
+                list.forEach(st => {
+                    const ph = st && st.phone ? String(st.phone).trim() : '';
+                    if (ph) _masterPhonesById[String(st.id)] = ph;
+                });
+            } catch (e) {
+                console.warn('loadEffectivePhones error:', e);
+            }
+            return { ...saved, ..._masterPhonesById };
+        }
+
         function showWhatsappSection() {
             const section = document.getElementById('whatsappSection');
             const isVisible = section.style.display !== 'none';
@@ -1913,7 +1932,7 @@
             const session = sessions.find(s => s.id === currentSessionId);
             if (!session) return;
 
-            const phones = await loadParentPhones();
+            const phones = await loadEffectivePhones();
             const list   = document.getElementById('whatsappStudentsList');
 
             if (session.students.length === 0) {
@@ -1962,6 +1981,8 @@
         }
 
         async function savePhoneNumber(studentId, phone) {
+            // لو الرقم هو نفسه المسجل في إدارة الطلاب مفيش داعي نحفظه تاني
+            if (_masterPhonesById[String(studentId)] === String(phone).trim()) return;
             const phones = await loadParentPhones();
             if (phone.trim()) phones[studentId] = phone.trim();
             else delete phones[studentId];
@@ -2015,30 +2036,71 @@
             window.open(url, '_blank');
         }
 
-        async function sendAllWhatsapp() {
+        // ── إرسال للجميع: طابور، كل ضغطة تفتح طالب واحد (المتصفح بيحجب فتح أكتر من نافذة في ضغطة واحدة) ──
+        let _waQueue = [];
+        let _waIdx = 0;
+
+        function sendAllWhatsapp() {
             const session = sessions.find(s => s.id === currentSessionId);
             if (!session) return;
 
-            const phones = await loadParentPhones();
-            let sentCount = 0;
-
-            session.students.forEach((student, idx) => {
-                const phoneInput = document.getElementById(`phone-${student.id}`);
-                if (phoneInput && phoneInput.value.trim()) {
-                    savePhoneNumber(student.id, phoneInput.value.trim());
-                    phones[student.id] = phoneInput.value.trim();
-                }
-                if (phones[student.id]) {
-                    setTimeout(() => { sendWhatsapp(student.id); }, idx * 800);
-                    sentCount++;
-                }
+            _waQueue = session.students.filter(st => {
+                const inp = document.getElementById(`phone-${st.id}`);
+                return inp && inp.value.trim();
             });
+            _waIdx = 0;
 
-            if (sentCount === 0) {
+            if (_waQueue.length === 0) {
                 showAlert('لا توجد أرقام محفوظة! أدخل أرقام أولياء الأمور أولاً', 'danger');
-            } else {
-                showAlert(`📤 جاري فتح واتساب لـ ${sentCount} طالب...`);
+                return;
             }
+            showWaQueueBar();
+            sendNextWhatsapp(); // أول طالب يتفتح فوراً
+        }
+
+        function sendNextWhatsapp() {
+            if (_waIdx >= _waQueue.length) { closeWaQueue(); return; }
+            const student = _waQueue[_waIdx];
+            sendWhatsapp(student.id);
+
+            const row = document.getElementById(`wa-row-${student.id}`);
+            if (row) {
+                row.style.opacity = '.55';
+                const nm = row.querySelector('.wa-name');
+                if (nm && !nm.dataset.done) { nm.dataset.done = '1'; nm.textContent = '✔ ' + nm.textContent; }
+            }
+            _waIdx++;
+            updateWaQueueBar();
+        }
+
+        function showWaQueueBar() {
+            closeWaQueue();
+            const bar = document.createElement('div');
+            bar.id = 'waQueueBar';
+            bar.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#0d1f14;border:1px solid #25D366;border-radius:14px;padding:12px 18px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.6);font-family:Cairo,sans-serif;color:#fff;max-width:92vw;flex-wrap:wrap;justify-content:center;';
+            bar.innerHTML = `
+                <span id="waQueueText" style="font-size:14px;font-weight:700;"></span>
+                <button id="waQueueNext" onclick="sendNextWhatsapp()" style="background:#25D366;color:#fff;border:none;border-radius:10px;padding:8px 18px;font-family:inherit;font-weight:700;cursor:pointer;">التالي ◀</button>
+                <button onclick="closeWaQueue()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:8px 12px;font-family:inherit;cursor:pointer;">✕</button>`;
+            document.body.appendChild(bar);
+        }
+
+        function updateWaQueueBar() {
+            const text = document.getElementById('waQueueText');
+            const btn = document.getElementById('waQueueNext');
+            if (!text) return;
+            if (_waIdx >= _waQueue.length) {
+                text.textContent = `✅ تم فتح واتساب لكل الطلاب (${_waQueue.length})`;
+                if (btn) btn.style.display = 'none';
+                setTimeout(closeWaQueue, 3500);
+            } else {
+                text.textContent = `تم ${_waIdx} من ${_waQueue.length} — التالي: ${_waQueue[_waIdx].name}`;
+            }
+        }
+
+        function closeWaQueue() {
+            const bar = document.getElementById('waQueueBar');
+            if (bar) bar.remove();
         }
 
         window.onclick = function(event) {
