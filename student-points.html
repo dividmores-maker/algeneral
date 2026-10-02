@@ -575,13 +575,13 @@ function computeAttendance(student, attendanceRecords, resetDate){
   return { present, absent, total, rate, streak };
 }
 function computeExams(student, scheduleData, gradesData, examsData){
+  const mySessions = getMySessions(student, scheduleData);
   let passed=0, total=0, excellent=0; const percents=[];
   let homeworkDone=0, homeworkTotal=0;
   let finalsPassed=0, finalsTotal=0;
   let examScoreSum=0; // sum of actual scores earned on passed regular exams (points = grade, not a fixed value)
-  // الدرجات بتتتبع الطالب بكوده في أي حصة اتسجّل فيها، حتى لو اتنقل لحصة/صف تاني
-  // (الحصة اللي مفيهاش درجة للطالب بتتخطى تلقائياً عند entry === undefined)
-  Object.keys(examsData).forEach(sid => {
+  mySessions.forEach(sess => {
+    const sid = String(sess.id);
     const exams = examsData[sid] || [];
     exams.forEach(exam => {
       const g = (gradesData[sid] || {})[String(exam.id)] || {};

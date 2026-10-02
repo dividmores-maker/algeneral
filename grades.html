@@ -898,30 +898,6 @@ let studentsMap   = {};
 let examsData     = {};
 let gradesData    = {};
 let parentPhones  = {};
-let masterNames   = {};   // كود الطالب → الاسم (من قائمة الطلاب الأساسية)
-
-/* طلاب الحصة الحالية + الطلاب المنقولين منها واللي لسه ليهم درجات محفوظة فيها */
-function sessionStudents(sessId) {
-    const current = studentsMap[sessId] || [];
-    const have    = new Set(current.map(s => String(s.id)));
-    const names   = {};
-    Object.values(studentsMap).forEach(arr => arr.forEach(s => { names[String(s.id)] = s.name; }));
-    const moved = [], seen = new Set();
-    Object.values(gradesData[sessId] || {}).forEach(byStudent => {
-        Object.entries(byStudent || {}).forEach(([id, g]) => {
-            if (have.has(id) || seen.has(id)) return;
-            const sc = g && g.score;
-            if (sc === '' || sc === null || sc === undefined || isNaN(parseFloat(sc))) return;
-            seen.add(id);
-            moved.push({
-                id:   /^\d+$/.test(id) ? Number(id) : id,
-                name: masterNames[id] || names[id] || ('طالب منقول (كود ' + id + ')'),
-                moved: true
-            });
-        });
-    });
-    return current.concat(moved);
-}
 let curSessId     = null;
 let curExamId     = null;
 let sortDir       = {};
@@ -1011,12 +987,6 @@ async function loadAll() {
             }
         });
     } catch(e) { console.warn('Students load:', e); }
-
-    try {
-        const ms = await db.collection('students').doc('data').get();
-        masterNames = {};
-        if (ms.exists) (ms.data().students || []).forEach(s => { masterNames[String(s.id)] = s.name; });
-    } catch(e) { console.warn('Master students load:', e); }
 
     await migrateGradesIfNeeded();
     try {
@@ -1177,7 +1147,7 @@ function openSession(sid) {
 /* ── Section 2: Exams ── */
 function renderExams() {
     const list     = examsData[curSessId] || [];
-    const students = sessionStudents(curSessId);
+    const students = studentsMap[curSessId] || [];
     const con      = document.getElementById('examsList');
     if (!list.length) {
         con.innerHTML = `<div class="empty">
@@ -1306,7 +1276,7 @@ function toggleLockExam() {
     if (!exam) return;
     if (!exam.locked) {
         if (!confirm('هل أنت متأكد من قفل الامتحان؟\n\nهيتم حفظ الدرجات نسخة نهائية ثابتة، ومش هتتأثر أبداً حتى لو اتغيّرت بيانات الطلاب أو الحضور بعد كده.\nتقدر تفتح القفل تاني في أي وقت لو احتجت تعدّل.')) return;
-        const students = sessionStudents(curSessId);
+        const students = studentsMap[curSessId] || [];
         const gMap = ((gradesData[curSessId] || {})[String(exam.id)]) || {};
         const snapshot = {};
         students.forEach(st => {
@@ -1383,7 +1353,7 @@ function renderGrades() {
         return;
     }
 
-    const students = sessionStudents(curSessId);
+    const students = studentsMap[curSessId] || [];
     document.getElementById('tblCount').textContent = `${students.length} طالب`;
     if (!students.length) {
         tbody.innerHTML = `<tr><td colspan="9" style="padding:55px;text-align:center;color:var(--muted);">
@@ -1411,7 +1381,7 @@ function renderGrades() {
             <td>
                 <div style="display:flex;align-items:center;gap:9px;">
                     <div class="st-avatar">${initials}</div>
-                    <div class="st-name">${st.name}${st.moved ? ` <span style="font-size:10px;font-weight:700;color:#f5c842;background:rgba(212,160,23,.15);border:1px solid rgba(212,160,23,.35);border-radius:6px;padding:1px 6px;margin-right:4px;" title="الطالب اتنقل لحصة تانية — درجاته القديمة محفوظة هنا">منقول</span>` : ''}</div>
+                    <div class="st-name">${st.name}</div>
                 </div>
             </td>
             <td>
@@ -1488,7 +1458,7 @@ function clearGrade(stId) {
 async function saveAll() {
     const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
     if (exam && exam.locked) { toast('❌ الامتحان مقفول — افتح القفل الأول للتعديل', 'danger'); return; }
-    sessionStudents(curSessId).forEach(st => autoSave(st.id));
+    (studentsMap[curSessId] || []).forEach(st => autoSave(st.id));
     const entry = recordExamLog();
     await Promise.all([saveSessionData(curSessId), saveLogEntry(entry)]);
     toast('تم حفظ جميع الدرجات ✔ وتسجيلها في السجل');
@@ -1499,7 +1469,7 @@ function recordExamLog() {
     const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
     const sess = allSessions.find(s => s.sid === curSessId);
     if (!exam) return;
-    const students = sessionStudents(curSessId);
+    const students = studentsMap[curSessId] || [];
     const gMap = ((gradesData[curSessId] || {})[String(curExamId)]) || {};
     const snapshot = {};
     students.forEach(st => {
@@ -1667,7 +1637,7 @@ function openReport() {
             .filter(s => s !== '' && s !== null && s !== undefined && !isNaN(parseFloat(s)))
             .map(Number);
     } else {
-        const students = sessionStudents(curSessId);
+        const students = studentsMap[curSessId] || [];
         const gMap     = ((gradesData[curSessId] || {})[String(curExamId)]) || {};
         total  = students.length;
         scores = students
@@ -1762,7 +1732,7 @@ function sendToParentLocked(name) {
 function sendToParent(stId) {
     const exam = (examsData[curSessId] || []).find(e => e.id === curExamId);
     const sess = allSessions.find(s => s.sid === curSessId);
-    const students = sessionStudents(curSessId);
+    const students = studentsMap[curSessId] || [];
     const st = students.find(s => s.id === stId);
     if (!st || !exam) return;
     const phone = (document.getElementById(`ph-${stId}`) || {}).value || parentPhones[String(stId)] || '';

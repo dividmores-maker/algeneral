@@ -1361,9 +1361,12 @@
     const ADMIN_USERS = ['admin'];
     const user = (sessionStorage.getItem('currentUser') || '').trim();
     const isAdmin = ADMIN_USERS.includes(user);
+    // يوزرز يظهرلهم زرار الإعدادات (الأدمن + رامي)
+    const SETTINGS_USERS = ['admin', 'RAMY ABO NOUR'];
+    const canSeeSettings = SETTINGS_USERS.includes(user);
 
-    // زرار الإعدادات للأدمن فقط
-    if (isAdmin) {
+    // زرار الإعدادات للأدمن ورامي
+    if (canSeeSettings) {
         document.getElementById('settingsBtn').style.display = 'inline-flex';
         document.getElementById('footerSettings').style.display = '';
     }
