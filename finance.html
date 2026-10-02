@@ -428,7 +428,7 @@
 <div class="modal" id="paymentModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>💰 تسجيل دفعة</h2>
+            <h2 id="paymentModalTitle">💰 تسجيل دفعة</h2>
             <button class="close-btn" onclick="closeModal('paymentModal')">&times;</button>
         </div>
         <div class="payment-summary">
@@ -440,6 +440,7 @@
         </div>
         <form onsubmit="processPayment(event)">
             <input type="hidden" id="paymentStudentId">
+            <input type="hidden" id="paymentMonthKey">
             <div class="form-group">
                 <label>المبلغ المدفوع</label>
                 <input type="number" id="paymentAmount" placeholder="أدخل المبلغ" min="1" required>
@@ -521,6 +522,9 @@
         <div class="modal-header">
             <h2>📅 سجل الشهور السابقة</h2>
             <button class="close-btn" onclick="closeModal('historyModal')">&times;</button>
+        </div>
+        <div class="search-box" style="margin-bottom:12px;">
+            <input type="text" id="historySearch" placeholder="🔍 ابحث عن طالب في كل الشهور..." oninput="filterHistory()">
         </div>
         <div id="historyContent">
             <p style="text-align:center;color:rgba(255,255,255,.4);padding:30px;">جاري التحميل...</p>
@@ -651,6 +655,9 @@
         return doc(db, 'finance', 'month-' + key);
     }
 
+    // ── المتأخرات: بيانات الشهور السابقة ──
+    let pastMonths = {};   // { 'YYYY-MM': { students:{}, waived:{} } }
+
     // ── Save current month data ──
     async function saveMonthData() {
         setFbStatus('saving', '💾 جاري الحفظ...');
@@ -762,23 +769,53 @@
     }
 
     // ── Payment Modal ──
-    function showPaymentModal(studentId) {
+    function showPaymentModal(studentId, monthKey) {
         const s = students.find(x => x.id === studentId);
         if (!s) return;
-        const rem = s.subscriptionPrice - s.paid;
+        monthKey = monthKey || '';
+        const paidNow = monthKey
+            ? ((((pastMonths[monthKey] || {}).students || {})[studentId] || {}).paid || 0)
+            : s.paid;
+        document.getElementById('paymentMonthKey').value = monthKey;
+        document.getElementById('paymentModal').style.zIndex = 3000;
+        document.getElementById('paymentModalTitle').textContent =
+            monthKey ? '💰 سداد متأخرات — ' + monthKeyToLabel(monthKey) : '💰 تسجيل دفعة';
+        const rem = s.subscriptionPrice - paidNow;
         document.getElementById('paymentStudentId').value               = s.id;
         document.getElementById('paymentStudentName').textContent       = s.name;
         document.getElementById('paymentStudentClass').textContent      = s.class;
         document.getElementById('paymentSubscriptionPrice').textContent = s.subscriptionPrice + ' جنيه';
-        document.getElementById('paymentPaidAmount').textContent        = s.paid + ' جنيه';
+        document.getElementById('paymentPaidAmount').textContent        = paidNow + ' جنيه';
         document.getElementById('paymentRemainingAmount').textContent   = rem + ' جنيه';
         document.getElementById('paymentAmount').value = rem;
         document.getElementById('paymentAmount').max   = rem;
         document.getElementById('paymentModal').classList.add('active');
     }
 
-    function processPayment(e) {
+    async function processPayment(e) {
         e.preventDefault();
+        const monthKey = document.getElementById('paymentMonthKey').value;
+        if (monthKey) {
+            const sid    = document.getElementById('paymentStudentId').value;
+            const amt    = parseInt(document.getElementById('paymentAmount').value);
+            const meth   = document.getElementById('paymentMethod').value;
+            const nts    = document.getElementById('paymentNotes').value;
+            const stu    = students.find(x => x.id === sid);
+            if (!stu) return;
+            const pm = pastMonths[monthKey] = pastMonths[monthKey] || { students: {} };
+            pm.students = pm.students || {};
+            const rec = pm.students[sid] = pm.students[sid] || { paid: 0, history: [] };
+            if (amt > (stu.subscriptionPrice - (rec.paid || 0))) { showAlert('المبلغ أكبر من المتبقي!', 'danger'); return; }
+            rec.paid = (rec.paid || 0) + amt;
+            rec.history = rec.history || [];
+            rec.history.push({ date: new Date().toISOString(), amount: amt, method: meth, notes: nts, forMonth: monthKey });
+            try { await setDoc(monthRef(monthKey), pm); } catch(err) { showAlert('❌ خطأ في الحفظ: ' + err.message, 'danger'); return; }
+            showAlert(`✅ تم تسجيل سداد ${amt} جنيه عن ${monthKeyToLabel(monthKey)}`);
+            closeModal('paymentModal');
+            renderStudents();
+            if (document.getElementById('historyModal').classList.contains('active')) showHistoryModal();
+            return;
+        }
         const id     = document.getElementById('paymentStudentId').value;
         const amount = parseInt(document.getElementById('paymentAmount').value);
         const method = document.getElementById('paymentMethod').value;
@@ -925,6 +962,7 @@
 
     // ── History Modal ──
     async function showHistoryModal() {
+        const openKeys = [...document.querySelectorAll('.history-students-list.open')].map(e => e.dataset.key);
         document.getElementById('historyModal').classList.add('active');
         const content = document.getElementById('historyContent');
         content.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,.4);padding:30px;">⏳ جاري تحميل السجل...</p>';
@@ -940,6 +978,7 @@
                 if (d.id.startsWith('month-')) {
                     const key = d.id.replace('month-', '');
                     months.push({ key, data: d.data() });
+                    if (key < currentMonthKey()) pastMonths[key] = d.data();
                 }
             });
 
@@ -985,21 +1024,38 @@
                             <div class="lbl">لم يدفعوا ❌</div>
                         </div>
                     </div>
-                    <div class="history-students-list" id="month_${idx}">
+                    <div class="history-students-list ${openKeys.includes(m.key) ? 'open' : ''}" id="month_${idx}" data-key="${m.key}">
                         ${studentList.map(st => `
                             <div class="history-student-row ${st.paid >= st.price && st.price > 0 ? 'paid-row' : 'unpaid-row'}">
                                 <span>${st.name} <small style="color:rgba(255,255,255,.4);">(${st.class})</small></span>
                                 <span style="font-weight:700;color:${st.paid >= st.price && st.price > 0 ? '#4ade80' : st.paid > 0 ? '#fbbf24' : '#f87171'};">
                                     ${st.paid > 0 ? st.paid + ' ج ✅' : '❌ لم يدفع'}
+                                    ${(!isCurrent && st.price > 0 && st.paid < st.price) ? `<button class="action-btn pay" style="margin-right:8px;" onclick="showPaymentModal('${st.id}','${m.key}')">💰 تسجيل دفعة</button>` : ''}
                                 </span>
                             </div>`).join('')}
                     </div>
                 </div>`;
             });
             content.innerHTML = html;
+            filterHistory();
         } catch(e) {
             content.innerHTML = `<p style="color:#f87171;padding:20px;">❌ خطأ في التحميل: ${e.message}</p>`;
         }
+    }
+
+    function filterHistory() {
+        const term = (document.getElementById('historySearch').value || '').trim().toLowerCase();
+        document.querySelectorAll('#historyContent .history-month-card').forEach(card => {
+            const list = card.querySelector('.history-students-list');
+            let matches = 0;
+            card.querySelectorAll('.history-student-row').forEach(row => {
+                const ok = !term || row.textContent.toLowerCase().includes(term);
+                row.style.display = ok ? '' : 'none';
+                if (ok) matches++;
+            });
+            card.style.display = (!term || matches) ? '' : 'none';
+            if (list && term && matches) list.classList.add('open');
+        });
     }
 
     function toggleMonthDetails(id) {
@@ -1102,6 +1158,7 @@
     window.sendWhatsApp       = sendWhatsApp;
     window.copyMessage        = copyMessage;
     window.showHistoryModal   = showHistoryModal;
+    window.filterHistory      = filterHistory;
     window.toggleMonthDetails = toggleMonthDetails;
     window.editPayment        = editPayment;
     window.deletePayment      = deletePayment;

@@ -280,6 +280,11 @@
             .stat-box { background: #f8f9fa !important; border: 1px solid #ddd !important; }
             .report-title, .header h1, .section h2 { -webkit-text-fill-color: #333 !important; color: #333 !important; }
         }
+    
+        .month-select { background:#fff; color:#333; border:1px solid #667eea; border-radius:8px; padding:11px 14px; font-family:'Cairo',sans-serif; font-size:15px; margin:5px; cursor:pointer; }
+        .month-tag { font-size:15px; font-weight:600; color:rgba(255,255,255,.55); margin-right:8px; }
+        .notice { background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.4); color:#fbbf24; border-radius:10px; padding:12px 16px; margin-bottom:24px; text-align:center; }
+        @media print { .month-select { display:none; } }
     </style>
 </head>
 <body>
@@ -300,6 +305,7 @@
         <div class="header">
             <h1>📊 التقارير الشاملة</h1>
             <div>
+                <select id="monthSelect" class="month-select" onchange="changeMonth(this.value)"></select>
                 <button class="btn btn-excel" onclick="exportToExcel()">📥 تصدير Excel</button>
                 <button class="btn btn-print" onclick="window.print()">🖨️ طباعة</button>
                 <a href="index.html" class="btn btn-warning">🏠 الرئيسية</a>
@@ -309,81 +315,61 @@
         <div class="content">
             <h1 class="report-title">التقرير الشامل</h1>
             <p class="report-date" id="reportDate"></p>
+            <div id="loadNotice"></div>
 
-            <!-- Overall Stats -->
             <div class="stats-grid" id="overallStats"></div>
 
-            <!-- Students Section -->
             <div class="section">
-                <h2>👨‍🎓 الطلاب</h2>
-                <table class="data-table" id="studentsTable">
-                    <thead>
-                        <tr>
-                            <th>م</th>
-                            <th>اسم الطالب</th>
-                            <th>الفصل</th>
-                            <th>الاشتراك المطلوب</th>
-                            <th>المدفوع</th>
-                            <th>المتبقي</th>
-                        </tr>
-                    </thead>
+                <h2>👨‍🎓 الطلاب والاشتراكات <span id="monthTag" class="month-tag"></span></h2>
+                <table class="data-table">
+                    <thead><tr><th>م</th><th>اسم الطالب</th><th>الفصل</th><th>الاشتراك المطلوب</th><th>المدفوع</th><th>المتبقي</th></tr></thead>
                     <tbody id="studentsTableBody"></tbody>
                 </table>
             </div>
 
-            <!-- Teachers Section -->
             <div class="section">
                 <h2>👨‍🏫 المدرسين</h2>
-                <table class="data-table" id="teachersTable">
-                    <thead>
-                        <tr>
-                            <th>م</th>
-                            <th>اسم المدرس</th>
-                            <th>التليفون</th>
-                            <th>المادة</th>
-                            <th>الراتب</th>
-                            <th>الحالة</th>
-                        </tr>
-                    </thead>
+                <table class="data-table">
+                    <thead><tr><th>م</th><th>اسم المدرس</th><th>التليفون</th><th>المادة</th><th>الراتب</th><th>الحالة</th></tr></thead>
                     <tbody id="teachersTableBody"></tbody>
                 </table>
             </div>
 
-            <!-- Schedule Section -->
             <div class="section">
                 <h2>📅 الجدول</h2>
                 <div id="scheduleData"></div>
             </div>
 
-            <!-- Attendance Section -->
             <div class="section">
                 <h2>✅ الحضور</h2>
-                <table class="data-table" id="attendanceTable">
-                    <thead>
-                        <tr>
-                            <th>م</th>
-                            <th>اسم الطالب</th>
-                            <th>الفصل</th>
-                            <th>عدد مرات الحضور</th>
-                            <th>عدد مرات الغياب</th>
-                            <th>نسبة الحضور</th>
-                        </tr>
-                    </thead>
+                <table class="data-table">
+                    <thead><tr><th>م</th><th>اسم الطالب</th><th>الفصل</th><th>عدد مرات الحضور</th><th>عدد مرات الغياب</th><th>نسبة الحضور</th></tr></thead>
                     <tbody id="attendanceTableBody"></tbody>
                 </table>
             </div>
 
-            <!-- Finance Section -->
             <div class="section">
-                <h2>💰 المالية</h2>
+                <h2>📝 الدرجات والامتحانات</h2>
+                <table class="data-table">
+                    <thead><tr><th>م</th><th>الامتحان</th><th>الفصل</th><th>المادة</th><th>الدرجة العظمى</th><th>المتوسط</th><th>أعلى / أقل</th><th>ناجح</th><th>راسب</th></tr></thead>
+                    <tbody id="gradesTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2>📚 الكتب</h2>
+                <div id="booksData"></div>
+                <table class="data-table" style="margin-top:20px;">
+                    <thead><tr><th>الصف</th><th>عدد الحجوزات</th><th>الكمية</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr></thead>
+                    <tbody id="booksTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2>💰 المالية <span id="monthTag2" class="month-tag"></span></h2>
                 <div id="financeData"></div>
-                <table class="data-table" id="financeTable" style="margin-top: 20px;">
-                    <thead>
-                        <tr>
-                            <th>البند</th>
-                            <th>المبلغ (جنيه)</th>
-                        </tr>
-                    </thead>
+                <table class="data-table" style="margin-top:20px;">
+                    <thead><tr><th>البند</th><th>المبلغ (جنيه)</th></tr></thead>
                     <tbody id="financeTableBody"></tbody>
                 </table>
             </div>
@@ -392,7 +378,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+        import { getFirestore, doc, getDoc, getDocs, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
         const firebaseConfig = {
   apiKey: "AIzaSyAhBzD1tqxDhqpCklLUXh2LxHTI-lZgPbg",
@@ -405,298 +391,298 @@
         const app = initializeApp(firebaseConfig);
         const db  = getFirestore(app);
 
-        // ── Set date ──
-        document.getElementById('reportDate').textContent = new Date().toLocaleDateString('ar-EG');
+        // ════════ Helpers ════════
+        const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const fmt = n => (Number(n) || 0).toLocaleString();
+        const DEFAULT_PRICE = 500;                       // نفس القيمة في finance.html
+        const DAYS = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
+        const SUBJECTS = {
+            math:'رياضيات', arabic:'لغة عربية', english:'لغة إنجليزية', science:'علوم',
+            social:'دراسات اجتماعية', studies:'دراسات', studies2:'دراسات', religion:'تربية دينية',
+            computer:'حاسب آلي', history:'تاريخ', geography:'جغرافيا'
+        };
 
-        // ── Load all data from Firebase ──
-        async function loadAndRender() {
-            try {
-                const [
-                    teachersSnap,
-                    scheduleSnap,
-                    attendanceSnap,
-                    paymentsSnap,
-                    pricesSnap
-                ] = await Promise.all([
-                    getDoc(doc(db, 'teachers', 'data')),
-                    getDoc(doc(db, 'schedule', 'data')),
-                    getDoc(doc(db, 'dashboard', 'attendanceSessions')),
-                    getDoc(doc(db, 'finance', 'payments')),
-                    getDoc(doc(db, 'finance', 'prices'))
-                ]);
+        function stageOf(classText) {                    // نفس getStudentStage في finance.html
+            const t = (classText || '').replace('إعدادي', 'اعدادي');
+            if (t.includes('ابتدائي')) return 'ابتدائي';
+            if (t.includes('اعدادي'))  return 'اعدادي';
+            if (t.includes('ثانوي'))   return 'ثانوي';
+            return null;
+        }
+        function monthKeyNow() {
+            const n = new Date();
+            return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+        }
+        function monthLabel(key) {
+            const [y, m] = key.split('-');
+            return new Date(+y, +m - 1, 1).toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
+        }
+        function priceFor(s) {                           // نفس getEffectivePrice في finance.html
+            const m = DATA.meta || {};
+            if (m.prices && m.prices[s.id] != null) return Number(m.prices[s.id]) || 0;
+            const st = stageOf(s.class);
+            if (st && m.stagePrices && m.stagePrices[st] != null) return Number(m.stagePrices[st]) || 0;
+            return DEFAULT_PRICE;
+        }
 
-                const teachers          = teachersSnap.exists()   ? (teachersSnap.data().teachers     || []) : [];
-                const scheduleSessions  = scheduleSnap.exists()   ? (scheduleSnap.data().sessions      || []) : [];
-                const attendanceSessions = attendanceSnap.exists() ? (attendanceSnap.data().data        || []) : [];
-                const studentPayments   = paymentsSnap.exists()   ? (paymentsSnap.data().payments      || {}) : {};
-                const subscriptionPrices = pricesSnap.exists()    ? (pricesSnap.data().prices          || {}) : {};
+        // ════════ Load ════════
+        const DATA = { students:[], teachers:[], sessions:[], meta:{}, months:{}, attendance:[], gradesLog:[], reservations:[], bookStagePrices:{} };
+        let view = null;   // آخر نتيجة حسابات (للتصدير)
 
-                renderReport(teachers, scheduleSessions, attendanceSessions, studentPayments, subscriptionPrices);
-            } catch(e) {
-                console.error('Error loading data:', e);
-                document.getElementById('overallStats').innerHTML = `<p style="color:#f87171;text-align:center;grid-column:1/-1">❌ خطأ في تحميل البيانات — تأكد من Firebase Rules</p>`;
+        async function loadAll() {
+            const failed = [];
+            const safe = (label, p) => p.catch(e => { console.error(label, e); failed.push(label); return null; });
+
+            const [studentsS, teachersS, scheduleS, metaS, financeCol, attCol, logCol, booksS] = await Promise.all([
+                safe('students/data',   getDoc(doc(db, 'students', 'data'))),
+                safe('teachers/data',   getDoc(doc(db, 'teachers', 'data'))),
+                safe('schedule/data',   getDoc(doc(db, 'schedule', 'data'))),
+                safe('finance/meta',    getDoc(doc(db, 'finance', 'meta'))),
+                safe('finance/*',       getDocs(collection(db, 'finance'))),
+                safe('attendance_data/default_user/attendanceSessions', getDocs(collection(db, 'attendance_data', 'default_user', 'attendanceSessions'))),
+                safe('grades_log',      getDocs(collection(db, 'grades_log'))),
+                safe('books/data',      getDoc(doc(db, 'books', 'data')))
+            ]);
+
+            DATA.students = studentsS?.exists() ? (studentsS.data().students || []) : [];
+            DATA.teachers = teachersS?.exists() ? (teachersS.data().teachers || []) : [];
+            DATA.sessions = scheduleS?.exists() ? (scheduleS.data().sessions || []) : [];
+            DATA.meta     = metaS?.exists()     ? metaS.data() : {};
+
+            financeCol?.forEach(d => { if (d.id.startsWith('month-')) DATA.months[d.id.slice(6)] = d.data(); });
+
+            DATA.attendance = attCol ? attCol.docs.map(d => d.data()) : [];
+            if (!DATA.attendance.length) {               // احتياطي: المستند القديم
+                try {
+                    const old = await getDoc(doc(db, 'dashboard', 'attendanceSessions'));
+                    if (old.exists()) DATA.attendance = old.data().data || [];
+                } catch (e) { /* مش مشكلة */ }
+            }
+
+            DATA.gradesLog = logCol ? logCol.docs.map(d => d.data()) : [];
+
+            if (booksS?.exists()) {
+                const b = booksS.data();
+                DATA.reservations    = (b.reservations || []).filter(r => r.status !== 'cancelled');
+                DATA.bookStagePrices = b.stagePrices || {};
+            }
+
+            if (failed.length) {
+                document.getElementById('loadNotice').innerHTML =
+                    `<p class="notice">⚠️ تعذّر تحميل: ${failed.map(esc).join(' ، ')} — راجع Firebase Rules</p>`;
             }
         }
 
-        function renderReport(teachers, scheduleSessions, attendanceSessions, studentPayments, subscriptionPrices) {
+        // ════════ Render ════════
+        function render(monthKey) {
+            const monthStudents = (DATA.months[monthKey] || {}).students || {};
+            const activeTeachers = DATA.teachers.filter(t => t.active);
+            const totalSalaries  = activeTeachers.reduce((s, t) => s + (Number(t.salary) || 0), 0);
 
-            // ── Build students from attendance sessions ──
-            const studentsMap = new Map();
-            attendanceSessions.forEach(session => {
-                if (session.students) {
-                    session.students.forEach(student => {
-                        studentsMap.set(student.id, { id: student.id, name: student.name, class: session.class });
-                    });
-                }
+            // ── الطلاب والاشتراكات ──
+            const stuRows = DATA.students.map(s => {
+                const price = priceFor(s);
+                const paid  = Number((monthStudents[s.id] || {}).paid) || 0;
+                return { id: s.id, name: s.name, class: s.class || '—', price, paid, remaining: Math.max(price - paid, 0) };
             });
-            const students = Array.from(studentsMap.values());
+            const totSub  = stuRows.reduce((a, r) => a + r.price, 0);
+            const totPaid = stuRows.reduce((a, r) => a + r.paid, 0);
+            const totRem  = stuRows.reduce((a, r) => a + r.remaining, 0);
+            const netProfit = totPaid - totalSalaries;
 
-            // ── Calculate stats ──
-            const activeTeachers = teachers.filter(t => t.active);
-            const totalSalaries  = activeTeachers.reduce((sum, t) => sum + (t.salary || 0), 0);
-
-            let totalPresent = 0, totalAbsent = 0;
-            attendanceSessions.forEach(session => {
-                if (session.completed && session.students) {
-                    session.students.forEach(s => {
-                        if (s.status === 'present') totalPresent++;
-                        if (s.status === 'absent')  totalAbsent++;
-                    });
-                }
+            // ── الحضور ──
+            const att = new Map();
+            DATA.attendance.forEach(sess => {
+                if (!sess.completed || !Array.isArray(sess.students)) return;
+                sess.students.forEach(st => {
+                    const a = att.get(String(st.id)) || { present: 0, absent: 0 };
+                    if (st.status === 'present') a.present++;
+                    if (st.status === 'absent')  a.absent++;
+                    att.set(String(st.id), a);
+                });
             });
-
-            let totalRevenue = 0, totalRemaining = 0;
-            students.forEach(student => {
-                const payment = studentPayments[student.id] || {};
-                const price   = subscriptionPrices[student.id] || subscriptionPrices[student.class] || 0;
-                const paid    = payment.paid || 0;
-                totalRevenue   += paid;
-                totalRemaining += (price - paid);
+            const attRows = DATA.students.map(s => {
+                const a = att.get(String(s.id)) || { present: 0, absent: 0 };
+                const t = a.present + a.absent;
+                return { name: s.name, class: s.class || '—', present: a.present, absent: a.absent, pct: t ? Math.round(a.present / t * 100) : null };
             });
+            const totPresent = attRows.reduce((a, r) => a + r.present, 0);
+            const totAbsent  = attRows.reduce((a, r) => a + r.absent, 0);
+            const attRate    = totPresent + totAbsent ? Math.round(totPresent / (totPresent + totAbsent) * 100) : 0;
 
-            const netProfit      = totalRevenue - totalSalaries;
-            const attendanceRate = totalPresent + totalAbsent > 0
-                ? Math.round((totalPresent / (totalPresent + totalAbsent)) * 100) : 0;
-
-            // ── Overall Stats ──
-            document.getElementById('overallStats').innerHTML = `
-                <div class="stat-box"><div class="number">${students.length}</div><div class="label">الطلاب</div></div>
-                <div class="stat-box"><div class="number">${activeTeachers.length}</div><div class="label">المدرسين</div></div>
-                <div class="stat-box"><div class="number">${scheduleSessions.length}</div><div class="label">الحصص</div></div>
-                <div class="stat-box"><div class="number">${attendanceRate}%</div><div class="label">نسبة الحضور</div></div>
-                <div class="stat-box"><div class="number">${totalRevenue.toLocaleString()}</div><div class="label">الإيرادات (ج)</div></div>
-                <div class="stat-box"><div class="number" style="color:${netProfit>=0?'#ffd700':'#f87171'}">${netProfit.toLocaleString()}</div><div class="label">صافي الربح (ج)</div></div>
-            `;
-
-            // ── Students Table ──
-            let studentsHTML = '';
-            let totalPaid = 0, totalRemainingAmount = 0, totalSubscription = 0;
-            students.forEach((student, index) => {
-                const payment   = studentPayments[student.id] || {};
-                const price     = subscriptionPrices[student.id] || subscriptionPrices[student.class] || 0;
-                const paid      = payment.paid || 0;
-                const remaining = price - paid;
-                totalSubscription    += price;
-                totalPaid            += paid;
-                totalRemainingAmount += remaining;
-                studentsHTML += `
-                    <tr>
-                        <td>${index+1}</td>
-                        <td>${student.name}</td>
-                        <td>${student.class}</td>
-                        <td>${price.toLocaleString()}</td>
-                        <td style="color:#4ade80">${paid.toLocaleString()}</td>
-                        <td style="color:${remaining>0?'#f87171':'#4ade80'}">${remaining.toLocaleString()}</td>
-                    </tr>`;
-            });
-            studentsHTML += `
-                <tr class="total-row">
-                    <td colspan="3">الإجمالي</td>
-                    <td>${totalSubscription.toLocaleString()}</td>
-                    <td>${totalPaid.toLocaleString()}</td>
-                    <td>${totalRemainingAmount.toLocaleString()}</td>
-                </tr>`;
-            document.getElementById('studentsTableBody').innerHTML = studentsHTML || '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
-
-            // ── Teachers Table ──
-            let teachersHTML = '';
-            let totalSalary = 0;
-            teachers.forEach((teacher, index) => {
-                const salary = teacher.salary || 0;
-                if (teacher.active) totalSalary += salary;
-                teachersHTML += `
-                    <tr>
-                        <td>${index+1}</td>
-                        <td>${teacher.name}</td>
-                        <td>${teacher.phone || '-'}</td>
-                        <td>${teacher.subject || (teacher.subjects ? teacher.subjects.join(', ') : '-')}</td>
-                        <td>${salary.toLocaleString()}</td>
-                        <td style="color:${teacher.active?'#4ade80':'#f87171'}">${teacher.active?'نشط':'غير نشط'}</td>
-                    </tr>`;
-            });
-            teachersHTML += `
-                <tr class="total-row">
-                    <td colspan="4">إجمالي الرواتب (المدرسين النشطين)</td>
-                    <td colspan="2">${totalSalary.toLocaleString()}</td>
-                </tr>`;
-            document.getElementById('teachersTableBody').innerHTML = teachersHTML || '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
-
-            // ── Schedule Section ──
-            const days = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
+            // ── الجدول ──
             const byDay = {};
-            scheduleSessions.forEach(s => { const d = days[s.day]; byDay[d] = (byDay[d]||0)+1; });
-            let scheduleHTML = '';
-            days.forEach(day => {
-                const count      = byDay[day] || 0;
-                const percentage = scheduleSessions.length > 0 ? Math.round((count/scheduleSessions.length)*100) : 0;
-                scheduleHTML += `
-                    <div class="progress-item" style="color:rgba(255,255,255,.8);">
-                        <div class="progress-header"><span style="color:rgba(255,255,255,.75);">${day}</span><span style="color:var(--gold);">${count} حصة</span></div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width:${percentage}%">${percentage}%</div>
-                        </div>
-                    </div>`;
-            });
-            document.getElementById('scheduleData').innerHTML = scheduleHTML || '<p style="text-align:center;color:rgba(255,255,255,.4)">لا توجد بيانات</p>';
+            DATA.sessions.forEach(s => { const d = DAYS[s.day] ?? 'غير محدد'; byDay[d] = (byDay[d] || 0) + 1; });
+            const dayList = [...DAYS, ...Object.keys(byDay).filter(d => !DAYS.includes(d))];
 
-            // ── Attendance Table ──
-            const attendanceStats = new Map();
-            attendanceSessions.forEach(session => {
-                if (session.completed && session.students) {
-                    session.students.forEach(student => {
-                        if (!attendanceStats.has(student.id)) {
-                            attendanceStats.set(student.id, { name:student.name, class:session.class, present:0, absent:0 });
-                        }
-                        const stats = attendanceStats.get(student.id);
-                        if (student.status === 'present') stats.present++;
-                        if (student.status === 'absent')  stats.absent++;
-                    });
-                }
-            });
+            // ── الدرجات ──
+            const logs = [...DATA.gradesLog].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+            const totPassed = logs.reduce((a, l) => a + (l.passed || 0), 0);
+            const totFailed = logs.reduce((a, l) => a + (l.failed || 0), 0);
+            const passRate  = totPassed + totFailed ? Math.round(totPassed / (totPassed + totFailed) * 100) : 0;
 
-            let attendanceHTML = '';
-            let idx = 1, totalPresentCount = 0, totalAbsentCount = 0;
-            attendanceStats.forEach((stats) => {
-                const total      = stats.present + stats.absent;
-                const percentage = total > 0 ? Math.round((stats.present/total)*100) : 0;
-                totalPresentCount += stats.present;
-                totalAbsentCount  += stats.absent;
-                attendanceHTML += `
-                    <tr>
-                        <td>${idx++}</td>
-                        <td>${stats.name}</td>
-                        <td>${stats.class}</td>
-                        <td style="color:#4ade80">${stats.present}</td>
-                        <td style="color:#f87171">${stats.absent}</td>
-                        <td><strong>${percentage}%</strong></td>
-                    </tr>`;
+            // ── الكتب ──
+            const byGrade = {};
+            DATA.reservations.forEach(r => {
+                const g = byGrade[r.grade || '—'] = byGrade[r.grade || '—'] || { count: 0, qty: 0, total: 0, paid: 0, rem: 0 };
+                g.count++; g.qty += r.quantity || 0; g.total += r.totalPrice || 0; g.paid += r.paidAmount || 0; g.rem += r.remainingAmount || 0;
             });
-            const overallAttendanceRate = totalPresentCount + totalAbsentCount > 0
-                ? Math.round((totalPresentCount/(totalPresentCount+totalAbsentCount))*100) : 0;
-            attendanceHTML += `
-                <tr class="total-row">
-                    <td colspan="3">الإجمالي</td>
-                    <td>${totalPresentCount}</td>
-                    <td>${totalAbsentCount}</td>
-                    <td>${overallAttendanceRate}%</td>
-                </tr>`;
-            document.getElementById('attendanceTableBody').innerHTML = attendanceHTML || '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
+            const bookTot = Object.values(byGrade).reduce((a, g) => ({ count: a.count + g.count, qty: a.qty + g.qty, total: a.total + g.total, paid: a.paid + g.paid, rem: a.rem + g.rem }),
+                                                         { count: 0, qty: 0, total: 0, paid: 0, rem: 0 });
 
-            // ── Finance Section ──
+            const label = monthLabel(monthKey);
+            document.getElementById('monthTag').textContent  = '— ' + label;
+            document.getElementById('monthTag2').textContent = '— ' + label;
+            document.getElementById('reportDate').textContent = label + ' • ' + new Date().toLocaleDateString('ar-EG');
+
+            // ── Stats ──
+            document.getElementById('overallStats').innerHTML = `
+                <div class="stat-box"><div class="number">${DATA.students.length}</div><div class="label">الطلاب</div></div>
+                <div class="stat-box"><div class="number">${activeTeachers.length}</div><div class="label">المدرسين</div></div>
+                <div class="stat-box"><div class="number">${DATA.sessions.length}</div><div class="label">الحصص</div></div>
+                <div class="stat-box"><div class="number">${attRate}%</div><div class="label">نسبة الحضور</div></div>
+                <div class="stat-box"><div class="number">${logs.length}</div><div class="label">الامتحانات</div></div>
+                <div class="stat-box"><div class="number">${passRate}%</div><div class="label">نسبة النجاح</div></div>
+                <div class="stat-box"><div class="number">${fmt(totPaid)}</div><div class="label">إيرادات الشهر (ج)</div></div>
+                <div class="stat-box"><div class="number" style="color:${netProfit >= 0 ? '#ffd700' : '#f87171'}">${fmt(netProfit)}</div><div class="label">صافي الربح (ج)</div></div>`;
+
+            // ── Students table ──
+            document.getElementById('studentsTableBody').innerHTML = stuRows.map((r, i) => `
+                <tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.class)}</td><td>${fmt(r.price)}</td>
+                <td style="color:#4ade80">${fmt(r.paid)}</td>
+                <td style="color:${r.remaining > 0 ? '#f87171' : '#4ade80'}">${fmt(r.remaining)}</td></tr>`).join('')
+                + `<tr class="total-row"><td colspan="3">الإجمالي</td><td>${fmt(totSub)}</td><td>${fmt(totPaid)}</td><td>${fmt(totRem)}</td></tr>`;
+            if (!stuRows.length) document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
+
+            // ── Teachers table ──
+            document.getElementById('teachersTableBody').innerHTML = DATA.teachers.map((t, i) => `
+                <tr><td>${i + 1}</td><td>${esc(t.name)}</td><td>${esc(t.phone || '-')}</td>
+                <td>${esc((t.subjects || []).map(x => SUBJECTS[x] || x).join('، ') || '-')}</td>
+                <td>${fmt(t.salary)}</td>
+                <td style="color:${t.active ? '#4ade80' : '#f87171'}">${t.active ? 'نشط' : 'غير نشط'}</td></tr>`).join('')
+                + `<tr class="total-row"><td colspan="4">إجمالي الرواتب (المدرسين النشطين)</td><td colspan="2">${fmt(totalSalaries)}</td></tr>`;
+            if (!DATA.teachers.length) document.getElementById('teachersTableBody').innerHTML = '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
+
+            // ── Schedule ──
+            document.getElementById('scheduleData').innerHTML = DATA.sessions.length ? dayList.map(day => {
+                const c = byDay[day] || 0, p = Math.round(c / DATA.sessions.length * 100);
+                return `<div class="progress-item" style="color:rgba(255,255,255,.8);">
+                    <div class="progress-header"><span style="color:rgba(255,255,255,.75);">${esc(day)}</span><span style="color:var(--gold);">${c} حصة</span></div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${p}%">${p}%</div></div></div>`;
+            }).join('') : '<p style="text-align:center;color:rgba(255,255,255,.4)">لا توجد بيانات</p>';
+
+            // ── Attendance table ──
+            document.getElementById('attendanceTableBody').innerHTML = attRows.map((r, i) => `
+                <tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.class)}</td>
+                <td style="color:#4ade80">${r.present}</td><td style="color:#f87171">${r.absent}</td>
+                <td><strong>${r.pct === null ? '-' : r.pct + '%'}</strong></td></tr>`).join('')
+                + `<tr class="total-row"><td colspan="3">الإجمالي</td><td>${totPresent}</td><td>${totAbsent}</td><td>${attRate}%</td></tr>`;
+            if (!attRows.length) document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
+
+            // ── Grades table ──
+            document.getElementById('gradesTableBody').innerHTML = logs.length ? logs.map((l, i) => `
+                <tr><td>${i + 1}</td><td>${esc(l.examName)}</td><td>${esc(l.class)}</td><td>${esc(l.subject)}</td>
+                <td>${esc(l.max)}</td><td>${l.avg ?? '-'}</td><td>${l.hi ?? '-'} / ${l.lo ?? '-'}</td>
+                <td style="color:#4ade80">${l.passed || 0}</td><td style="color:#f87171">${l.failed || 0}</td></tr>`).join('')
+                : '<tr><td colspan="9" style="color:rgba(255,255,255,.4)">لا توجد بيانات</td></tr>';
+
+            // ── Books ──
+            document.getElementById('booksData').innerHTML = `
+                <div class="data-row"><span class="data-label">عدد الحجوزات</span><span class="data-value">${bookTot.count}</span></div>
+                <div class="data-row"><span class="data-label">المدفوع</span><span class="data-value" style="color:#28a745">${fmt(bookTot.paid)} ج</span></div>
+                <div class="data-row"><span class="data-label">المتبقي</span><span class="data-value" style="color:#dc3545">${fmt(bookTot.rem)} ج</span></div>`;
+            document.getElementById('booksTableBody').innerHTML = Object.keys(byGrade).length
+                ? Object.entries(byGrade).map(([g, v]) => `<tr><td>${esc(g)}</td><td>${v.count}</td><td>${v.qty}</td><td>${fmt(v.total)}</td><td style="color:#4ade80">${fmt(v.paid)}</td><td style="color:#f87171">${fmt(v.rem)}</td></tr>`).join('')
+                  + `<tr class="total-row"><td>الإجمالي</td><td>${bookTot.count}</td><td>${bookTot.qty}</td><td>${fmt(bookTot.total)}</td><td>${fmt(bookTot.paid)}</td><td>${fmt(bookTot.rem)}</td></tr>`
+                : '<tr><td colspan="6" style="color:rgba(255,255,255,.4)">لا توجد حجوزات</td></tr>';
+
+            // ── Finance ──
             document.getElementById('financeData').innerHTML = `
-                <div class="data-row"><span class="data-label">الإيرادات</span><span class="data-value" style="color:#28a745">+${totalRevenue.toLocaleString()} ج</span></div>
-                <div class="data-row"><span class="data-label">المصروفات (رواتب)</span><span class="data-value" style="color:#dc3545">-${totalSalaries.toLocaleString()} ج</span></div>
+                <div class="data-row"><span class="data-label">الإيرادات</span><span class="data-value" style="color:#28a745">+${fmt(totPaid)} ج</span></div>
+                <div class="data-row"><span class="data-label">المصروفات (رواتب)</span><span class="data-value" style="color:#dc3545">-${fmt(totalSalaries)} ج</span></div>
                 <div class="data-row" style="background:linear-gradient(135deg,rgba(180,130,20,.25),rgba(212,175,55,.12));border:1px solid rgba(212,175,55,.4);">
                     <span class="data-label" style="color:rgba(255,255,255,.7);">صافي الربح</span>
-                    <span class="data-value" style="color:#ffd700;font-size:17px;">${netProfit>=0?'+':''}${netProfit.toLocaleString()} ج</span>
+                    <span class="data-value" style="color:#ffd700;font-size:17px;">${netProfit >= 0 ? '+' : ''}${fmt(netProfit)} ج</span>
                 </div>`;
             document.getElementById('financeTableBody').innerHTML = `
-                <tr><td>إجمالي الإيرادات (اشتراكات الطلاب)</td><td style="color:#4ade80;font-weight:bold">+${totalRevenue.toLocaleString()}</td></tr>
-                <tr><td>إجمالي المصروفات (رواتب المدرسين)</td><td style="color:#f87171;font-weight:bold">-${totalSalaries.toLocaleString()}</td></tr>
-                <tr><td>المبلغ المتبقي من الطلاب</td><td style="color:#ffd700;font-weight:bold">${totalRemainingAmount.toLocaleString()}</td></tr>
-                <tr class="total-row"><td>صافي الربح / الخسارة</td><td style="font-weight:bold;font-size:18px">${netProfit>=0?'+':''}${netProfit.toLocaleString()}</td></tr>`;
+                <tr><td>إيرادات اشتراكات الطلاب (${esc(label)})</td><td style="color:#4ade80;font-weight:bold">+${fmt(totPaid)}</td></tr>
+                <tr><td>رواتب المدرسين النشطين (شهرياً)</td><td style="color:#f87171;font-weight:bold">-${fmt(totalSalaries)}</td></tr>
+                <tr><td>المتبقي من الطلاب هذا الشهر</td><td style="color:#ffd700;font-weight:bold">${fmt(totRem)}</td></tr>
+                <tr class="total-row"><td>صافي الربح / الخسارة</td><td style="font-weight:bold;font-size:18px">${netProfit >= 0 ? '+' : ''}${fmt(netProfit)}</td></tr>
+                <tr><td>مدفوعات الكتب (مستقلة عن الحساب أعلاه)</td><td style="color:#4ade80">${fmt(bookTot.paid)}</td></tr>
+                <tr><td>المتبقي من حجوزات الكتب</td><td style="color:#ffd700">${fmt(bookTot.rem)}</td></tr>`;
 
-            // ── Excel Export ──
-            window.exportToExcel = function() {
-                const wb = XLSX.utils.book_new();
-
-                // Sheet 1: الملخص العام
-                const ws1 = XLSX.utils.aoa_to_sheet([
-                    ['التقرير الشامل'],
-                    ['التاريخ: ' + new Date().toLocaleDateString('ar-EG')],
-                    [],
-                    ['البيان', 'القيمة'],
-                    ['عدد الطلاب', students.length],
-                    ['عدد المدرسين النشطين', activeTeachers.length],
-                    ['عدد الحصص', scheduleSessions.length],
-                    ['نسبة الحضور', attendanceRate + '%'],
-                    ['إجمالي الإيرادات', totalRevenue + ' ج'],
-                    ['إجمالي المصروفات', totalSalaries + ' ج'],
-                    ['صافي الربح/الخسارة', netProfit + ' ج']
-                ]);
-                XLSX.utils.book_append_sheet(wb, ws1, 'الملخص العام');
-
-                // Sheet 2: كشف الطلاب
-                const studentsData = [['م','اسم الطالب','الفصل','الاشتراك المطلوب','المدفوع','المتبقي']];
-                students.forEach((student, i) => {
-                    const payment   = studentPayments[student.id] || {};
-                    const price     = subscriptionPrices[student.id] || subscriptionPrices[student.class] || 0;
-                    const paid      = payment.paid || 0;
-                    studentsData.push([i+1, student.name, student.class, price, paid, price-paid]);
-                });
-                studentsData.push(['الإجمالي','','',totalSubscription,totalPaid,totalRemainingAmount]);
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(studentsData), 'كشف الطلاب');
-
-                // Sheet 3: كشف المدرسين
-                const teachersData = [
-                    ['كشف مرتبات المدرسين'],
-                    ['كشف مجمع لمرتبات شهر ' + new Date().toLocaleDateString('ar-EG',{month:'long',year:'numeric'})],
-                    [],
-                    ['م','اسم المدرس','التليفون','المادة','الراتب','التوقيع']
-                ];
-                activeTeachers.forEach((teacher, i) => {
-                    teachersData.push([i+1, teacher.name, teacher.phone||'', teacher.subjects?teacher.subjects.join(', '):(teacher.subject||''), teacher.salary||0, '']);
-                });
-                for (let i = activeTeachers.length; i < 12; i++) teachersData.push([i+1,'','','','','']);
-                teachersData.push(['إجمالي مرتبات المدرسين','','','',totalSalary,'']);
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(teachersData), 'كشف المدرسين');
-
-                // Sheet 4: الحضور والغياب
-                const attData = [['م','اسم الطالب','الفصل','عدد مرات الحضور','عدد مرات الغياب','نسبة الحضور']];
-                let ai = 1;
-                attendanceStats.forEach(stats => {
-                    const total = stats.present + stats.absent;
-                    attData.push([ai++, stats.name, stats.class, stats.present, stats.absent, (total>0?Math.round((stats.present/total)*100):0)+'%']);
-                });
-                attData.push(['الإجمالي','','',totalPresentCount,totalAbsentCount,overallAttendanceRate+'%']);
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(attData), 'الحضور والغياب');
-
-                // Sheet 5: التقرير المالي
-                const finData = [
-                    ['البند','المبلغ (جنيه)','ملاحظات'],
-                    ['الإيرادات (اشتراكات الطلاب)', totalRevenue, 'إجمالي المدفوعات'],
-                    ['المصروفات (رواتب المدرسين)', totalSalaries, 'إجمالي الرواتب'],
-                    ['المبلغ المتبقي من الطلاب', totalRemainingAmount, ''],
-                    [],
-                    ['صافي الربح / الخسارة', netProfit, netProfit>=0?'ربح':'خسارة']
-                ];
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(finData), 'التقرير المالي');
-
-                // Sheet 6: توزيع الحصص
-                const schData = [['اليوم','عدد الحصص','النسبة المئوية']];
-                days.forEach(day => {
-                    const count = byDay[day]||0;
-                    schData.push([day, count, (scheduleSessions.length>0?Math.round((count/scheduleSessions.length)*100):0)+'%']);
-                });
-                schData.push(['الإجمالي', scheduleSessions.length, '100%']);
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(schData), 'توزيع الحصص');
-
-                XLSX.writeFile(wb, 'تقرير_شامل_' + new Date().toLocaleDateString('ar-EG').replace(/\//g,'-') + '.xlsx');
-                alert('✅ تم تصدير التقرير إلى Excel بنجاح!');
-            };
+            view = { monthKey, label, stuRows, totSub, totPaid, totRem, activeTeachers, totalSalaries, netProfit,
+                     attRows, totPresent, totAbsent, attRate, byDay, dayList, logs, passRate, byGrade, bookTot,
+                     studentsCount: DATA.students.length, sessionsCount: DATA.sessions.length, teachers: DATA.teachers };
         }
 
-        loadAndRender();
+        // ════════ Month selector ════════
+        function fillMonthSelect() {
+            const cur = monthKeyNow();
+            const keys = [...new Set([cur, ...Object.keys(DATA.months)])].sort().reverse();
+            const sel = document.getElementById('monthSelect');
+            sel.innerHTML = keys.map(k => `<option value="${k}">${esc(monthLabel(k))}</option>`).join('');
+            sel.value = cur;
+        }
+        window.changeMonth = key => render(key);
+
+        // ════════ Excel ════════
+        window.exportToExcel = function () {
+            if (!view) { alert('البيانات لسه بتتحمل'); return; }
+            const v = view, wb = XLSX.utils.book_new();
+            const add = (rows, name) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name);
+
+            add([['التقرير الشامل'], [v.label], [], ['البيان', 'القيمة'],
+                 ['عدد الطلاب', v.studentsCount], ['عدد المدرسين النشطين', v.activeTeachers.length], ['عدد الحصص', v.sessionsCount],
+                 ['نسبة الحضور %', v.attRate], ['نسبة النجاح %', v.passRate],
+                 ['إيرادات الشهر (ج)', v.totPaid], ['رواتب المدرسين (ج)', v.totalSalaries], ['صافي الربح/الخسارة (ج)', v.netProfit]], 'الملخص العام');
+
+            add([['م', 'اسم الطالب', 'الفصل', 'الاشتراك المطلوب', 'المدفوع', 'المتبقي'],
+                 ...v.stuRows.map((r, i) => [i + 1, r.name, r.class, r.price, r.paid, r.remaining]),
+                 ['الإجمالي', '', '', v.totSub, v.totPaid, v.totRem]], 'كشف الطلاب');
+
+            const tRows = [['كشف مرتبات المدرسين'], ['شهر ' + v.label], [], ['م', 'اسم المدرس', 'التليفون', 'المادة', 'الراتب', 'التوقيع']];
+            v.activeTeachers.forEach((t, i) => tRows.push([i + 1, t.name, t.phone || '', (t.subjects || []).map(x => SUBJECTS[x] || x).join('، '), Number(t.salary) || 0, '']));
+            for (let i = v.activeTeachers.length; i < 12; i++) tRows.push([i + 1, '', '', '', '', '']);
+            tRows.push(['إجمالي مرتبات المدرسين', '', '', '', v.totalSalaries, '']);
+            add(tRows, 'كشف المدرسين');
+
+            add([['م', 'اسم الطالب', 'الفصل', 'عدد مرات الحضور', 'عدد مرات الغياب', 'نسبة الحضور %'],
+                 ...v.attRows.map((r, i) => [i + 1, r.name, r.class, r.present, r.absent, r.pct ?? '']),
+                 ['الإجمالي', '', '', v.totPresent, v.totAbsent, v.attRate]], 'الحضور والغياب');
+
+            add([['م', 'الامتحان', 'الفصل', 'المادة', 'الدرجة العظمى', 'المتوسط', 'الأعلى', 'الأقل', 'ناجح', 'راسب'],
+                 ...v.logs.map((l, i) => [i + 1, l.examName, l.class, l.subject, l.max, l.avg ?? '', l.hi ?? '', l.lo ?? '', l.passed || 0, l.failed || 0])], 'الدرجات');
+
+            add([['الصف', 'عدد الحجوزات', 'الكمية', 'الإجمالي', 'المدفوع', 'المتبقي'],
+                 ...Object.entries(v.byGrade).map(([g, x]) => [g, x.count, x.qty, x.total, x.paid, x.rem]),
+                 ['الإجمالي', v.bookTot.count, v.bookTot.qty, v.bookTot.total, v.bookTot.paid, v.bookTot.rem]], 'الكتب');
+
+            add([['البند', 'المبلغ (جنيه)', 'ملاحظات'],
+                 ['إيرادات الاشتراكات', v.totPaid, v.label], ['رواتب المدرسين', v.totalSalaries, 'شهرياً'],
+                 ['المتبقي من الطلاب', v.totRem, ''], [],
+                 ['صافي الربح / الخسارة', v.netProfit, v.netProfit >= 0 ? 'ربح' : 'خسارة'], [],
+                 ['مدفوعات الكتب', v.bookTot.paid, 'مستقلة'], ['المتبقي من الكتب', v.bookTot.rem, '']], 'التقرير المالي');
+
+            add([['اليوم', 'عدد الحصص', 'النسبة %'],
+                 ...v.dayList.map(d => [d, v.byDay[d] || 0, v.sessionsCount ? Math.round((v.byDay[d] || 0) / v.sessionsCount * 100) : 0]),
+                 ['الإجمالي', v.sessionsCount, 100]], 'توزيع الحصص');
+
+            XLSX.writeFile(wb, 'تقرير_شامل_' + v.monthKey + '.xlsx');
+        };
+
+        // ════════ Init ════════
+        (async () => {
+            try {
+                await loadAll();
+                fillMonthSelect();
+                render(monthKeyNow());
+            } catch (e) {
+                console.error(e);
+                document.getElementById('overallStats').innerHTML = `<p style="color:#f87171;text-align:center;grid-column:1/-1">❌ خطأ في تحميل البيانات — تأكد من Firebase Rules</p>`;
+            }
+        })();
     </script>
 </body>
 </html>
